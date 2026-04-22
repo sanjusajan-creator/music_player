@@ -45,7 +45,7 @@ function HomeContent() {
   const [password, setPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  // FORCE LOGOUT ANONYMOUS: If we somehow have an anonymous user, clear it to force the login gate
+  // STRICT LOGIN GATE: If we have an anonymous user, sign them out to force the login gate
   useEffect(() => {
     if (user && !user.email && !isUserLoading) {
       signOut(auth);
@@ -86,7 +86,7 @@ function HomeContent() {
     );
   }
 
-  // STRICT LOGIN GATE: User must be present AND have an email session
+  // FORCE LOGIN: User must be present AND have an email session
   if (!user || !user.email) {
     return (
       <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden relative">

@@ -2,10 +2,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // User data: Recursive wildcard match as requested
-    // This allows the authenticated owner to read/write their own document and all subcollections (playlists, likedSongs, etc.)
-    match /users/{userId}/{document=**} {
+    // User Data: Explicit paths for reliable listing and reading
+    // This allows the owner to list their collections (playlists, likedSongs) and read/write all documents within them.
+    match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Explicitly allow subcollections for the list operation
+      match /playlists/{playlistId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      match /likedSongs/{songId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Recursive catch-all for any other nested data
+      match /{allPaths=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
     // Search cache: Essential for core search functionality
