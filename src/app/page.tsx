@@ -25,7 +25,7 @@ export default function AppWrapper() {
   return (
     <QueryClientProvider client={queryClient}>
       <Suspense fallback={
-        <div className="h-screen w-screen bg-black flex flex-col items-center justify-center">
+        <div className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center">
           <Loader2 className="animate-spin text-primary w-12 h-12 mb-4" />
           <p className="text-primary/40 font-black uppercase tracking-[0.3em] text-[10px]">Vibecraft Loading...</p>
         </div>
@@ -68,7 +68,7 @@ function HomeContent() {
 
   if (isUserLoading) {
     return (
-      <div className="h-screen w-screen bg-black flex flex-col items-center justify-center">
+      <div className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center">
         <Loader2 className="animate-spin text-primary w-12 h-12 mb-4" />
         <p className="text-primary/40 font-black uppercase tracking-[0.3em] text-[10px]">Verifying Identity...</p>
       </div>
@@ -77,7 +77,7 @@ function HomeContent() {
 
   if (!user) {
     return (
-      <main className="h-screen w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden">
+      <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden">
         <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500">
           <header>
             <h1 className="text-6xl md:text-7xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase italic">VIBECRAFT</h1>
@@ -132,14 +132,14 @@ function HomeContent() {
   }
 
   return (
-    <div className="flex h-screen w-screen bg-black overflow-hidden selection:bg-primary/30 selection:text-white">
+    <div className="flex h-[100dvh] w-screen bg-black overflow-hidden selection:bg-primary/30 selection:text-white">
       <Sidebar />
-      <main className="flex-1 flex flex-col min-w-0 bg-black relative overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 bg-black relative overflow-hidden h-[100dvh]">
         <Suspense fallback={<div className="h-24 bg-black/80 animate-pulse" />}>
           <Navbar />
         </Suspense>
         <YouTubePlayer />
-        <div className="flex-1 overflow-y-auto no-scrollbar pt-24 pb-32 gradient-bg px-6 md:px-12">
+        <div className="flex-1 overflow-y-auto no-scrollbar pt-24 pb-32 gradient-bg px-6 md:px-12 h-full">
           <div className="max-w-7xl mx-auto">
             <header className="mb-12">
               <h2 className="text-4xl md:text-6xl font-black text-primary gold-glow italic tracking-tighter mb-4">

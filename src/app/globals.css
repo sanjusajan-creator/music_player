@@ -34,13 +34,17 @@
     height: 100dvh;
     width: 100vw;
     position: fixed;
+    top: 0;
+    left: 0;
+    margin: 0;
+    padding: 0;
     touch-action: none;
   }
 }
 
-/* Force container height to prevent scrollbars */
 main {
   height: 100dvh;
+  width: 100vw;
   overflow: hidden;
   position: relative;
 }
@@ -65,6 +69,16 @@ main {
   scrollbar-width: none;
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
+}
+
 .yt-player-hidden {
   position: absolute;
   top: -1000px;
@@ -81,14 +95,4 @@ main {
 
 .animate-pulse-gold {
   animation: pulse-gold 2s infinite ease-in-out;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
 }
