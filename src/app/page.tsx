@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -42,7 +41,16 @@ function HomeContent() {
 
   const handleLogin = () => signInAnonymously(auth);
 
-  if (!user && !isUserLoading) {
+  if (isUserLoading) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+        <Loader2 className="animate-spin text-primary w-12 h-12 mb-4" />
+        <p className="text-primary/40 font-black uppercase tracking-[0.3em] text-[10px]">Verifying Identity...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <main className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
         <h1 className="text-6xl md:text-8xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase italic">VIBECRAFT</h1>
@@ -58,7 +66,7 @@ function HomeContent() {
     <div className="flex h-screen bg-black overflow-hidden selection:bg-primary/30 selection:text-white">
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 bg-black relative">
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="h-24 bg-black/80 animate-pulse" />}>
           <Navbar />
         </Suspense>
         <YouTubePlayer />
