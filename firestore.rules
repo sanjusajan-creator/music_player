@@ -2,14 +2,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /users/{userId}/{document=**} {
+    // Explicitly allow users to read and write their own root document
+    match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Explicitly allow users to list and modify their own playlists
+    // This flat structure is more reliable for 'list' operations than nested recursive wildcards
+    match /users/{userId}/playlists/{playlistId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Explicitly allow users to list and modify their own liked songs
+    match /users/{userId}/likedSongs/{songId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow search cache access to prevent application errors during song discovery
     match /search_cache/{queryId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
-
   }
 }
