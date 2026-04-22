@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -9,9 +10,21 @@ export interface Track {
   duration?: number;
 }
 
+export interface Playlist {
+  id: string;
+  name: string;
+  description?: string;
+  tracks: Track[];
+  userId: string;
+  createdAt: string;
+}
+
+type RepeatMode = 'none' | 'one' | 'all';
+
 interface PlayerState {
   currentTrack: Track | null;
   queue: Track[];
+  originalQueue: Track[]; // For un-shuffling
   history: Track[];
   likedTrackIds: Set<string>;
   isPlaying: boolean;
@@ -20,11 +33,15 @@ interface PlayerState {
   volume: number;
   progress: number;
   duration: number;
-  seekRequest: number | null; // Used to trigger seeks in the YT player
+  seekRequest: number | null;
+  repeatMode: RepeatMode;
+  isShuffle: boolean;
   
   // Actions
   setCurrentTrack: (track: Track | null) => void;
+  playNextFromQueue: (track: Track) => void;
   addToQueue: (track: Track) => void;
+  setQueue: (tracks: Track[]) => void;
   removeFromQueue: (trackId: string) => void;
   setLikedTracks: (ids: string[]) => void;
   toggleLike: (trackId: string) => void;
@@ -35,8 +52,11 @@ interface PlayerState {
   setProgress: (progress: number) => void;
   setDuration: (duration: number) => void;
   seekTo: (time: number) => void;
+  toggleShuffle: () => void;
+  setRepeatMode: (mode: RepeatMode) => void;
   nextTrack: () => void;
   previousTrack: () => void;
+  clearQueue: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -44,6 +64,7 @@ export const usePlayerStore = create<PlayerState>()(
     (set, get) => ({
       currentTrack: null,
       queue: [],
+      originalQueue: [],
       history: [],
       likedTrackIds: new Set(),
       isPlaying: false,
@@ -53,6 +74,8 @@ export const usePlayerStore = create<PlayerState>()(
       progress: 0,
       duration: 0,
       seekRequest: null,
+      repeatMode: 'none',
+      isShuffle: false,
 
       setCurrentTrack: (track) => {
         const { currentTrack, history } = get();
@@ -62,9 +85,29 @@ export const usePlayerStore = create<PlayerState>()(
         set({ currentTrack: track, progress: 0, isPlaying: true, isAdPlaying: false, seekRequest: null });
       },
 
-      addToQueue: (track) => set((state) => ({ queue: [...state.queue, track] })),
-      removeFromQueue: (trackId) => set((state) => ({ queue: state.queue.filter((t) => t.id !== trackId) })),
+      playNextFromQueue: (track) => {
+        set((state) => ({
+          queue: [track, ...state.queue]
+        }));
+      },
+
+      addToQueue: (track) => set((state) => ({ 
+        queue: [...state.queue, track],
+        originalQueue: [...state.originalQueue, track]
+      })),
+
+      setQueue: (tracks) => set({ 
+        queue: tracks,
+        originalQueue: tracks
+      }),
+
+      removeFromQueue: (trackId) => set((state) => ({ 
+        queue: state.queue.filter((t) => t.id !== trackId),
+        originalQueue: state.originalQueue.filter((t) => t.id !== trackId)
+      })),
       
+      clearQueue: () => set({ queue: [], originalQueue: [] }),
+
       setLikedTracks: (ids) => set({ likedTrackIds: new Set(ids) }),
       toggleLike: (trackId) => set((state) => {
         const next = new Set(state.likedTrackIds);
@@ -81,27 +124,72 @@ export const usePlayerStore = create<PlayerState>()(
       setDuration: (duration) => set({ duration }),
       seekTo: (time) => set({ seekRequest: time, progress: time }),
 
+      toggleShuffle: () => set((state) => {
+        const isShuffle = !state.isShuffle;
+        if (isShuffle) {
+          const shuffled = [...state.queue].sort(() => Math.random() - 0.5);
+          return { isShuffle, queue: shuffled };
+        } else {
+          return { isShuffle, queue: state.originalQueue };
+        }
+      }),
+
+      setRepeatMode: (mode) => set({ repeatMode: mode }),
+
       nextTrack: () => {
-        const { queue } = get();
+        const { queue, repeatMode, currentTrack } = get();
+        
+        if (repeatMode === 'one' && currentTrack) {
+          set({ progress: 0, seekRequest: 0, isPlaying: true });
+          return;
+        }
+
         if (queue.length > 0) {
-          set({ currentTrack: queue[0], queue: queue.slice(1), progress: 0, seekRequest: null });
+          const next = queue[0];
+          set({ 
+            currentTrack: next, 
+            queue: queue.slice(1), 
+            progress: 0, 
+            seekRequest: null,
+            isPlaying: true
+          });
+        } else if (repeatMode === 'all') {
+          const { originalQueue } = get();
+          if (originalQueue.length > 0) {
+            set({ 
+              currentTrack: originalQueue[0], 
+              queue: originalQueue.slice(1), 
+              progress: 0, 
+              seekRequest: null,
+              isPlaying: true
+            });
+          }
         }
       },
 
       previousTrack: () => {
         const { history, currentTrack, queue } = get();
         if (history.length > 0) {
-          set({ currentTrack: history[0], history: history.slice(1), queue: currentTrack ? [currentTrack, ...queue] : queue, progress: 0, seekRequest: null });
+          set({ 
+            currentTrack: history[0], 
+            history: history.slice(1), 
+            queue: currentTrack ? [currentTrack, ...queue] : queue, 
+            progress: 0, 
+            seekRequest: null,
+            isPlaying: true
+          });
         }
       },
     }),
     {
-      name: 'vibecraft-player-v2',
+      name: 'vibecraft-spotify-v1',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 
         history: state.history,
-        likedTrackIds: Array.from(state.likedTrackIds) as any
+        likedTrackIds: Array.from(state.likedTrackIds) as any,
+        repeatMode: state.repeatMode,
+        isShuffle: state.isShuffle
       }),
       onRehydrateStorage: () => (state) => {
         if (state && Array.isArray(state.likedTrackIds)) {
