@@ -11,24 +11,16 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Rules for user-specific data (Playlists, Liked Songs, Profile)
-    match /users/{userId} {
-      allow get, list, create, update, delete: if isOwner(userId);
-      
-      // Explicit rules for subcollections
-      match /playlists/{playlistId} {
-        allow get, list, create, update, delete: if isOwner(userId);
-      }
-      
-      match /likedSongs/{songId} {
-        allow get, list, create, update, delete: if isOwner(userId);
-      }
+    // Comprehensive rule for all user-owned data (Profile, Playlists, Liked Songs)
+    // Using recursive wildcard {allPaths=**} to ensure subcollections are covered
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if isOwner(userId);
     }
 
     // Search cache for YouTube results - globally readable to reduce API usage
     match /search_cache/{queryId} {
-      allow get, list: if true;
-      allow create, update: if isSignedIn();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     // Default deny for all other paths
