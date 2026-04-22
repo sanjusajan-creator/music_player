@@ -2,10 +2,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // User data tree: Explicitly recursive to allow get/list/write on all subcollections
-    // This resolves the 'list' permission error on /users/{uid}/playlists
+    // Explicitly handle the user data tree
+    // The {allPaths=**} wildcard ensures that 'read' (get + list) and 'write' 
+    // permissions apply to the user document and ALL nested subcollections (playlists, likedSongs, etc.)
     match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow get, list, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Search cache: Publicly readable for efficiency, writeable by any authenticated user
@@ -14,7 +15,7 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Default deny
+    // Default deny for all other paths
     match /{path=**} {
       allow read, write: if false;
     }

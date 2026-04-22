@@ -44,8 +44,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   try {
     // 2. Search for IDs (cost 100)
-    // Adding relevance filters to get better results in first try
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(query + ' song')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(query + ' music')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
@@ -69,7 +68,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
       }))
       .filter((t: Track) => t.title.trim() !== "" && t.artist.trim() !== "");
 
-    // 4. Update Cache
+    // 4. Update Cache (Non-blocking setDoc for efficiency)
     try {
       const db = getFirestore();
       const cacheRef = doc(db, "search_cache", cacheKey);
