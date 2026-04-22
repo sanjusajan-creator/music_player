@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -22,7 +22,9 @@ const queryClient = new QueryClient();
 export default function AppWrapper() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Home />
+      <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><Sparkles className="animate-spin text-primary w-8 h-8" /></div>}>
+        <Home />
+      </Suspense>
       <Toaster />
     </QueryClientProvider>
   );
