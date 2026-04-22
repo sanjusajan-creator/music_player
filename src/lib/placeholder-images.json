@@ -1,3 +1,16 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "default-album",
+      "description": "Abstract musical pattern",
+      "imageUrl": "https://picsum.photos/seed/music/600/600",
+      "imageHint": "music abstract"
+    },
+    {
+      "id": "hero-bg",
+      "description": "Concert crowd silhouette",
+      "imageUrl": "https://picsum.photos/seed/vibes/1200/800",
+      "imageHint": "concert music"
+    }
+  ]
 }
