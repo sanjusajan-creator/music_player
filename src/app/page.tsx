@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -13,7 +13,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Sparkles, LogIn, Heart, Music2, Loader2, Mail, Lock, UserPlus } from 'lucide-react';
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { query, collection, orderBy } from 'firebase/firestore';
