@@ -1,9 +1,10 @@
 import type {Metadata} from 'next';
 import './globals.css';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'Vibecraft Music | Premium Player',
-  description: 'A premium, high-fidelity music experience powered by YouTube.',
+  title: 'Vibecraft | Midnight & Gold',
+  description: 'Premium ad-aware music player.',
 };
 
 export default function RootLayout({
@@ -19,7 +20,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased selection:bg-primary/30 selection:text-white">
-        {children}
+        <FirebaseClientProvider>
+          {children}
+        </FirebaseClientProvider>
       </body>
     </html>
   );

@@ -13,31 +13,26 @@ interface PlayerState {
   currentTrack: Track | null;
   queue: Track[];
   history: Track[];
+  likedTrackIds: Set<string>;
   isPlaying: boolean;
   isBuffering: boolean;
   isAdPlaying: boolean;
   volume: number;
   progress: number;
   duration: number;
-  isMuted: boolean;
-  isRepeat: boolean;
-  isShuffle: boolean;
   
   // Actions
   setCurrentTrack: (track: Track | null) => void;
   addToQueue: (track: Track) => void;
   removeFromQueue: (trackId: string) => void;
-  clearQueue: () => void;
-  setQueue: (tracks: Track[]) => void;
+  setLikedTracks: (ids: string[]) => void;
+  toggleLike: (trackId: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setIsBuffering: (isBuffering: boolean) => void;
   setIsAdPlaying: (isAdPlaying: boolean) => void;
   setVolume: (volume: number) => void;
   setProgress: (progress: number) => void;
   setDuration: (duration: number) => void;
-  toggleMute: () => void;
-  toggleRepeat: () => void;
-  toggleShuffle: () => void;
   nextTrack: () => void;
   previousTrack: () => void;
 }
@@ -48,86 +43,67 @@ export const usePlayerStore = create<PlayerState>()(
       currentTrack: null,
       queue: [],
       history: [],
+      likedTrackIds: new Set(),
       isPlaying: false,
       isBuffering: false,
       isAdPlaying: false,
       volume: 80,
       progress: 0,
       duration: 0,
-      isMuted: false,
-      isRepeat: false,
-      isShuffle: false,
 
       setCurrentTrack: (track) => {
         const { currentTrack, history } = get();
         if (currentTrack && currentTrack.id !== track?.id) {
           set({ history: [currentTrack, ...history.slice(0, 49)] });
         }
-        set({ currentTrack: track, progress: 0, isPlaying: true });
+        set({ currentTrack: track, progress: 0, isPlaying: true, isAdPlaying: false });
       },
 
       addToQueue: (track) => set((state) => ({ queue: [...state.queue, track] })),
+      removeFromQueue: (trackId) => set((state) => ({ queue: state.queue.filter((t) => t.id !== trackId) })),
       
-      removeFromQueue: (trackId) => 
-        set((state) => ({ queue: state.queue.filter((t) => t.id !== trackId) })),
-
-      clearQueue: () => set({ queue: [] }),
-      
-      setQueue: (tracks) => set({ queue: tracks }),
+      setLikedTracks: (ids) => set({ likedTrackIds: new Set(ids) }),
+      toggleLike: (trackId) => set((state) => {
+        const next = new Set(state.likedTrackIds);
+        if (next.has(trackId)) next.delete(trackId);
+        else next.add(trackId);
+        return { likedTrackIds: next };
+      }),
 
       setIsPlaying: (isPlaying) => set({ isPlaying }),
-      
       setIsBuffering: (isBuffering) => set({ isBuffering }),
-      
       setIsAdPlaying: (isAdPlaying) => set({ isAdPlaying }),
-
       setVolume: (volume) => set({ volume }),
-      
       setProgress: (progress) => set({ progress }),
-      
       setDuration: (duration) => set({ duration }),
 
-      toggleMute: () => set((state) => ({ isMuted: !state.isMuted })),
-
-      toggleRepeat: () => set((state) => ({ isRepeat: !state.isRepeat })),
-
-      toggleShuffle: () => set((state) => ({ isShuffle: !state.isShuffle })),
-
       nextTrack: () => {
-        const { queue, currentTrack } = get();
+        const { queue } = get();
         if (queue.length > 0) {
-          const next = queue[0];
-          set({ 
-            currentTrack: next, 
-            queue: queue.slice(1),
-            progress: 0 
-          });
+          set({ currentTrack: queue[0], queue: queue.slice(1), progress: 0 });
         }
       },
 
       previousTrack: () => {
         const { history, currentTrack, queue } = get();
         if (history.length > 0) {
-          const prev = history[0];
-          set({
-            currentTrack: prev,
-            history: history.slice(1),
-            queue: currentTrack ? [currentTrack, ...queue] : queue,
-            progress: 0
-          });
+          set({ currentTrack: history[0], history: history.slice(1), queue: currentTrack ? [currentTrack, ...queue] : queue, progress: 0 });
         }
       },
     }),
     {
-      name: 'vibecraft-player-storage',
+      name: 'vibecraft-player-v2',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        volume: state.volume,
+      partialize: (state) => ({ 
+        volume: state.volume, 
         history: state.history,
-        isRepeat: state.isRepeat,
-        isShuffle: state.isShuffle,
-        // We don't persist active playback state to avoid issues on reload
+        likedTrackIds: Array.from(state.likedTrackIds) as any
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state && Array.isArray(state.likedTrackIds)) {
+          state.likedTrackIds = new Set(state.likedTrackIds);
+        }
+      }
     }
   )
 );

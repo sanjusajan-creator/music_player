@@ -3,31 +3,26 @@
 @tailwind utilities;
 
 :root {
-  --background: 275 60% 10%;
+  --background: 0 0% 0%;
   --foreground: 0 0% 98%;
-  --card: 275 60% 12%;
-  --card-foreground: 0 0% 98%;
-  --popover: 275 60% 12%;
+  --card: 0 0% 5%;
+  --card-foreground: 46 65% 52%;
+  --popover: 0 0% 5%;
   --popover-foreground: 0 0% 98%;
-  --primary: 270 60% 50%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 275 40% 20%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 275 30% 25%;
-  --muted-foreground: 275 10% 70%;
-  --accent: 240 100% 70%;
-  --accent-foreground: 0 0% 98%;
+  --primary: 46 65% 52%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 46 65% 52%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 70%;
+  --accent: 46 65% 60%;
+  --accent-foreground: 0 0% 0%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
-  --border: 275 30% 20%;
-  --input: 275 30% 20%;
-  --ring: 270 60% 50%;
-  --radius: 1rem;
-}
-
-.dark {
-  --background: 275 60% 5%;
-  --foreground: 0 0% 98%;
+  --border: 46 65% 20%;
+  --input: 46 65% 20%;
+  --ring: 46 65% 52%;
+  --radius: 0.75rem;
 }
 
 @layer base {
@@ -35,22 +30,20 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body antialiased selection:bg-primary/30;
+    @apply bg-background text-foreground font-body antialiased selection:bg-primary/30 selection:text-primary;
   }
 }
 
-.glass {
-  @apply bg-background/60 backdrop-blur-xl border border-white/10;
+.gold-glow {
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
 }
 
-.glass-card {
-  @apply bg-card/40 backdrop-blur-md border border-white/5;
+.gold-border {
+  border: 1px solid hsl(46, 65%, 52%);
 }
 
 .gradient-bg {
-  background: radial-gradient(circle at top left, hsl(270, 60%, 15%), transparent),
-              radial-gradient(circle at bottom right, hsl(240, 100%, 10%), transparent),
-              hsl(275, 60%, 8%);
+  background: radial-gradient(circle at top right, hsl(46, 65%, 10%), #000000);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -61,7 +54,6 @@
   scrollbar-width: none;
 }
 
-/* YouTube Player Hidden Container */
 .yt-player-hidden {
   position: absolute;
   top: -1000px;
@@ -69,4 +61,13 @@
   width: 1px;
   height: 1px;
   pointer-events: none;
+}
+
+@keyframes pulse-gold {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.02); }
+}
+
+.animate-pulse-gold {
+  animation: pulse-gold 2s infinite ease-in-out;
 }

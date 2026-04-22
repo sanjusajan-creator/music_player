@@ -1,78 +1,88 @@
 import { Track } from "@/store/usePlayerStore";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
-// Note: In a production app, the API Key should be handled via server-side env vars.
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
-
-// Mock data for when API key is missing
-const MOCK_TRACKS: Track[] = [
-  {
-    id: 'dQw4w9WgXcQ',
-    title: 'Never Gonna Give You Up',
-    artist: 'Rick Astley',
-    thumbnail: 'https://picsum.photos/seed/rick/400/400',
-    duration: 212
-  },
-  {
-    id: 'L_jWHffIx5E',
-    title: 'Smells Like Teen Spirit',
-    artist: 'Nirvana',
-    thumbnail: 'https://picsum.photos/seed/nirvana/400/400',
-    duration: 301
-  },
-  {
-    id: 'kJQP7kiw5Fk',
-    title: 'Despacito',
-    artist: 'Luis Fonsi',
-    thumbnail: 'https://picsum.photos/seed/despacito/400/400',
-    duration: 287
-  },
-  {
-    id: '9bZkp7q19f0',
-    title: 'Gangnam Style',
-    artist: 'PSY',
-    thumbnail: 'https://picsum.photos/seed/psy/400/400',
-    duration: 252
-  },
-  {
-    id: 'YQHsXMglC9A',
-    title: 'Hello',
-    artist: 'Adele',
-    thumbnail: 'https://picsum.photos/seed/adele/400/400',
-    duration: 367
-  }
-];
+const CACHE_TTL = 1000 * 60 * 60 * 4; // 4 hours
 
 export async function searchTracks(query: string): Promise<Track[]> {
+  if (!query) return [];
+
+  // 1. Try Firestore Cache
+  try {
+    const db = getFirestore();
+    const cacheRef = doc(db, "search_cache", query.toLowerCase().trim());
+    const cacheSnap = await getDoc(cacheRef);
+
+    if (cacheSnap.exists()) {
+      const data = cacheSnap.data();
+      const age = Date.now() - (data.timestamp?.toMillis() || 0);
+      if (age < CACHE_TTL) {
+        return data.results;
+      }
+    }
+  } catch (e) {
+    console.warn("Cache fetch failed", e);
+  }
+
   if (!YOUTUBE_API_KEY) {
-    console.warn("YouTube API Key is missing. Returning mock results for testing.");
-    // Filter mock tracks by query to simulate real search
-    return MOCK_TRACKS.filter(track => 
-      track.title.toLowerCase().includes(query.toLowerCase()) || 
-      track.artist.toLowerCase().includes(query.toLowerCase())
+    return MOCK_TRACKS.filter(t => 
+      t.title.toLowerCase().includes(query.toLowerCase()) || 
+      t.artist.toLowerCase().includes(query.toLowerCase())
     );
   }
 
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=20&key=${YOUTUBE_API_KEY}`;
-  
   try {
-    const response = await fetch(url);
-    const data = await response.json();
+    // 2. Search for IDs (cost 100)
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US`;
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
 
-    if (data.error) {
-      console.error("YouTube API Error:", data.error);
-      return [];
+    if (searchData.error) throw new Error(searchData.error.message);
+    
+    const videoIds = searchData.items.map((item: any) => item.id.videoId).join(',');
+    if (!videoIds) return [];
+
+    // 3. Get detailed info using videos.list (cost 1)
+    const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
+    const listRes = await fetch(listUrl);
+    const listData = await listRes.json();
+
+    const tracks: Track[] = listData.items
+      .map((item: any) => ({
+        id: item.id,
+        title: normalizeMetadata(item.snippet.title),
+        artist: normalizeMetadata(item.snippet.channelTitle),
+        thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
+        duration: parseISO8601Duration(item.contentDetails.duration),
+      }))
+      .filter((t: Track) => t.title.trim() !== ""); // Filter empty titles
+
+    // 4. Cache results
+    try {
+      const db = getFirestore();
+      const cacheRef = doc(db, "search_cache", query.toLowerCase().trim());
+      setDoc(cacheRef, {
+        results: tracks,
+        timestamp: serverTimestamp()
+      });
+    } catch (e) {
+      console.warn("Cache save failed", e);
     }
 
-    return data.items.map((item: any) => ({
-      id: item.id.videoId,
-      title: normalizeMetadata(item.snippet.title),
-      artist: normalizeMetadata(item.snippet.channelTitle),
-      thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
-    }));
+    return tracks;
   } catch (error) {
-    console.error("Failed to fetch YouTube data:", error);
+    console.error("YouTube search failed:", error);
     return [];
   }
+}
+
+function parseISO8601Duration(duration: string): number {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  const hours = parseInt(match[1] || '0');
+  const minutes = parseInt(match[2] || '0');
+  const seconds = parseInt(match[3] || '0');
+  return (hours * 3600) + (minutes * 60) + seconds;
 }
 
 function normalizeMetadata(text: string): string {
@@ -82,32 +92,10 @@ function normalizeMetadata(text: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\(Official Video\)/gi, '')
     .replace(/\[Official Video\]/gi, '')
-    .replace(/\(Official Audio\)/gi, '')
-    .replace(/\[Official Audio\]/gi, '')
-    .replace(/\(Music Video\)/gi, '')
-    .replace(/\[Music Video\]/gi, '')
-    .replace(/\(Video\)/gi, '')
-    .replace(/\(Lyrics\)/gi, '')
-    .replace(/\[Lyrics\]/gi, '')
     .trim();
 }
 
-export function getTrackDuration(id: string): Promise<number> {
-  if (!YOUTUBE_API_KEY) return Promise.resolve(0);
-  
-  const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${id}&key=${YOUTUBE_API_KEY}`;
-  
-  return fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      const duration = data.items?.[0]?.contentDetails?.duration;
-      if (!duration) return 0;
-      
-      const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-      const hours = parseInt(match[1] || '0');
-      const minutes = parseInt(match[2] || '0');
-      const seconds = parseInt(match[3] || '0');
-      return (hours * 3600) + (minutes * 60) + seconds;
-    })
-    .catch(() => 0);
-}
+const MOCK_TRACKS: Track[] = [
+  { id: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley', thumbnail: 'https://picsum.photos/seed/1/400/400', duration: 212 },
+  { id: 'L_jWHffIx5E', title: 'Smells Like Teen Spirit', artist: 'Nirvana', thumbnail: 'https://picsum.photos/seed/2/400/400', duration: 301 }
+];
