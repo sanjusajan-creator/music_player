@@ -1,39 +1,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if a user is signed in
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Explicit owner check
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    // User-specific data rules
-    match /users/{userId} {
-      allow read, write: if isOwner(userId);
-      
-      // Explicitly allow operations on nested collections like playlists and likedSongs
-      match /playlists/{playlistId} {
-        allow read, write: if isOwner(userId);
-      }
-      
-      match /likedSongs/{songId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Catch-all for any other nested user data
-      match /{allPaths=**} {
-        allow read, write: if isOwner(userId);
-      }
+    // Robust recursive rule for all user-owned data
+    // This covers /users/{userId}, /users/{userId}/playlists, /users/{userId}/likedSongs, etc.
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Search cache for YouTube results - globally readable to reduce API usage
     match /search_cache/{queryId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if request.auth != null;
     }
 
     // Default deny for all other paths
