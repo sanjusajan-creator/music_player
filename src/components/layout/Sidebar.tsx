@@ -1,20 +1,29 @@
 
 "use client";
 
-import React from 'react';
-import { Home, Search, Library, PlusCircle, Heart, ListMusic, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Home, Search, Library, PlusCircle, Heart, ListMusic, Sparkles, Loader2, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter, usePathname } from 'next/navigation';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { generateMagicPlaylist } from '@/ai/flows/magic-playlist';
+import { toast } from '@/hooks/use-toast';
 
 export const Sidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useUser();
   const db = useFirestore();
+  
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [isMagicLoading, setIsMagicLoading] = useState(false);
+  const [magicPrompt, setMagicPrompt] = useState('');
+  const [isMagicDialogOpen, setIsMagicDialogOpen] = useState(false);
 
   const playlistsQuery = useMemoFirebase(() => {
     if (!user || !db) return null;
@@ -23,10 +32,43 @@ export const Sidebar = () => {
 
   const { data: playlists } = useCollection(playlistsQuery);
 
+  const handleCreatePlaylist = () => {
+    if (!user || !db || !newPlaylistName.trim()) return;
+    const colRef = collection(db, 'users', user.uid, 'playlists');
+    addDocumentNonBlocking(colRef, {
+      name: newPlaylistName,
+      createdAt: new Date().toISOString(),
+      tracks: []
+    });
+    setNewPlaylistName('');
+  };
+
+  const handleMagicPlaylist = async () => {
+    if (!magicPrompt.trim() || !user || !db) return;
+    setIsMagicLoading(true);
+    try {
+      const result = await generateMagicPlaylist({ prompt: magicPrompt });
+      const colRef = collection(db, 'users', user.uid, 'playlists');
+      await addDocumentNonBlocking(colRef, {
+        name: `✨ ${result.playlistName}`,
+        description: result.description,
+        createdAt: new Date().toISOString(),
+        tracks: [] // In a real app, we'd search and add these suggested tracks
+      });
+      toast({ title: "Magic Summoned!", description: `Playlist "${result.playlistName}" created.` });
+      setIsMagicDialogOpen(false);
+      setMagicPrompt('');
+    } catch (error) {
+      toast({ title: "Alchemy Failed", description: "The magic ritual was interrupted.", variant: "destructive" });
+    } finally {
+      setIsMagicLoading(false);
+    }
+  };
+
   const navItems = [
     { label: 'Home', icon: <Home />, path: '/' },
-    { label: 'Search', icon: <Search />, path: '/search' },
-    { label: 'Library', icon: <Library />, path: '/library' },
+    { label: 'Explore', icon: <Search />, path: '/?tab=trending' },
+    { label: 'Library', icon: <Library />, path: '/?tab=library' },
   ];
 
   return (
@@ -43,11 +85,11 @@ export const Sidebar = () => {
       <nav className="space-y-1">
         {navItems.map((item) => (
           <Button
-            key={item.path}
+            key={item.label}
             variant="ghost"
             className={cn(
               "w-full justify-start gap-4 h-12 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all font-bold",
-              pathname === item.path && "text-primary bg-primary/10"
+              (pathname === item.path || (item.path.includes('tab') && typeof window !== 'undefined' && window.location.search.includes(item.path.split('=')[1]))) && "text-primary bg-primary/10"
             )}
             onClick={() => router.push(item.path)}
           >
@@ -59,9 +101,30 @@ export const Sidebar = () => {
 
       <div className="flex flex-col gap-4 mt-4">
         <p className="px-4 text-[10px] font-black uppercase tracking-[0.4em] text-primary/40">My Collections</p>
-        <Button variant="ghost" className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-muted-foreground hover:text-primary">
-          <PlusCircle className="w-6 h-6" /> Create Playlist
-        </Button>
+        
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="ghost" className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-muted-foreground hover:text-primary">
+              <PlusCircle className="w-6 h-6" /> Create Playlist
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-black border-primary/20 text-primary">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black italic gold-glow uppercase">New Archive</DialogTitle>
+              <DialogDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Name your collection</DialogDescription>
+            </DialogHeader>
+            <Input 
+              value={newPlaylistName} 
+              onChange={(e) => setNewPlaylistName(e.target.value)} 
+              placeholder="e.g. Midnight Jazz" 
+              className="bg-white/5 border-white/10"
+            />
+            <DialogFooter>
+              <Button onClick={handleCreatePlaylist} className="bg-primary text-black font-black uppercase tracking-widest rounded-full">Create</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Button 
           variant="ghost" 
           className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-muted-foreground hover:text-primary"
@@ -69,9 +132,37 @@ export const Sidebar = () => {
         >
           <Heart className="w-6 h-6 fill-primary/10" /> Liked Songs
         </Button>
-        <Button variant="ghost" className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-primary animate-pulse-gold">
-          <Sparkles className="w-6 h-6" /> Magic AI Playlist
-        </Button>
+
+        <Dialog open={isMagicDialogOpen} onOpenChange={setIsMagicDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-primary animate-pulse-gold group">
+              <Sparkles className="w-6 h-6 group-hover:rotate-12 transition-transform" /> Magic AI Playlist
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-black border-primary/20 text-primary max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-3xl font-black italic gold-glow uppercase flex items-center gap-3">
+                <Wand2 className="w-8 h-8" /> The Oracle
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-[0.3em]">Describe a mood, and I shall summon a list.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Input 
+                value={magicPrompt} 
+                onChange={(e) => setMagicPrompt(e.target.value)} 
+                placeholder="Dark academia with a hint of rain..." 
+                className="bg-white/5 border-white/10 h-14 text-lg"
+              />
+              <Button 
+                onClick={handleMagicPlaylist} 
+                disabled={isMagicLoading}
+                className="w-full bg-primary text-black font-black h-14 rounded-full text-lg shadow-[0_0_20px_rgba(212,175,55,0.3)]"
+              >
+                {isMagicLoading ? <Loader2 className="animate-spin" /> : "Summon Archive"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex-1 mt-4 overflow-hidden flex flex-col gap-2">
@@ -83,7 +174,6 @@ export const Sidebar = () => {
                 key={p.id}
                 variant="ghost"
                 className="w-full justify-start h-10 px-4 text-sm font-bold text-muted-foreground truncate hover:text-primary rounded-lg"
-                onClick={() => router.push(`/playlist/${p.id}`)}
               >
                 <ListMusic className="w-4 h-4 mr-3 shrink-0" />
                 <span className="truncate">{p.name}</span>

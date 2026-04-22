@@ -11,17 +11,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // User profile and sub-collections
+    // User data tree: allow full recursive access to the owner
     match /users/{userId} {
-      allow get, list, create, update: if isOwner(userId);
-      
-      // Explicitly allow read/write on liked songs sub-collection
-      match /likedSongs/{songId} {
-        allow read, write: if isOwner(userId);
-      }
-      
-      // Explicitly allow read/write on playlists sub-collection
-      match /playlists/{playlistId} {
+      allow read, write: if isOwner(userId);
+      match /{allPaths=**} {
         allow read, write: if isOwner(userId);
       }
     }
