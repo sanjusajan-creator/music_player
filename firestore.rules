@@ -2,22 +2,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // User-owned data tree: Allows full access to the user document and ALL subcollections
-    // (playlists, likedSongs, etc.) only if the authenticated UID matches the userId in the path.
-    // The recursive wildcard {allPaths=**} ensures that 'list' operations on subcollections
-    // like /users/{userId}/playlists are permitted for the owner.
-    match /users/{userId}/{allPaths=**} {
+    // Explicit rule for the user document and all nested collections
+    // This uses a robust recursive wildcard to ensure 'list' operations on 
+    // subcollections like /playlists and /likedSongs are authorized for the owner.
+    match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /{allPaths=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
-    // Search cache: Globally readable to optimize YouTube API quota usage.
-    // Writeable by any authenticated user.
+    // Search cache: Globally readable for performance, writeable by any authenticated user.
     match /search_cache/{queryId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
 
-    // Default deny for anything else
+    // Deny all other access by default
     match /{path=**} {
       allow read, write: if false;
     }
