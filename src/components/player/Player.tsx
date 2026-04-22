@@ -3,13 +3,13 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, Heart, Maximize2, ListMusic } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, Heart, Maximize2 } from 'lucide-react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 export const Player: React.FC = () => {
   const { 
@@ -29,10 +29,13 @@ export const Player: React.FC = () => {
     const isLiked = likedTrackIds.has(currentTrack.id);
     const likeRef = doc(db, 'users', user.uid, 'likedSongs', currentTrack.id);
     
+    // Toggle state immediately in local store for snappy UI
+    toggleLike(currentTrack.id);
+
     if (isLiked) {
-      deleteDoc(likeRef);
+      deleteDocumentNonBlocking(likeRef);
     } else {
-      setDoc(likeRef, { 
+      setDocumentNonBlocking(likeRef, { 
         id: currentTrack.id, 
         userId: user.uid, 
         title: currentTrack.title,
@@ -40,9 +43,8 @@ export const Player: React.FC = () => {
         thumbnailUrl: currentTrack.thumbnail,
         durationSeconds: currentTrack.duration,
         likedAt: new Date().toISOString() 
-      });
+      }, { merge: true });
     }
-    toggleLike(currentTrack.id);
   };
 
   const formatTime = (s: number) => {
@@ -114,7 +116,7 @@ export const Player: React.FC = () => {
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             className="fixed inset-0 z-50 bg-black flex flex-col p-6 h-[100dvh] w-screen overflow-hidden gradient-bg"
           >
-            <div className="flex justify-between items-center h-12">
+            <div className="flex justify-between items-center h-12 shrink-0">
               <Button variant="ghost" size="icon" onClick={() => setIsFullPlayer(false)} className="text-primary">
                 <ChevronDown className="w-8 h-8" />
               </Button>
@@ -124,27 +126,27 @@ export const Player: React.FC = () => {
               </Button>
             </div>
 
-            <div className="flex-1 flex flex-col justify-around py-8 max-w-4xl mx-auto w-full">
-              <div className="relative w-full aspect-square max-w-[85vw] md:max-w-[450px] mx-auto">
-                <div className={cn("w-full h-full rounded-[3rem] border-2 border-primary/20 overflow-hidden shadow-[0_0_100px_rgba(212,175,55,0.15)]", isAdPlaying && "animate-pulse-gold")}>
+            <div className="flex-1 flex flex-col justify-between py-4 max-w-4xl mx-auto w-full overflow-hidden">
+              <div className="relative w-full aspect-square max-w-[80vw] md:max-w-[400px] mx-auto shrink-0">
+                <div className={cn("w-full h-full rounded-[2.5rem] border-2 border-primary/20 overflow-hidden shadow-[0_0_80px_rgba(212,175,55,0.1)]", isAdPlaying && "animate-pulse-gold")}>
                   <img src={currentTrack.thumbnail} className={cn("w-full h-full object-cover transition-all duration-1000", isAdPlaying && "blur-3xl grayscale scale-125")} alt="artwork" />
                   {isAdPlaying && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-2xl p-8 text-center animate-in zoom-in-95 duration-500">
-                      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-8" />
-                      <p className="text-primary font-black uppercase tracking-[0.3em] text-xl italic gold-glow">Luxury Interlude</p>
-                      <p className="text-[10px] text-muted-foreground mt-4 tracking-[0.2em] font-bold">RESUMING SHORTLY</p>
+                      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6" />
+                      <p className="text-primary font-black uppercase tracking-[0.3em] text-lg italic gold-glow">Luxury Interlude</p>
+                      <p className="text-[9px] text-muted-foreground mt-3 tracking-[0.2em] font-bold">RESUMING SHORTLY</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-10 w-full px-4">
+              <div className="space-y-6 w-full px-4 flex-1 flex flex-col justify-center">
                 <div className="text-center">
-                  <h2 className="text-3xl md:text-5xl font-black text-primary gold-glow truncate mb-3 uppercase tracking-tighter italic">{currentTrack.title}</h2>
-                  <p className="text-lg md:text-xl text-muted-foreground truncate uppercase tracking-[0.3em] font-black">{currentTrack.artist}</p>
+                  <h2 className="text-2xl md:text-4xl font-black text-primary gold-glow truncate mb-2 uppercase tracking-tighter italic">{currentTrack.title}</h2>
+                  <p className="text-sm md:text-lg text-muted-foreground truncate uppercase tracking-[0.3em] font-black">{currentTrack.artist}</p>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <Slider value={[progress]} max={duration || 100} onValueChange={(v) => setProgress(v[0])} className="cursor-pointer h-1.5" />
                   <div className="flex justify-between text-[10px] font-mono text-primary/40 tracking-[0.2em] font-bold">
                     <span>{formatTime(progress)}</span>
@@ -152,20 +154,20 @@ export const Player: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-10 md:gap-20">
-                  <Button variant="ghost" onClick={() => previousTrack()} className="text-primary hover:bg-primary/5 rounded-full p-6 transition-all scale-110"><SkipBack className="w-10 h-10" /></Button>
+                <div className="flex items-center justify-center gap-6 md:gap-12">
+                  <Button variant="ghost" onClick={() => previousTrack()} className="text-primary hover:bg-primary/5 rounded-full p-4 transition-all"><SkipBack className="w-8 h-8" /></Button>
                   <Button 
                     variant="ghost" 
-                    className="w-24 h-24 md:w-32 md:h-32 border-[3px] border-primary/40 rounded-full hover:bg-primary/10 bg-primary/5 shadow-[0_0_40px_rgba(212,175,55,0.2)] transition-all active:scale-95 flex items-center justify-center" 
+                    className="w-20 h-20 md:w-24 md:h-24 border-2 border-primary/40 rounded-full hover:bg-primary/10 bg-primary/5 shadow-[0_0_30px_rgba(212,175,55,0.2)] transition-all active:scale-95 flex items-center justify-center" 
                     onClick={() => setIsPlaying(!isPlaying)}
                   >
-                    {isPlaying ? <Pause className="w-10 h-10 md:w-14 md:h-14 fill-primary text-primary" /> : <Play className="w-10 h-10 md:w-14 md:h-14 fill-primary text-primary ml-1.5" />}
+                    {isPlaying ? <Pause className="w-8 h-8 md:w-10 md:h-10 fill-primary text-primary" /> : <Play className="w-8 h-8 md:w-10 md:h-10 fill-primary text-primary ml-1" />}
                   </Button>
-                  <Button variant="ghost" onClick={() => nextTrack()} className="text-primary hover:bg-primary/5 rounded-full p-6 transition-all scale-110"><SkipForward className="w-10 h-10" /></Button>
+                  <Button variant="ghost" onClick={() => nextTrack()} className="text-primary hover:bg-primary/5 rounded-full p-4 transition-all"><SkipForward className="w-8 h-8" /></Button>
                 </div>
 
-                <div className="max-w-md mx-auto flex items-center gap-6 bg-white/5 rounded-full px-8 py-4 border border-white/10 backdrop-blur-md">
-                   <Volume2 className="w-5 h-5 text-primary/60" />
+                <div className="max-w-xs mx-auto flex items-center gap-4 bg-white/5 rounded-full px-6 py-3 border border-white/10 backdrop-blur-md hidden md:flex">
+                   <Volume2 className="w-4 h-4 text-primary/60" />
                    <Slider value={[volume]} max={100} onValueChange={(v) => setVolume(v[0])} />
                 </div>
               </div>

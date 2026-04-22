@@ -2,10 +2,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Compass, Library, Heart, User, Menu, X } from 'lucide-react';
+import { Search, Compass, Library, Heart, X, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useDebounce } from '@/hooks/use-debounce';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -27,24 +26,20 @@ export const Navbar: React.FC = () => {
   
   const [searchValue, setSearchValue] = useState(initialQuery);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const debouncedSearch = useDebounce(searchValue, 500);
 
   useEffect(() => {
     setSearchValue(searchParams.get('q') || '');
   }, [searchParams]);
 
-  useEffect(() => {
-    if (debouncedSearch !== undefined) {
-      const currentQ = searchParams.get('q') || '';
-      if (debouncedSearch !== currentQ) {
-        if (debouncedSearch) {
-          router.push(`/?q=${encodeURIComponent(debouncedSearch)}`);
-        } else if (currentQ !== '') {
-          router.push('/');
-        }
-      }
+  const handleSearch = () => {
+    const trimmed = searchValue.trim();
+    if (trimmed) {
+      router.push(`/?q=${encodeURIComponent(trimmed)}`);
+    } else {
+      router.push('/');
     }
-  }, [debouncedSearch, router, searchParams]);
+    setIsMobileSearchOpen(false);
+  };
 
   const navigateToTab = (tab: string) => {
     setSearchValue('');
@@ -68,9 +63,10 @@ export const Navbar: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-colors" />
           <Input 
             className="pl-12 bg-white/5 border-white/10 focus-visible:ring-primary focus-visible:bg-white/10 transition-all rounded-full h-11 text-sm placeholder:text-muted-foreground/50"
-            placeholder="Search the archive..."
+            placeholder="Search the archive (Press Enter)..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
         </div>
       </div>
@@ -116,14 +112,22 @@ export const Navbar: React.FC = () => {
              <Button variant="ghost" size="icon" onClick={() => setIsMobileSearchOpen(false)} className="text-primary">
                <X className="w-6 h-6" />
              </Button>
-             <div className="relative flex-1">
+             <div className="relative flex-1 flex items-center gap-2">
                 <Input 
                   autoFocus
-                  className="bg-white/5 border-primary/20 focus-visible:ring-primary rounded-full h-12"
+                  className="bg-white/5 border-primary/20 focus-visible:ring-primary rounded-full h-12 pr-12"
                   placeholder="Find your vibe..."
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 />
+                <Button 
+                  size="icon" 
+                  className="rounded-full bg-primary text-black h-12 w-12 shrink-0"
+                  onClick={handleSearch}
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
              </div>
            </div>
            <div className="space-y-4">
