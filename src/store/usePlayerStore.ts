@@ -20,6 +20,7 @@ interface PlayerState {
   volume: number;
   progress: number;
   duration: number;
+  seekRequest: number | null; // Used to trigger seeks in the YT player
   
   // Actions
   setCurrentTrack: (track: Track | null) => void;
@@ -33,6 +34,7 @@ interface PlayerState {
   setVolume: (volume: number) => void;
   setProgress: (progress: number) => void;
   setDuration: (duration: number) => void;
+  seekTo: (time: number) => void;
   nextTrack: () => void;
   previousTrack: () => void;
 }
@@ -50,13 +52,14 @@ export const usePlayerStore = create<PlayerState>()(
       volume: 80,
       progress: 0,
       duration: 0,
+      seekRequest: null,
 
       setCurrentTrack: (track) => {
         const { currentTrack, history } = get();
         if (currentTrack && currentTrack.id !== track?.id) {
           set({ history: [currentTrack, ...history.slice(0, 49)] });
         }
-        set({ currentTrack: track, progress: 0, isPlaying: true, isAdPlaying: false });
+        set({ currentTrack: track, progress: 0, isPlaying: true, isAdPlaying: false, seekRequest: null });
       },
 
       addToQueue: (track) => set((state) => ({ queue: [...state.queue, track] })),
@@ -76,18 +79,19 @@ export const usePlayerStore = create<PlayerState>()(
       setVolume: (volume) => set({ volume }),
       setProgress: (progress) => set({ progress }),
       setDuration: (duration) => set({ duration }),
+      seekTo: (time) => set({ seekRequest: time, progress: time }),
 
       nextTrack: () => {
         const { queue } = get();
         if (queue.length > 0) {
-          set({ currentTrack: queue[0], queue: queue.slice(1), progress: 0 });
+          set({ currentTrack: queue[0], queue: queue.slice(1), progress: 0, seekRequest: null });
         }
       },
 
       previousTrack: () => {
         const { history, currentTrack, queue } = get();
         if (history.length > 0) {
-          set({ currentTrack: history[0], history: history.slice(1), queue: currentTrack ? [currentTrack, ...queue] : queue, progress: 0 });
+          set({ currentTrack: history[0], history: history.slice(1), queue: currentTrack ? [currentTrack, ...queue] : queue, progress: 0, seekRequest: null });
         }
       },
     }),

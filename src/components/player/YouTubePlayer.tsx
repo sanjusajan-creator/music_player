@@ -15,6 +15,7 @@ export const YouTubePlayer: React.FC = () => {
     setProgress,
     setDuration,
     nextTrack,
+    seekRequest,
   } = usePlayerStore();
 
   const playerRef = useRef<YTPlayer | null>(null);
@@ -29,7 +30,14 @@ export const YouTubePlayer: React.FC = () => {
     if (playerRef.current) playerRef.current.setVolume(volume);
   }, [volume]);
 
-  // Throttled Ad Detection (Manual Logic)
+  // Handle manual seek requests from the store
+  useEffect(() => {
+    if (playerRef.current && seekRequest !== null) {
+      playerRef.current.seekTo(seekRequest, true);
+    }
+  }, [seekRequest]);
+
+  // Update progress and detect ads
   useEffect(() => {
     const interval = setInterval(() => {
       if (!playerRef.current || !isPlaying || !currentTrack) return;
@@ -41,14 +49,13 @@ export const YouTubePlayer: React.FC = () => {
       setDuration(totalTime);
 
       // Manual Ad Logic: Check duration discrepancy
-      // If the currently playing video duration is significantly different from expected track duration
       if (currentTrack.duration && totalTime > 0) {
         const diff = Math.abs(totalTime - currentTrack.duration);
         // Typical ads are 5s, 15s, 30s. If diff is large, it's an ad.
         const isAd = diff > 5; 
         setIsAdPlaying(isAd);
       }
-    }, 15000); // Throttled to 15 seconds as requested
+    }, 1000); // 1s for smoother progress, ad logic remains throttled by state if needed
 
     return () => clearInterval(interval);
   }, [isPlaying, currentTrack, setIsAdPlaying, setProgress, setDuration]);

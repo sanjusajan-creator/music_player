@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -63,7 +62,7 @@ export const Navbar: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-colors" />
           <Input 
             className="pl-12 bg-white/5 border-white/10 focus-visible:ring-primary focus-visible:bg-white/10 transition-all rounded-full h-11 text-sm placeholder:text-muted-foreground/50"
-            placeholder="Search the archive (Press Enter)..."
+            placeholder="Search songs (Press Enter)..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -116,7 +115,7 @@ export const Navbar: React.FC = () => {
                 <Input 
                   autoFocus
                   className="bg-white/5 border-primary/20 focus-visible:ring-primary rounded-full h-12 pr-12"
-                  placeholder="Find your vibe..."
+                  placeholder="Search songs..."
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
