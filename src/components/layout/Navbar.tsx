@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Compass, Library, Heart, X, ArrowRight, LogOut } from 'lucide-react';
+import { Search, Compass, Library, Heart, X, ArrowRight, LogOut, Menu } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -16,6 +16,8 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 export const Navbar: React.FC = () => {
   const router = useRouter();
@@ -27,6 +29,7 @@ export const Navbar: React.FC = () => {
   
   const [searchValue, setSearchValue] = useState(initialQuery);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     setSearchValue(searchParams.get('q') || '');
@@ -76,6 +79,9 @@ export const Navbar: React.FC = () => {
       <div className="flex items-center gap-4 md:gap-10">
         <Button variant="ghost" size="icon" className="md:hidden text-primary" onClick={() => setIsMobileSearchOpen(true)}>
           <Search className="w-6 h-6" />
+        </Button>
+        <Button variant="ghost" size="icon" className="md:hidden text-primary" onClick={() => setIsMobileSidebarOpen(true)}>
+          <Menu className="w-6 h-6" />
         </Button>
 
         <div className="hidden md:flex items-center gap-10">

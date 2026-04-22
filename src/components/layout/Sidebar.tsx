@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { generateMagicPlaylist } from '@/ai/flows/magic-playlist';
 import { toast } from '@/hooks/use-toast';
 
-export const Sidebar = () => {
+export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useUser();
@@ -72,7 +72,7 @@ export const Sidebar = () => {
   ];
 
   return (
-    <div className="w-[300px] h-full bg-black border-r border-primary/10 flex flex-col p-4 gap-6 shrink-0 hidden md:flex">
+    <div className={`w-[300px] h-full bg-black border-r border-primary/10 flex flex-col p-4 gap-6 shrink-0 ${mobile ? '' : 'hidden md:flex'}`} >
       <div className="px-4 py-2">
         <h1 
           className="text-3xl font-black text-primary gold-glow italic uppercase tracking-tighter cursor-pointer"
