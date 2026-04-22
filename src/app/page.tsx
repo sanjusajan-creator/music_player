@@ -45,14 +45,8 @@ function HomeContent() {
   const [password, setPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  // FORCE LOGIN GATE: Clear any anonymous or invalid sessions immediately
-  useEffect(() => {
-    if (user && !user.email && !isUserLoading) {
-      signOut(auth).then(() => {
-        window.location.reload();
-      });
-    }
-  }, [user, isUserLoading, auth]);
+  // FORCE LOGIN GATE: Ensure email presence
+  const showLogin = !isUserLoading && (!user || !user.email);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,8 +82,7 @@ function HomeContent() {
     );
   }
 
-  // REQUIRE EMAIL: If user is missing or has no email, show the Sanctuary entrance
-  if (!user || !user.email) {
+  if (showLogin) {
     return (
       <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden relative">
         <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500 z-10">
@@ -163,7 +156,7 @@ function HomeContent() {
             </header>
 
             <Suspense fallback={<div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}>
-              <DashboardTabs userId={user.uid} />
+              <DashboardTabs userId={user!.uid} />
             </Suspense>
           </div>
         </div>

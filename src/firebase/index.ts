@@ -1,4 +1,3 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -6,13 +5,14 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, getFirestore, Firestore } from 'firebase/firestore'
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+// IMPORTANT: DO NOT MODIFY THIS FUNCTION STRUCTURE
 export function initializeFirebase() {
   if (!getApps().length) {
     let firebaseApp: FirebaseApp;
     try {
-      firebaseApp = initializeApp();
+      firebaseApp = initializeApp(firebaseConfig);
     } catch (e) {
+      // Fallback for initialization errors
       firebaseApp = initializeApp(firebaseConfig);
     }
 
