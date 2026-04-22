@@ -1,16 +1,14 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // STRICT USER DATA PROTECTION
-    // Using the recursive wildcard pattern to authorize all nested subcollections
-    // ensures that the owner has full read/write/list access to their entire data tree.
+
+    // RECURSIVE USER DATA ACCESS
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // SEARCH CACHE
-    // Essential for the YouTube search engine to function without permission errors.
+    // SEARCH CACHE (Required for music search functionality)
     match /search_cache/{queryId} {
       allow read: if true;
       allow write: if request.auth != null;
