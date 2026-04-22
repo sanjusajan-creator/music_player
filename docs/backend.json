@@ -111,6 +111,41 @@
         "songId",
         "likedAt"
       ]
+    },
+    "Playlist": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Playlist",
+      "type": "object",
+      "description": "Represents a user-created collection of songs.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the playlist."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the playlist."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of the playlist."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who owns this playlist."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "userId",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -128,11 +163,11 @@
           "schema": {
             "$ref": "#/backend/entities/UserAccount"
           },
-          "description": "Stores user profile information. The document ID `{userId}` matches the `id` field within the document and the Firebase Authentication `uid` of the user. This collection is private to each user.",
+          "description": "Stores user profile information.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user account, corresponding to the Firebase Authentication UID."
+              "description": "The unique identifier for the user account."
             }
           ]
         }
@@ -144,20 +179,40 @@
           "schema": {
             "$ref": "#/backend/entities/UserLikedSong"
           },
-          "description": "Stores a record of a song liked by a specific user. The document ID `{songId}` is the YouTube video ID of the liked song. The `userId` field is denormalized within the document for authorization independence, matching the `{userId}` in the path.",
+          "description": "Stores a record of a song liked by a specific user.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user who liked the song, corresponding to the Firebase Authentication UID."
+              "description": "The unique identifier for the user who liked the song."
             },
             {
               "name": "songId",
-              "description": "The unique identifier for the song that was liked (e.g., YouTube video ID). This is also used as the document ID for this entry."
+              "description": "The unique identifier for the song."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/playlists/{playlistId}",
+        "definition": {
+          "entityName": "Playlist",
+          "schema": {
+            "$ref": "#/backend/entities/Playlist"
+          },
+          "description": "User created music playlists.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Owner of the playlist."
+            },
+            {
+              "name": "playlistId",
+              "description": "Unique ID for the playlist document."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed following the core principles of Authorization Independence, Structural Segregation, and Access Modeling to ensure security, scalability, and debuggability. \n\n**Authorization Independence:** To achieve authorization independence, the `UserLikedSong` entity denormalizes the `userId` directly into each `UserLikedSong` document. This means that a security rule can directly check `request.auth.uid == resource.data.userId` without needing to perform a `get()` operation on the parent `/users/{userId}` document. This eliminates hierarchical authorization dependencies, enabling atomic operations and simplifying rule logic. The `UserAccount` entity itself is inherently authorization independent as its document ID directly corresponds to the `request.auth.uid`.\n\n**QAPs (Rules are not Filters):** This structure supports Queryable Authorization Policies (QAPs) by using path-based ownership. \n*   For `UserAccount` data, the path `/users/{userId}` ensures that `list` operations (though less common for individual user profiles) would only be allowed if `userId` matches `request.auth.uid`. \n*   For `UserLikedSong` data, the subcollection `/users/{userId}/likedSongs` directly scopes all documents within it to a specific user. When a user queries `/users/current_user_id/likedSongs`, the security rules can efficiently verify that `request.auth.uid == userId` (where `userId` is the wildcard in the path), guaranteeing that only the authenticated user's liked songs are returned. Furthermore, the `songId` as the document ID within this subcollection ensures uniqueness and direct access to a specific liked song.\n\n**Structural Segregation:** Data with different security postures are stored in separate collections. `UserAccount` data is private to the user. `UserLikedSong` data is also private and specific to the user, residing in a subcollection of the user's profile. This avoids mixing data with different access requirements in the same collection, simplifying security rules. \n\n**Song Entity Handling:** The `Song` entity itself is not stored as a top-level collection in Firestore. This design decision assumes that song metadata is primarily sourced from an external API (like YouTube Data API v3) and fetched on demand. The `UserLikedSong` entity stores only the `songId` as a reference to these external songs, along with the `userId` and `likedAt` timestamp. This keeps the Firestore database lean and avoids duplicating potentially large amounts of external metadata."
+    "reasoning": "The Firestore structure utilizes path-based ownership to enforce strict privacy for user profiles, liked songs, and playlists. Each user has their own private subtree."
   }
 }
