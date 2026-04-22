@@ -1,126 +1,59 @@
-
 {
   "entities": {
     "UserAccount": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserAccount",
-      "type": "object",
       "description": "Represents a user account within the Vibecraft Music application.",
+      "type": "object",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the UserAccount entity."
-        },
-        "email": {
-          "type": "string",
-          "description": "The user's email address.",
-          "format": "email"
-        },
-        "username": {
-          "type": "string",
-          "description": "A display name chosen by the user."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user account was created.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "username": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "email",
-        "username",
-        "createdAt"
-      ]
+      "required": ["id", "email", "username", "createdAt"]
     },
     "UserLikedSong": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserLikedSong",
-      "type": "object",
       "description": "A record of a song liked by a user.",
+      "type": "object",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "YouTube Video ID."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Owner UID."
-        },
-        "title": {
-          "type": "string"
-        },
-        "artist": {
-          "type": "string"
-        },
-        "thumbnailUrl": {
-          "type": "string"
-        },
-        "durationSeconds": {
-          "type": "number"
-        },
-        "likedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "artist": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "durationSeconds": { "type": "number" },
+        "likedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "userId",
-        "title",
-        "likedAt"
-      ]
+      "required": ["id", "userId", "title", "likedAt"]
     },
     "Playlist": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Playlist",
-      "type": "object",
       "description": "A user-created collection of songs.",
+      "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "userId": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "name",
-        "userId",
-        "createdAt"
-      ]
+      "required": ["id", "name", "userId", "createdAt"]
     }
   },
   "auth": {
-    "providers": [
-      "anonymous"
-    ]
+    "providers": ["anonymous"]
   },
   "firestore": {
     "/users/{userId}": {
-      "schema": {
-        "$ref": "#/backend/entities/UserAccount"
-      },
+      "schema": "UserAccount",
       "description": "User profile data."
     },
     "/users/{userId}/likedSongs/{songId}": {
-      "schema": {
-        "$ref": "#/backend/entities/UserLikedSong"
-      },
+      "schema": "UserLikedSong",
       "description": "Songs liked by the user."
     },
     "/users/{userId}/playlists/{playlistId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Playlist"
-      },
+      "schema": "Playlist",
       "description": "User playlists."
     },
     "/search_cache/{queryId}": {
@@ -131,7 +64,7 @@
           "timestamp": { "type": "string" }
         }
       },
-      "description": "Cache for YouTube search results to save quota."
+      "description": "Cache for YouTube search results."
     }
   }
 }

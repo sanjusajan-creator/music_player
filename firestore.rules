@@ -1,32 +1,38 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if a user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // Helper function to check if the user is the owner of the document
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // User profile and sub-collections
     match /users/{userId} {
       allow get, list, create, update: if isOwner(userId);
       
+      // Explicitly allow read/write on liked songs sub-collection
       match /likedSongs/{songId} {
         allow read, write: if isOwner(userId);
       }
       
+      // Explicitly allow read/write on playlists sub-collection
       match /playlists/{playlistId} {
         allow read, write: if isOwner(userId);
       }
     }
 
+    // Search cache for YouTube results
     match /search_cache/{queryId} {
       allow read: if true;
       allow write: if isSignedIn();
     }
 
+    // Default deny for all other paths
     match /{path=**} {
       allow read, write: if false;
     }
