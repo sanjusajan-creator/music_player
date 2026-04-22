@@ -1,0 +1,49 @@
+ ⚠ Attempted to load @next/swc-win32-x64-msvc, but an error occurred: \\?\C:\Users\A S U S\OneDrive\Documents\My Projects\music player\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node is not a valid Win32 application.
+\\?\C:\Users\A S U S\OneDrive\Documents\My Projects\music player\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node
+ ⚠ Attempted to load @next/swc-win32-x64-msvc, but an error occurred: \\?\C:\Users\A S U S\OneDrive\Documents\My Projects\music player\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node is not a valid Win32 application.
+\\?\C:\Users\A S U S\OneDrive\Documents\My Projects\music player\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node
+ ⨯ ./node_modules/firebase/auth/dist/esm/index.esm.js:1:1
+Module not found: Can't resolve '@firebase/auth'
+> 1 | export * from '@firebase/auth';
+    | ^
+  2 | //# sourceMappingURL=index.esm.js.map
+  3 |
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./src/app/page.tsx
+ ⨯ ./node_modules/firebase/auth/dist/esm/index.esm.js:1:1
+Module not found: Can't resolve '@firebase/auth'
+> 1 | export * from '@firebase/auth';
+    | ^
+  2 | //# sourceMappingURL=index.esm.js.map
+  3 |
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./src/app/page.tsx
+ ⨯ ./node_modules/firebase/auth/dist/esm/index.esm.js:1:1
+Module not found: Can't resolve '@firebase/auth'
+> 1 | export * from '@firebase/auth';
+    | ^
+  2 | //# sourceMappingURL=index.esm.js.map
+  3 |
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./src/app/page.tsx
+ ⨯ ./src/app/page.tsx:16:1
+Module not found: Can't resolve 'firebase/auth'
+  14 | import { TrendingUp, Sparkles, LogIn, Heart, Music2, Loader2, Mail, Lock, UserPlus } from 'lucide-react';
+  15 | import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
+> 16 | import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+     | ^
+  17 | import { Button } from '@/components/ui/button';
+  18 | import { Input } from '@/components/ui/input';
+  19 | import { query, collection, orderBy } from 'firebase/firestore';
+
+https://nextjs.org/docs/messages/module-not-found
+^C

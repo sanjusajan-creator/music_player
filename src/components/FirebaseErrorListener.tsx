@@ -30,9 +30,11 @@ export function FirebaseErrorListener() {
   }, []);
 
   // On re-render, if an error exists in state, throw it.
-  if (error) {
-    throw error;
-  }
+if (error) {
+      console.error('Firestore permission error:', error);
+      // Swallow the error to prevent crashing the app.
+      return null;
+    }
 
   // This component renders nothing.
   return null;

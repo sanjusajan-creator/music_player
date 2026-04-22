@@ -1,0 +1,9 @@
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:9002
+   - Network:      http://192.168.1.8:9002
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 2.8s
+ ○ Compiling / ...
+ GET / 500 in 53682ms
