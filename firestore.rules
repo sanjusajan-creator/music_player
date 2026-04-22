@@ -13,25 +13,19 @@ service cloud.firestore {
 
     // Comprehensive rules for user-specific data
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      // Explicitly allow all read/write operations for the owner
+      allow get, list, create, update, delete: if isOwner(userId);
       
-      // Explicitly allow listing and managing subcollections
-      match /likedSongs/{songId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /playlists/{playlistId} {
-        allow read, write: if isOwner(userId);
-      }
-      // Catch-all for any other nested user data
+      // Explicitly allow recursive access to subcollections like playlists and likedSongs
       match /{allPaths=**} {
-        allow read, write: if isOwner(userId);
+        allow get, list, create, update, delete: if isOwner(userId);
       }
     }
 
     // Search cache for YouTube results - globally readable to reduce API usage
     match /search_cache/{queryId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow get, list: if true;
+      allow create, update: if isSignedIn();
     }
 
     // Default deny for all other paths

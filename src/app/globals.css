@@ -9,7 +9,7 @@
   --card-foreground: 46 65% 52%;
   --popover: 0 0% 5%;
   --popover-foreground: 46 65% 52%;
-  --primary: 46 65% 52%; /* Metallic Gold #D4AF37 approx */
+  --primary: 46 65% 52%; /* Metallic Gold #D4AF37 */
   --primary-foreground: 0 0% 0%;
   --secondary: 0 0% 10%;
   --secondary-foreground: 46 65% 52%;
@@ -32,6 +32,12 @@
   body {
     @apply bg-background text-foreground font-body antialiased selection:bg-primary/30 selection:text-primary overflow-hidden h-[100dvh] w-screen;
   }
+}
+
+/* Ensure no scrollbars on the main containers */
+main {
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .gold-glow {
