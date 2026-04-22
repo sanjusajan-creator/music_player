@@ -1,13 +1,55 @@
 import { Track } from "@/store/usePlayerStore";
 
 // Note: In a production app, the API Key should be handled via server-side env vars.
-// For the purpose of this demo, we assume the client might have one or we use a proxy.
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
+
+// Mock data for when API key is missing
+const MOCK_TRACKS: Track[] = [
+  {
+    id: 'dQw4w9WgXcQ',
+    title: 'Never Gonna Give You Up',
+    artist: 'Rick Astley',
+    thumbnail: 'https://picsum.photos/seed/rick/400/400',
+    duration: 212
+  },
+  {
+    id: 'L_jWHffIx5E',
+    title: 'Smells Like Teen Spirit',
+    artist: 'Nirvana',
+    thumbnail: 'https://picsum.photos/seed/nirvana/400/400',
+    duration: 301
+  },
+  {
+    id: 'kJQP7kiw5Fk',
+    title: 'Despacito',
+    artist: 'Luis Fonsi',
+    thumbnail: 'https://picsum.photos/seed/despacito/400/400',
+    duration: 287
+  },
+  {
+    id: '9bZkp7q19f0',
+    title: 'Gangnam Style',
+    artist: 'PSY',
+    thumbnail: 'https://picsum.photos/seed/psy/400/400',
+    duration: 252
+  },
+  {
+    id: 'YQHsXMglC9A',
+    title: 'Hello',
+    artist: 'Adele',
+    thumbnail: 'https://picsum.photos/seed/adele/400/400',
+    duration: 367
+  }
+];
 
 export async function searchTracks(query: string): Promise<Track[]> {
   if (!YOUTUBE_API_KEY) {
-    console.warn("YouTube API Key is missing. Search will not work.");
-    return [];
+    console.warn("YouTube API Key is missing. Returning mock results for testing.");
+    // Filter mock tracks by query to simulate real search
+    return MOCK_TRACKS.filter(track => 
+      track.title.toLowerCase().includes(query.toLowerCase()) || 
+      track.artist.toLowerCase().includes(query.toLowerCase())
+    );
   }
 
   const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=20&key=${YOUTUBE_API_KEY}`;
@@ -61,7 +103,6 @@ export function getTrackDuration(id: string): Promise<number> {
       const duration = data.items?.[0]?.contentDetails?.duration;
       if (!duration) return 0;
       
-      // Basic ISO 8601 duration parser (PT1M30S)
       const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
       const hours = parseInt(match[1] || '0');
       const minutes = parseInt(match[2] || '0');

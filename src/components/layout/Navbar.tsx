@@ -10,16 +10,27 @@ import { useRouter, useSearchParams } from 'next/navigation';
 export const Navbar: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchValue, setSearchValue] = useState(searchParams.get('q') || '');
+  const initialQuery = searchParams.get('q') || '';
+  const [searchValue, setSearchValue] = useState(initialQuery);
   const debouncedSearch = useDebounce(searchValue, 500);
 
+  // Sync state with URL if it changes externally
   useEffect(() => {
-    if (debouncedSearch) {
-      router.push(`/?q=${encodeURIComponent(debouncedSearch)}`);
-    } else if (searchValue === '') {
-      router.push('/');
+    setSearchValue(searchParams.get('q') || '');
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (debouncedSearch !== undefined) {
+      const currentQ = searchParams.get('q') || '';
+      if (debouncedSearch !== currentQ) {
+        if (debouncedSearch) {
+          router.push(`/?q=${encodeURIComponent(debouncedSearch)}`);
+        } else if (currentQ !== '') {
+          router.push('/');
+        }
+      }
     }
-  }, [debouncedSearch, router]);
+  }, [debouncedSearch, router, searchParams]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass h-16 px-4 md:px-8 flex items-center justify-between">
@@ -29,7 +40,10 @@ export const Navbar: React.FC = () => {
         </Button>
         <div 
           className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent cursor-pointer"
-          onClick={() => router.push('/')}
+          onClick={() => {
+            setSearchValue('');
+            router.push('/');
+          }}
         >
           Vibecraft
         </div>
@@ -48,7 +62,7 @@ export const Navbar: React.FC = () => {
       </div>
 
       <div className="hidden md:flex items-center gap-6">
-        <NavItem icon={<Compass />} label="Explore" active />
+        <NavItem icon={<Compass />} label="Explore" active={!searchParams.get('q')} />
         <NavItem icon={<Library />} label="Library" />
         <NavItem icon={<Heart />} label="Liked" />
         <Button variant="ghost" size="icon" className="rounded-full bg-white/5">
