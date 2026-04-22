@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --background: 275 60% 5%; /* Very dark purplish-charcoal #1A0A29 */
+  --background: 275 60% 5%;
   --foreground: 0 0% 100%;
   --card: 275 60% 8%;
   --card-foreground: 0 0% 100%;
   --popover: 275 60% 8%;
   --popover-foreground: 0 0% 100%;
-  --primary: 270 60% 50%; /* Vibrant Deep Purple #8033CC */
+  --primary: 270 60% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 100% 70%; /* Electric Blue #6666FF */
+  --secondary: 240 100% 70%;
   --secondary-foreground: 0 0% 100%;
   --muted: 275 30% 15%;
   --muted-foreground: 275 10% 60%;

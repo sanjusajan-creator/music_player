@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useMemo } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -47,7 +47,10 @@ function HomeContent() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    if (!email || !password) {
+      toast({ title: "Requirements", description: "Email and password are required.", variant: "destructive" });
+      return;
+    }
     setIsAuthLoading(true);
     try {
       if (isLogin) {
@@ -55,6 +58,7 @@ function HomeContent() {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
+      toast({ title: "Welcome", description: "Your sanctuary awaits." });
     } catch (error: any) {
       toast({ 
         title: "Auth Error", 
@@ -75,7 +79,8 @@ function HomeContent() {
     );
   }
 
-  if (!user) {
+  // Force login screen if user is null or signed in anonymously
+  if (!user || user.isAnonymous) {
     return (
       <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden">
         <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500">
