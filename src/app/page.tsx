@@ -79,7 +79,8 @@ function HomeContent() {
     );
   }
 
-  // Force login screen if user is null or signed in without an email (anonymous/custom)
+  // FORCE LOGIN: Require a user WITH an email to access the app
+  // This prevents anonymous or custom-only sessions from bypassing the login screen
   if (!user || !user.email) {
     return (
       <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden">
