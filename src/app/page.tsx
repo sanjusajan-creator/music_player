@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -149,7 +149,7 @@ function HomeContent() {
             </header>
 
             <Suspense fallback={<div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}>
-              <DashboardTabs user={user} />
+              <DashboardTabs userId={user.uid} />
             </Suspense>
           </div>
         </div>
@@ -159,7 +159,7 @@ function HomeContent() {
   );
 }
 
-function DashboardTabs({ user }: { user: any }) {
+function DashboardTabs({ userId }: { userId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
@@ -202,7 +202,7 @@ function DashboardTabs({ user }: { user: any }) {
       </TabsContent>
 
       <TabsContent value="liked" className="mt-0 focus-visible:ring-0">
-        <LikedSongsList userId={user?.uid} />
+        <LikedSongsList userId={userId} />
       </TabsContent>
 
       <TabsContent value="library" className="mt-0 focus-visible:ring-0">
@@ -215,7 +215,7 @@ function DashboardTabs({ user }: { user: any }) {
   );
 }
 
-function LikedSongsList({ userId }: { userId?: string }) {
+function LikedSongsList({ userId }: { userId: string }) {
   const db = useFirestore();
   const q = useMemoFirebase(() => {
     if (!userId || !db) return null;

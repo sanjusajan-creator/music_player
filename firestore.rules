@@ -2,11 +2,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // User-specific data: recursive wildcard ensures get, list, and write 
+    // are allowed for the authenticated owner on the entire tree.
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Maintaining search cache access to prevent search failures
+    // Search cache: Publicly readable to allow optimized searching, 
+    // but only authenticated users can write to it.
     match /search_cache/{queryId} {
       allow read: if true;
       allow write: if request.auth != null;
