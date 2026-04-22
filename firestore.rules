@@ -1,19 +1,27 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Robust recursive rule for all user-owned data
-    // This covers /users/{userId}, /users/{userId}/playlists, /users/{userId}/likedSongs, etc.
-    match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    // Search cache for YouTube results - globally readable to reduce API usage
+    // Rules for the User document and all nested subcollections
+    // Using {allPaths=**} ensures that playlists, likedSongs, etc., are covered.
+    match /users/{userId}/{allPaths=**} {
+      // Allow 'read' (get + list) and 'write' (create + update + delete)
+      allow read, write: if isOwner(userId);
+    }
+
+    // Search cache for YouTube results
+    // PRD: Globally readable to reduce API usage/quota across all users.
     match /search_cache/{queryId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
 
-    // Default deny for all other paths
+    // Default deny
     match /{path=**} {
       allow read, write: if false;
     }
