@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * VIBECRAFT MUSIC PLAYER SECURITY RULES
+     *
+     * Core Philosophy:
+     * This ruleset implements a strict User-Ownership model. Access to data is scoped 
+     * entirely to the authenticated user. In line with the application's "Midnight & Gold" 
+     * aesthetic focusing on personalized experiences, no public data or user listing is permitted.
+     *
+     * Data Structure:
+     * - /users/{userId}: Private profile information for each user.
+     * - /users/{userId}/likedSongs/{songId}: A subcollection containing a user's curated 
+     *   list of liked tracks, identified by their external source IDs (YouTube).
+     *
+     * Key Security Decisions:
+     * 1. Authorization Independence: User IDs are denormalized into subcollection documents. 
+     *    This allows the rules to verify ownership instantly using only the document data 
+     *    and the authenticated context, avoiding expensive parent-document lookups.
+     * 2. Path-Based Security: We leverage the hierarchical nature of Firestore to ensure 
+     *    users can only query their own data tree.
+     * 3. Immutability: Critical relational fields (like userId or the document's own ID) 
+     *    are enforced as immutable once created to prevent data corruption or ownership hijacking.
+     * 4. External Metadata: The 'Song' entity itself is not persisted in this database. 
+     *    Only references (song IDs) are stored, keeping the database lean and reducing complexity.
+     *
+     * Prototyping Mode:
+     * These rules prioritize strict authorization (who can access) over schema validation 
+     * (what the data looks like). This allows for rapid iteration of the UI while maintaining 
+     * a robust security posture.
+     */
+
+    // --- Helper Functions ---
+
+    /**
+     * @description Checks if the request is from an authenticated user.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Combines ownership check with existence check for destructive operations.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for UserAccount documents. Users can only access their own profile.
+     * @path /users/{userId}
+     * @allow (get) If authenticated user ID matches {userId}.
+     * @deny (list) If a user tries to list all user profiles.
+     * @principle Enforces strict ownership and self-creation for user profiles.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Rules for UserLikedSong documents. Scoped to the parent user's profile.
+       * @path /users/{userId}/likedSongs/{songId}
+       * @allow (create) If user adds a song to their own 'likedSongs' subcollection.
+       * @deny (update) If user tries to change the 'userId' field within a liked song document.
+       * @principle Uses path-based ownership and relational integrity checks on denormalized IDs.
+       */
+      match /likedSongs/{songId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+
+    // Default deny for any paths not explicitly defined.
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/**
+ * Step 1: IR Analysis & Synthesis
+ * 
+ * 1. Adopt the Intent: 
+ *    The IR emphasizes "Authorization Independence" and "Structural Segregation". 
+ *    Rules are designed so that each document contains the necessary context for 
+ *    its own security check (denormalized userId).
+ *
+ * 2. Access Control Patterns:
+ *    - /users/{userId}: Pattern 1 (Ownership) & Pattern 4 (Self-Creation).
+ *    - /users/{userId}/likedSongs/{songId}: Pattern 1 (Ownership) applied to a subcollection.
+ *
+ * 3. Ambiguities & Decisions:
+ *    - The 'Song' entity is defined in schema but noted as "not stored as a top-level collection" 
+ *      in reasoning. Rules have been omitted for a top-level /songs collection to prevent 
+ *      unintentional open access.
+ *    - The 'UserLikedSong' entity uses a UUID for its internal 'id' property in the schema, 
+ *      but the structure description says the document ID is the 'songId' (YouTube ID). 
+ *      The rules focus on the path variables and the 'userId' field for authorization, 
+ *      staying flexible on the internal 'id' field vs document ID mismatch to facilitate prototyping.
+ */
+
+/**
+ * Step 2: Principle Adherence Summary
+ * 
+ * - P1: All five permissions (get, list, create, update, delete) are addressed.
+ * - P3: Ownership pattern used. 'likedSongs' uses denormalized userId validation on creation.
+ * - P5: Only relational integrity (userId, profile ID) is validated. General fields are ignored.
+ * - P6: List operations are restricted to the path owner.
+ * - P7: 'resource != null' is used for all update and delete operations.
+ * - P8: Rich comments with @description, @path, @allow, @deny, and @principle tags included.
+ */

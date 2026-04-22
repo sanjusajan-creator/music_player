@@ -1,0 +1,163 @@
+{
+  "entities": {
+    "UserAccount": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserAccount",
+      "type": "object",
+      "description": "Represents a user account within the Vibecraft Music application, enabling personalized features like 'Liked Songs'. It stores essential user profile information without sensitive authentication credentials.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserAccount entity.",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for identification. (Relationship: UserAccount 1:1 AuthenticationSystemUser)",
+          "format": "email"
+        },
+        "username": {
+          "type": "string",
+          "description": "A display name or handle chosen by the user."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating the last time the user account information was updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "username",
+        "createdAt"
+      ]
+    },
+    "Song": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Song",
+      "type": "object",
+      "description": "Represents a single music track, typically sourced from YouTube, containing all necessary metadata for playback and display within the app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Song entity, corresponding to the YouTube video ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the song or track, cleaned and normalized."
+        },
+        "artist": {
+          "type": "string",
+          "description": "The artist or creator of the song."
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "description": "URL to the high-quality thumbnail image for the song, used as artwork.",
+          "format": "uri"
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "The duration of the song in seconds."
+        },
+        "publishedAt": {
+          "type": "string",
+          "description": "The date and time when the song (as a video) was originally published on YouTube.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "artist",
+        "thumbnailUrl",
+        "durationSeconds",
+        "publishedAt"
+      ]
+    },
+    "UserLikedSong": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserLikedSong",
+      "type": "object",
+      "description": "A junction entity that establishes a many-to-many relationship between a UserAccount and a Song, indicating which songs a particular user has 'liked'.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this specific 'liked' relationship entry.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserAccount that liked the song. (Relationship: UserAccount 1:N UserLikedSong)"
+        },
+        "songId": {
+          "type": "string",
+          "description": "Reference to the Song that was liked. (Relationship: Song 1:N UserLikedSong)"
+        },
+        "likedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user liked this specific song.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "songId",
+        "likedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserAccount",
+          "schema": {
+            "$ref": "#/backend/entities/UserAccount"
+          },
+          "description": "Stores user profile information. The document ID `{userId}` matches the `id` field within the document and the Firebase Authentication `uid` of the user. This collection is private to each user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user account, corresponding to the Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/likedSongs/{songId}",
+        "definition": {
+          "entityName": "UserLikedSong",
+          "schema": {
+            "$ref": "#/backend/entities/UserLikedSong"
+          },
+          "description": "Stores a record of a song liked by a specific user. The document ID `{songId}` is the YouTube video ID of the liked song. The `userId` field is denormalized within the document for authorization independence, matching the `{userId}` in the path.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user who liked the song, corresponding to the Firebase Authentication UID."
+            },
+            {
+              "name": "songId",
+              "description": "The unique identifier for the song that was liked (e.g., YouTube video ID). This is also used as the document ID for this entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed following the core principles of Authorization Independence, Structural Segregation, and Access Modeling to ensure security, scalability, and debuggability. \n\n**Authorization Independence:** To achieve authorization independence, the `UserLikedSong` entity denormalizes the `userId` directly into each `UserLikedSong` document. This means that a security rule can directly check `request.auth.uid == resource.data.userId` without needing to perform a `get()` operation on the parent `/users/{userId}` document. This eliminates hierarchical authorization dependencies, enabling atomic operations and simplifying rule logic. The `UserAccount` entity itself is inherently authorization independent as its document ID directly corresponds to the `request.auth.uid`.\n\n**QAPs (Rules are not Filters):** This structure supports Queryable Authorization Policies (QAPs) by using path-based ownership. \n*   For `UserAccount` data, the path `/users/{userId}` ensures that `list` operations (though less common for individual user profiles) would only be allowed if `userId` matches `request.auth.uid`. \n*   For `UserLikedSong` data, the subcollection `/users/{userId}/likedSongs` directly scopes all documents within it to a specific user. When a user queries `/users/current_user_id/likedSongs`, the security rules can efficiently verify that `request.auth.uid == userId` (where `userId` is the wildcard in the path), guaranteeing that only the authenticated user's liked songs are returned. Furthermore, the `songId` as the document ID within this subcollection ensures uniqueness and direct access to a specific liked song.\n\n**Structural Segregation:** Data with different security postures are stored in separate collections. `UserAccount` data is private to the user. `UserLikedSong` data is also private and specific to the user, residing in a subcollection of the user's profile. This avoids mixing data with different access requirements in the same collection, simplifying security rules. \n\n**Song Entity Handling:** The `Song` entity itself is not stored as a top-level collection in Firestore. This design decision assumes that song metadata is primarily sourced from an external API (like YouTube Data API v3) and fetched on demand. The `UserLikedSong` entity stores only the `songId` as a reference to these external songs, along with the `userId` and `likedAt` timestamp. This keeps the Firestore database lean and avoids duplicating potentially large amounts of external metadata."
+  }
+}
