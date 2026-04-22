@@ -79,8 +79,8 @@ function HomeContent() {
     );
   }
 
-  // Force login screen if user is null or signed in anonymously
-  if (!user || user.isAnonymous) {
+  // Force login screen if user is null or signed in without an email (anonymous/custom)
+  if (!user || !user.email) {
     return (
       <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden">
         <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500">
