@@ -6,20 +6,29 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if the user is the owner of the document
+    // Helper function to check if the user is the owner of the document or path
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // User data tree: allow full recursive access to the owner
+    // Comprehensive rules for user-specific data
     match /users/{userId} {
       allow read, write: if isOwner(userId);
+      
+      // Explicitly allow listing and managing subcollections
+      match /likedSongs/{songId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /playlists/{playlistId} {
+        allow read, write: if isOwner(userId);
+      }
+      // Catch-all for any other nested user data
       match /{allPaths=**} {
         allow read, write: if isOwner(userId);
       }
     }
 
-    // Search cache for YouTube results
+    // Search cache for YouTube results - globally readable to reduce API usage
     match /search_cache/{queryId} {
       allow read: if true;
       allow write: if isSignedIn();

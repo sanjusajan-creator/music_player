@@ -1,4 +1,3 @@
-
 import { Track } from "@/store/usePlayerStore";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -16,7 +15,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
   if (!sanitizedQuery || sanitizedQuery.length < 2) return [];
 
-  const cacheKey = sanitizedQuery;
+  const cacheKey = sanitizedQuery.replace(/\s+/g, '_');
   
   // 1. Try Firestore Cache
   try {
@@ -45,7 +44,8 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   try {
     // 2. Search for IDs (cost 100)
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
+    // Adding relevance filters to get better results in first try
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(query + ' song')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
@@ -109,6 +109,7 @@ function normalizeMetadata(text: string): string {
     .replace(/\[Lyrics\]/gi, '')
     .replace(/\(Official MV\)/gi, '')
     .replace(/\(Audio\)/gi, '')
+    .replace(/\(Lyrics Video\)/gi, '')
     .trim();
 }
 

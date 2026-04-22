@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, Heart, Maximize2, Music, Loader2, Shuffle, Repeat, ListMusic } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, Heart, Maximize2, Music, Loader2, Shuffle, Repeat } from 'lucide-react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,7 @@ export const Player: React.FC = () => {
   const { 
     currentTrack, isPlaying, setIsPlaying, nextTrack, previousTrack, 
     progress, duration, volume, setVolume, isAdPlaying, likedTrackIds, toggleLike, seekTo,
-    isShuffle, toggleShuffle, repeatMode, setRepeatMode, queue, hasHydrated
+    isShuffle, toggleShuffle, repeatMode, setRepeatMode, hasHydrated
   } = usePlayerStore();
   
   const { user } = useUser();
@@ -48,7 +47,7 @@ export const Player: React.FC = () => {
 
   if (!currentTrack || !hasHydrated) return null;
 
-  const isLiked = likedTrackIds instanceof Set ? likedTrackIds.has(currentTrack.id) : false;
+  const isLiked = likedTrackIds.has(currentTrack.id);
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -131,7 +130,13 @@ export const Player: React.FC = () => {
               </div>
               <div className="flex items-center gap-4 w-full px-2">
                 <span className="text-[9px] font-mono font-bold text-primary/40 w-10 text-right">{formatTime(progress)}</span>
-                <Slider value={[progress]} max={duration || 100} onValueChange={(v) => seekTo(v[0])} className="cursor-pointer flex-1 h-1" />
+                <Slider 
+                  value={[progress]} 
+                  max={duration || 100} 
+                  step={1}
+                  onValueChange={(v) => seekTo(v[0])} 
+                  className="cursor-pointer flex-1 h-1" 
+                />
                 <span className="text-[9px] font-mono font-bold text-primary/40 w-10">{formatTime(duration)}</span>
               </div>
             </div>
@@ -148,7 +153,7 @@ export const Player: React.FC = () => {
                      <SheetHeader className="mb-10 text-center">
                        <SheetTitle className="text-primary font-black italic uppercase tracking-[0.4em] text-3xl gold-glow">The Scroll</SheetTitle>
                      </SheetHeader>
-                     <ScrollArea className="flex-1 pr-4">
+                     <ScrollArea className="flex-1 pr-4 custom-scrollbar">
                        {isLoadingLyrics ? (
                          <div className="flex flex-col items-center justify-center h-full gap-6 py-20">
                            <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -202,7 +207,13 @@ export const Player: React.FC = () => {
 
             <div className="px-10 pb-12 shrink-0 w-full max-w-lg mx-auto space-y-8">
               <div className="space-y-4">
-                <Slider value={[progress]} max={duration || 100} onValueChange={(v) => seekTo(v[0])} className="cursor-pointer h-1.5" />
+                <Slider 
+                  value={[progress]} 
+                  max={duration || 100} 
+                  step={1}
+                  onValueChange={(v) => seekTo(v[0])} 
+                  className="cursor-pointer h-1.5" 
+                />
                 <div className="flex justify-between text-[10px] font-mono text-primary/40 tracking-[0.2em] font-bold">
                   <span>{formatTime(progress)}</span>
                   <span>{formatTime(duration)}</span>
@@ -226,6 +237,12 @@ export const Player: React.FC = () => {
                   <Repeat className="w-6 h-6" />
                   {repeatMode === 'one' && <span className="absolute -top-1 -right-1 text-[8px] font-black">1</span>}
                 </Button>
+              </div>
+              
+              <div className="flex justify-center pt-2">
+                 <Button variant="ghost" className="text-primary/40 font-black uppercase text-[9px] tracking-[0.4em] hover:text-primary transition-all flex items-center gap-2" onClick={fetchLyrics}>
+                   <Music className="w-3.5 h-3.5" /> Lyrics Archive
+                 </Button>
               </div>
             </div>
           </motion.div>
