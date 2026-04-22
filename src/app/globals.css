@@ -29,8 +29,9 @@
   * {
     @apply border-border;
   }
-  body {
+  html, body {
     @apply bg-background text-foreground font-body antialiased selection:bg-primary/30 selection:text-primary overflow-hidden h-[100dvh] w-screen;
+    touch-action: manipulation;
   }
 }
 
@@ -78,7 +79,6 @@ main {
   animation: pulse-gold 2s infinite ease-in-out;
 }
 
-/* Custom Scrollbar for specific areas like lyrics */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }

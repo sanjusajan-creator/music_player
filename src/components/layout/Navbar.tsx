@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -57,7 +56,6 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Desktop Search */}
       <div className="hidden md:flex flex-1 max-w-2xl px-12">
         <div className="relative w-full group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-all duration-300" />
@@ -104,7 +102,6 @@ export const Navbar: React.FC = () => {
         )}
       </div>
 
-      {/* Mobile Search Overlay */}
       {isMobileSearchOpen && (
         <div className="fixed inset-0 bg-black z-[60] p-6 flex flex-col animate-in fade-in duration-300">
            <div className="flex items-center gap-4 mb-12">
