@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -13,7 +13,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Sparkles, LogIn, Heart, Music2, Loader2, Mail, Lock, UserPlus } from 'lucide-react';
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { query, collection, orderBy } from 'firebase/firestore';
@@ -44,6 +44,13 @@ function HomeContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+
+  // FORCE LOGOUT ANONYMOUS: If we somehow have an anonymous user, clear it to force the login gate
+  useEffect(() => {
+    if (user && !user.email && !isUserLoading) {
+      signOut(auth);
+    }
+  }, [user, isUserLoading, auth]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,11 +86,11 @@ function HomeContent() {
     );
   }
 
-  // FORCE LOGIN GATE: Require a user with a valid email session
+  // STRICT LOGIN GATE: User must be present AND have an email session
   if (!user || !user.email) {
     return (
-      <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden">
-        <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500">
+      <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden relative">
+        <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500 z-10">
           <header>
             <h1 className="text-6xl md:text-7xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase italic">VIBECRAFT</h1>
             <p className="text-muted-foreground uppercase tracking-[0.4em] text-[10px] font-bold">The Sanctuary of High-Fidelity</p>
@@ -137,7 +144,7 @@ function HomeContent() {
   }
 
   return (
-    <div className="flex h-[100dvh] w-screen bg-black overflow-hidden selection:bg-primary/30 selection:text-white">
+    <div className="flex h-[100dvh] w-screen bg-black overflow-hidden selection:bg-primary/30 selection:text-white relative">
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 bg-black relative overflow-hidden h-[100dvh]">
         <Suspense fallback={<div className="h-24 bg-black/80 animate-pulse" />}>
