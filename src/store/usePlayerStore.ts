@@ -36,8 +36,10 @@ interface PlayerState {
   seekRequest: number | null;
   repeatMode: RepeatMode;
   isShuffle: boolean;
+  hasHydrated: boolean;
   
   // Actions
+  setHasHydrated: (state: boolean) => void;
   setCurrentTrack: (track: Track | null) => void;
   playNextFromQueue: (track: Track) => void;
   addToQueue: (track: Track) => void;
@@ -76,6 +78,9 @@ export const usePlayerStore = create<PlayerState>()(
       seekRequest: null,
       repeatMode: 'none',
       isShuffle: false,
+      hasHydrated: false,
+
+      setHasHydrated: (state) => set({ hasHydrated: state }),
 
       setCurrentTrack: (track) => {
         const { currentTrack, history } = get();
@@ -191,10 +196,15 @@ export const usePlayerStore = create<PlayerState>()(
         repeatMode: state.repeatMode,
         isShuffle: state.isShuffle
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state && Array.isArray(state.likedTrackIds)) {
-          state.likedTrackIds = new Set(state.likedTrackIds);
-        }
+      onRehydrateStorage: (state) => {
+        return (rehydratedState, error) => {
+          if (rehydratedState) {
+            rehydratedState.hasHydrated = true;
+            if (Array.isArray(rehydratedState.likedTrackIds)) {
+              rehydratedState.likedTrackIds = new Set(rehydratedState.likedTrackIds);
+            }
+          }
+        };
       }
     }
   )

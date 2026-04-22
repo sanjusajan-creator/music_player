@@ -18,7 +18,7 @@ export const Player: React.FC = () => {
   const { 
     currentTrack, isPlaying, setIsPlaying, nextTrack, previousTrack, 
     progress, duration, volume, setVolume, isAdPlaying, likedTrackIds, toggleLike, seekTo,
-    isShuffle, toggleShuffle, repeatMode, setRepeatMode, queue
+    isShuffle, toggleShuffle, repeatMode, setRepeatMode, queue, hasHydrated
   } = usePlayerStore();
   
   const { user } = useUser();
@@ -47,12 +47,13 @@ export const Player: React.FC = () => {
     }
   };
 
-  if (!currentTrack) return null;
+  if (!currentTrack || !hasHydrated) return null;
+
+  const isLiked = likedTrackIds instanceof Set ? likedTrackIds.has(currentTrack.id) : false;
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user || !db) return;
-    const isLiked = likedTrackIds.has(currentTrack.id);
     const likeRef = doc(db, 'users', user.uid, 'likedSongs', currentTrack.id);
     
     toggleLike(currentTrack.id);
@@ -105,7 +106,7 @@ export const Player: React.FC = () => {
                 <span className="text-[9px] text-muted-foreground truncate uppercase tracking-[0.3em] font-black">{currentTrack.artist}</span>
               </div>
               <Button variant="ghost" size="icon" onClick={handleLike} className="text-primary ml-2 shrink-0">
-                <Heart className={cn("w-5 h-5", likedTrackIds.has(currentTrack.id) && "fill-primary")} />
+                <Heart className={cn("w-5 h-5", isLiked && "fill-primary")} />
               </Button>
             </div>
 
@@ -194,7 +195,7 @@ export const Player: React.FC = () => {
                  </SheetContent>
                </Sheet>
 
-               <div className="flex items-center gap-3 w-32 ml-4">
+               <div className="hidden md:flex items-center gap-3 w-32 ml-4">
                  <Volume2 className="w-4 h-4 text-primary/60" />
                  <Slider value={[volume]} max={100} onValueChange={(v) => setVolume(v[0])} className="h-1" />
                </div>
@@ -215,8 +216,8 @@ export const Player: React.FC = () => {
               </Button>
               <span className="text-[10px] font-black uppercase tracking-[0.6em] text-primary gold-glow italic ml-4">SANCTUARY</span>
               <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={handleLike} className={cn("active:scale-90", likedTrackIds.has(currentTrack.id) ? "text-primary" : "text-primary/40")}>
-                  <Heart className={cn("w-8 h-8", likedTrackIds.has(currentTrack.id) && "fill-primary")} />
+                <Button variant="ghost" size="icon" onClick={handleLike} className={cn("active:scale-90", isLiked ? "text-primary" : "text-primary/40")}>
+                  <Heart className={cn("w-8 h-8", isLiked && "fill-primary")} />
                 </Button>
               </div>
             </div>
@@ -242,7 +243,7 @@ export const Player: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-8 md:gap-16">
+                <div className="flex items-center justify-center gap-8 md:gap-16 pb-12">
                   <Button variant="ghost" size="icon" onClick={() => toggleShuffle()} className={cn("transition-all", isShuffle ? "text-primary scale-125" : "text-primary/30")}>
                     <Shuffle className="w-8 h-8" />
                   </Button>
