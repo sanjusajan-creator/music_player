@@ -1,26 +1,15 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // USERS COLLECTION & SUBCOLLECTIONS
-    // Using a recursive wildcard {allPaths=**} is the definitive way to ensure 
-    // that a user has access to their own document AND all nested collections 
-    // (playlists, likedSongs, etc.) for both 'get' and 'list' operations.
-    match /users/{userId}/{allPaths=**} {
+
+    match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // SEARCH CACHE
-    // Publicly readable for efficiency, writeable by any authenticated user.
-    // Flattened the match to ensure query listing works across the cache.
+    // Maintaining search cache access to prevent search failures
     match /search_cache/{queryId} {
       allow read: if true;
       allow write: if request.auth != null;
-    }
-
-    // DEFAULT DENY
-    match /{path=**} {
-      allow read, write: if false;
     }
   }
 }

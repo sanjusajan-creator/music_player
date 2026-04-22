@@ -97,3 +97,12 @@ main {
 .animate-pulse-purple {
   animation: pulse-purple 2s infinite ease-in-out;
 }
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
+  50% { box-shadow: 0 0 50px rgba(212, 175, 55, 0.4); }
+}
+
+.animate-pulse-gold {
+  animation: pulse-gold 3s infinite ease-in-out;
+}
