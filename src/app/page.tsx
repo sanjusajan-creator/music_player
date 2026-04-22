@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -13,7 +13,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Sparkles, LogIn, Heart, Music2, Loader2, Mail, Lock, UserPlus } from 'lucide-react';
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { query, collection, orderBy } from 'firebase/firestore';
@@ -79,8 +79,7 @@ function HomeContent() {
     );
   }
 
-  // FORCE LOGIN: Require a user WITH an email to access the app
-  // This prevents anonymous or custom-only sessions from bypassing the login screen
+  // FORCE LOGIN GATE: Require a user with a valid email session
   if (!user || !user.email) {
     return (
       <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden">

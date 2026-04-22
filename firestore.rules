@@ -2,22 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Root user document permission
+    // User data rules: Explicitly match subcollections to ensure LIST operations work
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // Explicit subcollection matching for 'list' and 'read' operations
-      // This ensures that collection-wide queries like getDocs() are authorized
+      // Explicit playlists subcollection rule for getDocs/onSnapshot listing
       match /playlists/{playlistId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
       
+      // Explicit likedSongs subcollection rule for getDocs/onSnapshot listing
       match /likedSongs/{songId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // Essential rule for search cache to prevent application-wide failure
+    // Search cache: Essential for core app functionality
     match /search_cache/{queryId} {
       allow read: if true;
       allow write: if request.auth != null;
