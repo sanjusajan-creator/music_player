@@ -34,7 +34,7 @@
   }
 }
 
-/* Ensure no scrollbars on the main containers */
+/* Force container height to prevent scrollbars */
 main {
   height: 100dvh;
   overflow: hidden;
