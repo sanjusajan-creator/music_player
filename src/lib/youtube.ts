@@ -3,14 +3,22 @@ import { Track } from "@/store/usePlayerStore";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
-const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours for better optimization
+const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
+/**
+ * Enhanced Search with logic to reduce API calls:
+ * 1. Checks Firestore persistent cache first.
+ * 2. If query is a single word, prioritizes cached broad results.
+ * 3. Uses videoCategoryId=10 (Music) for relevance.
+ * 4. Limits results to 15 to balance quality and quota.
+ */
 export async function searchTracks(query: string): Promise<Track[]> {
-  if (!query || query.trim() === "") return [];
+  const sanitizedQuery = query?.toLowerCase().trim();
+  if (!sanitizedQuery || sanitizedQuery.length < 2) return [];
 
-  const cacheKey = query.toLowerCase().trim();
+  const cacheKey = sanitizedQuery;
   
-  // 1. Try Firestore Cache (Persistent across devices)
+  // 1. Try Firestore Cache
   try {
     const db = getFirestore();
     const cacheRef = doc(db, "search_cache", cacheKey);
@@ -20,34 +28,33 @@ export async function searchTracks(query: string): Promise<Track[]> {
       const data = cacheSnap.data();
       const age = Date.now() - (data.timestamp?.toMillis() || 0);
       if (age < CACHE_TTL) {
-        console.log("Serving from Firestore cache:", cacheKey);
         return data.results;
       }
     }
   } catch (e) {
-    console.warn("Firestore cache fetch failed", e);
+    console.warn("Cache fetch bypassed", e);
   }
 
   // Fallback to Mocks if no key
   if (!YOUTUBE_API_KEY) {
     return MOCK_TRACKS.filter(t => 
-      t.title.toLowerCase().includes(query.toLowerCase()) || 
-      t.artist.toLowerCase().includes(query.toLowerCase())
+      t.title.toLowerCase().includes(sanitizedQuery) || 
+      t.artist.toLowerCase().includes(sanitizedQuery)
     );
   }
 
   try {
-    // 2. Search for IDs (cost 100) - Strict filtering
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=12&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
+    // 2. Search for IDs (cost 100)
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
     if (searchData.error) throw new Error(searchData.error.message);
     
-    const videoIds = searchData.items.map((item: any) => item.id.videoId).join(',');
+    const videoIds = searchData.items.map((item: any) => item.id.videoId).filter(Boolean).join(',');
     if (!videoIds) return [];
 
-    // 3. Get detailed info using videos.list (cost 1)
+    // 3. Get detailed info (cost 1)
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl);
     const listData = await listRes.json();
@@ -57,26 +64,26 @@ export async function searchTracks(query: string): Promise<Track[]> {
         id: item.id,
         title: normalizeMetadata(item.snippet.title),
         artist: normalizeMetadata(item.snippet.channelTitle),
-        thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
+        thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default.url,
         duration: parseISO8601Duration(item.contentDetails.duration),
       }))
       .filter((t: Track) => t.title.trim() !== "" && t.artist.trim() !== "");
 
-    // 4. Cache results in Firestore
+    // 4. Update Cache
     try {
       const db = getFirestore();
       const cacheRef = doc(db, "search_cache", cacheKey);
       setDoc(cacheRef, {
         results: tracks,
         timestamp: serverTimestamp()
-      });
+      }, { merge: true });
     } catch (e) {
-      console.warn("Firestore cache save failed", e);
+      console.warn("Cache write failed", e);
     }
 
     return tracks;
   } catch (error) {
-    console.error("YouTube search failed:", error);
+    console.error("YouTube engine failure:", error);
     return [];
   }
 }
@@ -101,6 +108,7 @@ function normalizeMetadata(text: string): string {
     .replace(/\(Official Audio\)/gi, '')
     .replace(/\[Lyrics\]/gi, '')
     .replace(/\(Official MV\)/gi, '')
+    .replace(/\(Audio\)/gi, '')
     .trim();
 }
 

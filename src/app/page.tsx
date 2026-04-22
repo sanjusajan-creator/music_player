@@ -19,10 +19,19 @@ import { query, collection, orderBy } from 'firebase/firestore';
 
 const queryClient = new QueryClient();
 
+/**
+ * AppWrapper handles the Suspense boundary required for useSearchParams
+ * and the QueryClient provider.
+ */
 export default function AppWrapper() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><Sparkles className="animate-spin text-primary w-8 h-8" /></div>}>
+      <Suspense fallback={
+        <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+          <Sparkles className="animate-spin text-primary w-12 h-12 mb-4" />
+          <p className="text-primary/40 font-black uppercase tracking-[0.3em] text-[10px]">Entering Sanctuary...</p>
+        </div>
+      }>
         <Home />
       </Suspense>
       <Toaster />
@@ -36,7 +45,6 @@ function Home() {
   const searchQuery = searchParams.get('q') || '';
   const activeTab = searchParams.get('tab') || 'trending';
   
-  // Use a default query for the 'Trending' tab if no search is active
   const effectiveQuery = searchQuery || (activeTab === 'trending' ? 'Top Hits 2024' : '');
   const { data: results, isLoading: isSearchLoading } = useYouTubeSearch(effectiveQuery);
   
@@ -55,10 +63,10 @@ function Home() {
   if (!user && !isUserLoading) {
     return (
       <main className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
-        <h1 className="text-6xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase italic">VIBECRAFT</h1>
-        <p className="text-muted-foreground mb-8 max-w-md uppercase tracking-widest text-xs font-bold">Midnight & Gold Sanctuary</p>
-        <Button onClick={handleLogin} className="bg-primary text-black font-bold h-14 px-10 rounded-full text-lg hover:bg-accent transition-all shadow-[0_0_20px_rgba(212,175,55,0.3)]">
-          <LogIn className="mr-2" /> Enter the Sanctuary
+        <h1 className="text-6xl md:text-8xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase italic">VIBECRAFT</h1>
+        <p className="text-muted-foreground mb-8 max-w-md uppercase tracking-[0.4em] text-[10px] font-bold">Midnight & Gold Sanctuary</p>
+        <Button onClick={handleLogin} className="bg-primary text-black font-black h-16 px-12 rounded-full text-lg hover:bg-accent transition-all shadow-[0_0_30px_rgba(212,175,55,0.4)] uppercase tracking-widest">
+          <LogIn className="mr-3 w-5 h-5" /> Enter
         </Button>
       </main>
     );
@@ -69,42 +77,42 @@ function Home() {
       <Navbar />
       <YouTubePlayer />
       
-      <div className="max-w-7xl mx-auto px-4 pt-24 md:pt-32">
-        <section className="space-y-8">
+      <div className="max-w-7xl mx-auto px-6 pt-24 md:pt-32">
+        <section className="space-y-12">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-              <TabsList className="bg-white/5 border border-white/10 p-1 rounded-full h-12 w-full md:w-auto overflow-x-auto no-scrollbar">
-                <TabsTrigger value="trending" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest flex gap-2">
-                  <TrendingUp className="w-3 h-3" /> Trending
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
+              <TabsList className="bg-white/5 border border-white/10 p-1 rounded-full h-14 w-full md:w-auto overflow-x-auto no-scrollbar backdrop-blur-md">
+                <TabsTrigger value="trending" className="rounded-full h-full px-10 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.2em] flex gap-2 transition-all">
+                  <TrendingUp className="w-3.5 h-3.5" /> Trending
                 </TabsTrigger>
-                <TabsTrigger value="liked" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest flex gap-2">
-                  <Heart className="w-3 h-3" /> Liked
+                <TabsTrigger value="liked" className="rounded-full h-full px-10 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.2em] flex gap-2 transition-all">
+                  <Heart className="w-3.5 h-3.5" /> Liked
                 </TabsTrigger>
-                <TabsTrigger value="library" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-widest flex gap-2">
-                  <Library className="w-3 h-3" /> Library
+                <TabsTrigger value="library" className="rounded-full h-full px-10 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.2em] flex gap-2 transition-all">
+                  <Library className="w-3.5 h-3.5" /> Library
                 </TabsTrigger>
               </TabsList>
 
               {searchQuery && (
-                <div className="flex items-center gap-2 text-primary/60 text-xs font-black uppercase tracking-[0.2em] italic">
+                <div className="flex items-center gap-3 text-primary/80 bg-primary/5 px-6 py-3 rounded-full border border-primary/20 text-[10px] font-black uppercase tracking-[0.2em] italic animate-in fade-in slide-in-from-right-4">
                   <Sparkles className="w-4 h-4" /> Result for: {searchQuery}
                 </div>
               )}
             </div>
             
-            <TabsContent value="trending" className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <TabsContent value="trending" className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-700">
               {isSearchLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                  {[...Array(10)].map((_, i) => <div key={i} className="aspect-square bg-primary/5 animate-pulse rounded-2xl border border-primary/10" />)}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8">
+                  {[...Array(10)].map((_, i) => <div key={i} className="aspect-square bg-primary/5 animate-pulse rounded-[2rem] border border-primary/10" />)}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8">
                   {results?.map((track) => (
                     <SearchResult key={track.id} track={track} />
                   ))}
                   {(!results || results.length === 0) && (
-                    <div className="col-span-full py-20 text-center opacity-40">
-                      <p className="italic font-bold tracking-widest uppercase">The archive is silent. Try another search.</p>
+                    <div className="col-span-full py-32 text-center opacity-40">
+                      <p className="italic font-black tracking-[0.3em] uppercase text-xs">The archive is silent. Try another search.</p>
                     </div>
                   )}
                 </div>
@@ -116,9 +124,9 @@ function Home() {
             </TabsContent>
 
             <TabsContent value="library" className="mt-0">
-               <div className="text-center py-24 border border-dashed border-primary/20 rounded-[3rem] bg-primary/5">
-                 <Library className="w-12 h-12 text-primary/40 mx-auto mb-4" />
-                 <p className="text-primary/60 font-black text-lg italic uppercase tracking-widest">Personal Archive Pending</p>
+               <div className="text-center py-32 border-2 border-dashed border-primary/10 rounded-[4rem] bg-primary/5">
+                 <Library className="w-16 h-16 text-primary/20 mx-auto mb-6" />
+                 <p className="text-primary/40 font-black text-sm italic uppercase tracking-[0.4em]">Personal Archive Empty</p>
                </div>
             </TabsContent>
           </Tabs>
@@ -143,22 +151,22 @@ function LikedSongsList({ userId }: { userId?: string }) {
   const { data: likedDocs, isLoading } = useCollection(q);
 
   if (isLoading) return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-      {[...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-primary/5 animate-pulse rounded-2xl" />)}
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8">
+      {[...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-primary/5 animate-pulse rounded-[2rem]" />)}
     </div>
   );
 
   if (!likedDocs || likedDocs.length === 0) {
     return (
-      <div className="text-center py-24 border border-dashed border-primary/20 rounded-[3rem] bg-primary/5">
-        <Heart className="w-12 h-12 text-primary/40 mx-auto mb-4" />
-        <p className="text-primary/60 font-black text-lg italic uppercase tracking-widest">No Gold Found. Add some tracks.</p>
+      <div className="text-center py-32 border-2 border-dashed border-primary/10 rounded-[4rem] bg-primary/5">
+        <Heart className="w-16 h-16 text-primary/20 mx-auto mb-6" />
+        <p className="text-primary/40 font-black text-sm italic uppercase tracking-[0.4em]">No Gold Found. Add some tracks.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 animate-in fade-in duration-700">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8 animate-in fade-in duration-1000">
       {likedDocs.map((doc: any) => (
         <SearchResult key={doc.id} track={{
           id: doc.id,
