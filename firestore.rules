@@ -2,10 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // User-owned data tree: Allows full access to the user document and all subcollections
-    // (playlists, likedSongs, etc.) only if the authenticated UID matches the path.
-    // The recursive wildcard {allPaths=**} ensures that 'list' operations on collections
-    // like /users/{userId}/playlists are permitted.
+    // User-owned data tree: Allows full access to the user document and ALL subcollections
+    // (playlists, likedSongs, etc.) only if the authenticated UID matches the userId in the path.
+    // The recursive wildcard {allPaths=**} ensures that 'list' operations on subcollections
+    // like /users/{userId}/playlists are permitted for the owner.
     match /users/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }

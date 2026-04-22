@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Compass, Library, Heart, X, ArrowRight } from 'lucide-react';
+import { Search, Compass, Library, Heart, X, ArrowRight, LogOut } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { signOut } from 'firebase/auth';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -20,6 +21,7 @@ export const Navbar: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUser();
+  const auth = useAuth();
   const initialQuery = searchParams.get('q') || '';
   const currentTab = searchParams.get('tab') || 'trending';
   
@@ -39,6 +41,8 @@ export const Navbar: React.FC = () => {
     }
     setIsMobileSearchOpen(false);
   };
+
+  const handleLogout = () => signOut(auth);
 
   const navigateToTab = (tab: string) => {
     setSearchValue('');
@@ -96,7 +100,9 @@ export const Navbar: React.FC = () => {
               <DropdownMenuItem className="focus:bg-primary focus:text-black rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all mb-1" onClick={() => navigateToTab('library')}>Profile Archive</DropdownMenuItem>
               <DropdownMenuItem className="focus:bg-primary focus:text-black rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all" onClick={() => navigateToTab('liked')}>Liked Tracks</DropdownMenuItem>
               <DropdownMenuSeparator className="bg-primary/10" />
-              <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-white rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all">Exit Sanctuary</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-white rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" /> Exit Sanctuary
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}

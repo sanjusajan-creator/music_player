@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -11,11 +11,13 @@ import { YouTubePlayer } from '@/components/player/YouTubePlayer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, Sparkles, LogIn, Heart, Music2, Loader2 } from 'lucide-react';
+import { TrendingUp, Sparkles, LogIn, Heart, Music2, Loader2, Mail, Lock, UserPlus } from 'lucide-react';
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { signInAnonymously } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { query, collection, orderBy } from 'firebase/firestore';
+import { toast } from '@/hooks/use-toast';
 
 const queryClient = new QueryClient();
 
@@ -38,8 +40,31 @@ export default function AppWrapper() {
 function HomeContent() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  const handleLogin = () => signInAnonymously(auth);
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    setIsAuthLoading(true);
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+    } catch (error: any) {
+      toast({ 
+        title: "Auth Error", 
+        description: error.message || "Authentication failed.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
 
   if (isUserLoading) {
     return (
@@ -52,12 +77,56 @@ function HomeContent() {
 
   if (!user) {
     return (
-      <main className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
-        <h1 className="text-6xl md:text-8xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase italic">VIBECRAFT</h1>
-        <p className="text-muted-foreground mb-8 max-w-md uppercase tracking-[0.4em] text-[10px] font-bold">The Sanctuary of High-Fidelity</p>
-        <Button onClick={handleLogin} className="bg-primary text-black font-black h-16 px-12 rounded-full text-lg hover:bg-accent transition-all shadow-[0_0_30px_rgba(212,175,55,0.4)] uppercase tracking-widest">
-          <LogIn className="mr-3 w-5 h-5" /> Enter Sanctuary
-        </Button>
+      <main className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg">
+        <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500">
+          <header>
+            <h1 className="text-6xl md:text-7xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase italic">VIBECRAFT</h1>
+            <p className="text-muted-foreground uppercase tracking-[0.4em] text-[10px] font-bold">The Sanctuary of High-Fidelity</p>
+          </header>
+
+          <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-10 rounded-[2.5rem] shadow-2xl space-y-6">
+            <div className="space-y-4">
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
+                <Input 
+                  type="email" 
+                  placeholder="Email Address" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-black/40 border-primary/20 pl-12 h-14 rounded-2xl focus-visible:ring-primary text-primary placeholder:text-primary/20"
+                />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
+                <Input 
+                  type="password" 
+                  placeholder="Password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-black/40 border-primary/20 pl-12 h-14 rounded-2xl focus-visible:ring-primary text-primary placeholder:text-primary/20"
+                />
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              disabled={isAuthLoading}
+              className="w-full bg-primary text-black font-black h-16 rounded-2xl text-lg hover:bg-accent transition-all shadow-[0_0_30px_rgba(212,175,55,0.2)] uppercase tracking-widest"
+            >
+              {isAuthLoading ? <Loader2 className="animate-spin" /> : (
+                isLogin ? <><LogIn className="mr-3 w-5 h-5" /> Enter Sanctuary</> : <><UserPlus className="mr-3 w-5 h-5" /> Create Archive</>
+              )}
+            </Button>
+
+            <button 
+              type="button" 
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-primary/40 hover:text-primary text-[10px] uppercase font-black tracking-widest transition-colors"
+            >
+              {isLogin ? "Need an archive? Sign up" : "Already a member? Log in"}
+            </button>
+          </form>
+        </div>
       </main>
     );
   }
@@ -74,7 +143,7 @@ function HomeContent() {
           <div className="max-w-7xl mx-auto">
             <header className="mb-12">
               <h2 className="text-4xl md:text-6xl font-black text-primary gold-glow italic tracking-tighter mb-4">
-                Good Evening, <span className="text-white opacity-80">{user?.displayName || 'Traveler'}</span>
+                Good Evening, <span className="text-white opacity-80">{user?.email?.split('@')[0] || 'Traveler'}</span>
               </h2>
               <p className="text-muted-foreground text-xs font-black uppercase tracking-[0.3em]">Curation for your late-night sessions.</p>
             </header>
