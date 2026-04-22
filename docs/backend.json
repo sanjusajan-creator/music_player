@@ -1,33 +1,28 @@
+
 {
   "entities": {
     "UserAccount": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserAccount",
       "type": "object",
-      "description": "Represents a user account within the Vibecraft Music application, enabling personalized features like 'Liked Songs'. It stores essential user profile information without sensitive authentication credentials.",
+      "description": "Represents a user account within the Vibecraft Music application.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the UserAccount entity.",
-          "format": "uuid"
+          "description": "Unique identifier for the UserAccount entity."
         },
         "email": {
           "type": "string",
-          "description": "The user's email address, used for identification. (Relationship: UserAccount 1:1 AuthenticationSystemUser)",
+          "description": "The user's email address.",
           "format": "email"
         },
         "username": {
           "type": "string",
-          "description": "A display name or handle chosen by the user."
+          "description": "A display name chosen by the user."
         },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the user account was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating the last time the user account information was updated.",
           "format": "date-time"
         }
       },
@@ -38,77 +33,41 @@
         "createdAt"
       ]
     },
-    "Song": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Song",
-      "type": "object",
-      "description": "Represents a single music track, typically sourced from YouTube, containing all necessary metadata for playback and display within the app.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Song entity, corresponding to the YouTube video ID."
-        },
-        "title": {
-          "type": "string",
-          "description": "The title of the song or track, cleaned and normalized."
-        },
-        "artist": {
-          "type": "string",
-          "description": "The artist or creator of the song."
-        },
-        "thumbnailUrl": {
-          "type": "string",
-          "description": "URL to the high-quality thumbnail image for the song, used as artwork.",
-          "format": "uri"
-        },
-        "durationSeconds": {
-          "type": "number",
-          "description": "The duration of the song in seconds."
-        },
-        "publishedAt": {
-          "type": "string",
-          "description": "The date and time when the song (as a video) was originally published on YouTube.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "title",
-        "artist",
-        "thumbnailUrl",
-        "durationSeconds",
-        "publishedAt"
-      ]
-    },
     "UserLikedSong": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserLikedSong",
       "type": "object",
-      "description": "A junction entity that establishes a many-to-many relationship between a UserAccount and a Song, indicating which songs a particular user has 'liked'.",
+      "description": "A record of a song liked by a user.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for this specific 'liked' relationship entry.",
-          "format": "uuid"
+          "description": "YouTube Video ID."
         },
         "userId": {
           "type": "string",
-          "description": "Reference to the UserAccount that liked the song. (Relationship: UserAccount 1:N UserLikedSong)"
+          "description": "Owner UID."
         },
-        "songId": {
-          "type": "string",
-          "description": "Reference to the Song that was liked. (Relationship: Song 1:N UserLikedSong)"
+        "title": {
+          "type": "string"
+        },
+        "artist": {
+          "type": "string"
+        },
+        "thumbnailUrl": {
+          "type": "string"
+        },
+        "durationSeconds": {
+          "type": "number"
         },
         "likedAt": {
           "type": "string",
-          "description": "Timestamp indicating when the user liked this specific song.",
           "format": "date-time"
         }
       },
       "required": [
         "id",
         "userId",
-        "songId",
+        "title",
         "likedAt"
       ]
     },
@@ -116,27 +75,19 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Playlist",
       "type": "object",
-      "description": "Represents a user-created collection of songs.",
+      "description": "A user-created collection of songs.",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "Unique identifier for the playlist."
+          "type": "string"
         },
         "name": {
-          "type": "string",
-          "description": "Name of the playlist."
-        },
-        "description": {
-          "type": "string",
-          "description": "Optional description of the playlist."
+          "type": "string"
         },
         "userId": {
-          "type": "string",
-          "description": "The UID of the user who owns this playlist."
+          "type": "string"
         },
         "createdAt": {
           "type": "string",
-          "description": "Creation timestamp.",
           "format": "date-time"
         }
       },
@@ -150,69 +101,37 @@
   },
   "auth": {
     "providers": [
-      "password",
       "anonymous"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "UserAccount",
-          "schema": {
-            "$ref": "#/backend/entities/UserAccount"
-          },
-          "description": "Stores user profile information.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user account."
-            }
-          ]
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UserAccount"
+      },
+      "description": "User profile data."
+    },
+    "/users/{userId}/likedSongs/{songId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UserLikedSong"
+      },
+      "description": "Songs liked by the user."
+    },
+    "/users/{userId}/playlists/{playlistId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Playlist"
+      },
+      "description": "User playlists."
+    },
+    "/search_cache/{queryId}": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "results": { "type": "array" },
+          "timestamp": { "type": "string" }
         }
       },
-      {
-        "path": "/users/{userId}/likedSongs/{songId}",
-        "definition": {
-          "entityName": "UserLikedSong",
-          "schema": {
-            "$ref": "#/backend/entities/UserLikedSong"
-          },
-          "description": "Stores a record of a song liked by a specific user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user who liked the song."
-            },
-            {
-              "name": "songId",
-              "description": "The unique identifier for the song."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/playlists/{playlistId}",
-        "definition": {
-          "entityName": "Playlist",
-          "schema": {
-            "$ref": "#/backend/entities/Playlist"
-          },
-          "description": "User created music playlists.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "Owner of the playlist."
-            },
-            {
-              "name": "playlistId",
-              "description": "Unique ID for the playlist document."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure utilizes path-based ownership to enforce strict privacy for user profiles, liked songs, and playlists. Each user has their own private subtree."
+      "description": "Cache for YouTube search results to save quota."
+    }
   }
 }
