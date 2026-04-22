@@ -30,8 +30,11 @@
     @apply border-border;
   }
   html, body {
-    @apply bg-background text-foreground font-body antialiased selection:bg-primary/30 selection:text-primary overflow-hidden h-[100dvh] w-screen;
-    touch-action: manipulation;
+    @apply bg-background text-foreground font-body antialiased selection:bg-primary/30 selection:text-primary overflow-hidden;
+    height: 100dvh;
+    width: 100vw;
+    position: fixed;
+    touch-action: none;
   }
 }
 
@@ -39,6 +42,7 @@
 main {
   height: 100dvh;
   overflow: hidden;
+  position: relative;
 }
 
 .gold-glow {
