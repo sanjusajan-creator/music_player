@@ -45,10 +45,12 @@ function HomeContent() {
   const [password, setPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  // STRICT LOGIN GATE: If we have an anonymous user, sign them out to force the login gate
+  // FORCE LOGIN GATE: Clear any anonymous or invalid sessions immediately
   useEffect(() => {
     if (user && !user.email && !isUserLoading) {
-      signOut(auth);
+      signOut(auth).then(() => {
+        window.location.reload();
+      });
     }
   }, [user, isUserLoading, auth]);
 
@@ -86,7 +88,7 @@ function HomeContent() {
     );
   }
 
-  // FORCE LOGIN: User must be present AND have an email session
+  // REQUIRE EMAIL: If user is missing or has no email, show the Sanctuary entrance
   if (!user || !user.email) {
     return (
       <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden relative">
