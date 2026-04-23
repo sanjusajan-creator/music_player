@@ -44,7 +44,7 @@
   }
   
   /* Strictly Bold Typography for the Sanctuary Aesthetic */
-  h1, h2, h3, h4, h5, h6, span, p, button, input, div, a {
+  h1, h2, h3, h4, h5, h6, span, p, button, input, div, a, label {
     font-weight: 900 !important;
   }
 
