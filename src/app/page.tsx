@@ -11,13 +11,18 @@ import { YouTubePlayer } from '@/components/player/YouTubePlayer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, Sparkles, LogIn, Heart, Music2, Loader2, Mail, Lock, UserPlus } from 'lucide-react';
+import { 
+  TrendingUp, Sparkles, LogIn, Heart, Music2, 
+  Loader2, Mail, Lock, UserPlus, History, Compass, Play
+} from 'lucide-react';
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { query, collection, orderBy } from 'firebase/firestore';
+import { query, collection, orderBy, limit } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
+import { usePlayerStore } from '@/store/usePlayerStore';
+import { getRelatedVideos } from '@/lib/youtube';
 
 const queryClient = new QueryClient();
 
@@ -45,7 +50,7 @@ function HomeContent() {
   const [password, setPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  // FORCE EMAIL LOGIN: Ensure we are not using an anonymous or incomplete session
+  // FORCE EMAIL LOGIN
   const showLogin = !isUserLoading && (!user || !user.email);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -63,11 +68,7 @@ function HomeContent() {
       }
       toast({ title: "Welcome", description: "Your sanctuary awaits." });
     } catch (error: any) {
-      toast({ 
-        title: "Auth Error", 
-        description: error.message || "Authentication failed.", 
-        variant: "destructive" 
-      });
+      toast({ title: "Auth Error", description: error.message || "Authentication failed.", variant: "destructive" });
     } finally {
       setIsAuthLoading(false);
     }
@@ -180,6 +181,15 @@ function DashboardTabs({ userId }: { userId: string }) {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
   const activeTab = searchParams.get('tab') || 'trending';
+  const history = usePlayerStore(s => s.history);
+  const currentTrack = usePlayerStore(s => s.currentTrack);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (currentTrack) {
+      getRelatedVideos(currentTrack.id).then(setRecommendations);
+    }
+  }, [currentTrack]);
   
   const effectiveQuery = searchQuery || (activeTab === 'trending' ? 'Global Top Hits 2025' : '');
   const { data: results, isLoading: isSearchLoading } = useYouTubeSearch(effectiveQuery);
@@ -197,11 +207,14 @@ function DashboardTabs({ userId }: { userId: string }) {
         <TabsTrigger value="trending" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
           <TrendingUp className="w-3.5 h-3.5" /> Trending
         </TabsTrigger>
+        <TabsTrigger value="for-you" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
+          <Sparkles className="w-3.5 h-3.5" /> For You
+        </TabsTrigger>
         <TabsTrigger value="liked" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
           <Heart className="w-3.5 h-3.5" /> Liked
         </TabsTrigger>
-        <TabsTrigger value="library" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
-          <Music2 className="w-3.5 h-3.5" /> Discovery
+        <TabsTrigger value="history" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
+          <History className="w-3.5 h-3.5" /> History
         </TabsTrigger>
       </TabsList>
 
@@ -217,15 +230,39 @@ function DashboardTabs({ userId }: { userId: string }) {
         </div>
       </TabsContent>
 
+      <TabsContent value="for-you" className="mt-0 focus-visible:ring-0">
+        {recommendations.length > 0 ? (
+          <div className="space-y-12">
+            <section>
+              <h3 className="text-xl font-black italic gold-glow mb-6 uppercase tracking-widest">Recommended Mix</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8">
+                {recommendations.map(t => <SearchResult key={t.id} track={t} />)}
+              </div>
+            </section>
+          </div>
+        ) : (
+          <div className="text-center py-20 border-2 border-dashed border-primary/10 rounded-[3rem] bg-primary/5">
+            <Sparkles className="w-16 h-16 text-primary/20 mx-auto mb-6" />
+            <p className="text-primary/40 font-black text-xs italic uppercase tracking-[0.4em]">Play something to unlock Discovery...</p>
+          </div>
+        )}
+      </TabsContent>
+
       <TabsContent value="liked" className="mt-0 focus-visible:ring-0">
         <LikedSongsList userId={userId} />
       </TabsContent>
 
-      <TabsContent value="library" className="mt-0 focus-visible:ring-0">
-        <div className="text-center py-20 border-2 border-dashed border-primary/10 rounded-[3rem] bg-primary/5">
-          <Sparkles className="w-16 h-16 text-primary/20 mx-auto mb-6" />
-          <p className="text-primary/40 font-black text-xs italic uppercase tracking-[0.4em]">Personalized Discovery Awaiting...</p>
-        </div>
+      <TabsContent value="history" className="mt-0 focus-visible:ring-0">
+        {history.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8">
+            {history.map(t => <SearchResult key={t.id} track={t} />)}
+          </div>
+        ) : (
+          <div className="text-center py-24 border-2 border-dashed border-primary/10 rounded-[3rem] bg-primary/5">
+            <History className="w-16 h-16 text-primary/20 mx-auto mb-6" />
+            <p className="text-primary/40 font-black text-[10px] italic uppercase tracking-[0.4em]">No archives found in history.</p>
+          </div>
+        )}
       </TabsContent>
     </Tabs>
   );
@@ -237,7 +274,8 @@ function LikedSongsList({ userId }: { userId: string }) {
     if (!userId || !db) return null;
     return query(
       collection(db, 'users', userId, 'likedSongs'),
-      orderBy('likedAt', 'desc')
+      orderBy('likedAt', 'desc'),
+      limit(50)
     );
   }, [userId, db]);
 

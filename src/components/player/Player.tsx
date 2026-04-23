@@ -1,8 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, Heart, Maximize2, Music, Loader2, Shuffle, Repeat } from 'lucide-react';
+import { 
+  Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, 
+  Heart, Maximize2, Music, Loader2, Shuffle, Repeat, 
+  Share2, Moon, Clock, VolumeX
+} from 'lucide-react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -12,12 +16,15 @@ import { doc } from 'firebase/firestore';
 import { generateLyrics } from '@/ai/flows/generate-lyrics';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { toast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export const Player: React.FC = () => {
   const { 
     currentTrack, isPlaying, setIsPlaying, nextTrack, previousTrack, 
     progress, duration, volume, setVolume, isAdPlaying, likedTrackIds, toggleLike, seekTo,
-    isShuffle, toggleShuffle, repeatMode, setRepeatMode, hasHydrated
+    isShuffle, toggleShuffle, repeatMode, setRepeatMode, hasHydrated,
+    sleepTimer, setSleepTimer
   } = usePlayerStore();
   
   const { user } = useUser();
@@ -25,6 +32,70 @@ export const Player: React.FC = () => {
   const [isFullPlayer, setIsFullPlayer] = useState(false);
   const [lyrics, setLyrics] = useState<string | null>(null);
   const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [prevVolume, setPrevVolume] = useState(80);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          setIsPlaying(!isPlaying);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (e.metaKey || e.ctrlKey) nextTrack();
+          else seekTo(Math.min(duration, progress + 10));
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (e.metaKey || e.ctrlKey) previousTrack();
+          else seekTo(Math.max(0, progress - 10));
+          break;
+        case 'KeyM':
+          handleToggleMute();
+          break;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, progress, duration, nextTrack, previousTrack, seekTo]);
+
+  // Sleep Timer logic
+  useEffect(() => {
+    if (sleepTimer === null || sleepTimer <= 0) return;
+    const interval = setInterval(() => {
+      if (sleepTimer <= 1) {
+        setIsPlaying(false);
+        setSleepTimer(null);
+        toast({ title: "Sleep Timer", description: "Playback paused. Goodnight." });
+      } else {
+        setSleepTimer(sleepTimer - 1);
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [sleepTimer, setSleepTimer, setIsPlaying]);
+
+  const handleToggleMute = () => {
+    if (isMuted) {
+      setVolume(prevVolume);
+      setIsMuted(false);
+    } else {
+      setPrevVolume(volume);
+      setVolume(0);
+      setIsMuted(true);
+    }
+  };
+
+  const handleShare = () => {
+    if (!currentTrack) return;
+    const url = `https://music.youtube.com/watch?v=${currentTrack.id}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: "Shared!", description: "Track link copied to clipboard." });
+  };
 
   useEffect(() => {
     if (currentTrack) {
@@ -53,22 +124,17 @@ export const Player: React.FC = () => {
     e.stopPropagation();
     if (!user || !db) return;
     const likeRef = doc(db, 'users', user.uid, 'likedSongs', currentTrack.id);
-    
     toggleLike(currentTrack.id);
-
-    if (isLiked) {
-      deleteDocumentNonBlocking(likeRef);
-    } else {
-      setDocumentNonBlocking(likeRef, { 
-        id: currentTrack.id, 
-        userId: user.uid, 
-        title: currentTrack.title,
-        artist: currentTrack.artist,
-        thumbnailUrl: currentTrack.thumbnail,
-        durationSeconds: currentTrack.duration,
-        likedAt: new Date().toISOString() 
-      }, { merge: true });
-    }
+    if (isLiked) deleteDocumentNonBlocking(likeRef);
+    else setDocumentNonBlocking(likeRef, { 
+      id: currentTrack.id, 
+      userId: user.uid, 
+      title: currentTrack.title,
+      artist: currentTrack.artist,
+      thumbnailUrl: currentTrack.thumbnail,
+      durationSeconds: currentTrack.duration,
+      likedAt: new Date().toISOString() 
+    }, { merge: true });
   };
 
   const formatTime = (s: number) => {
@@ -141,7 +207,30 @@ export const Player: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 flex items-center justify-end gap-4">
+            <div className="flex-1 flex items-center justify-end gap-3">
+               <Popover>
+                 <PopoverTrigger asChild>
+                   <Button variant="ghost" size="icon" className={cn("text-primary/60 hover:text-primary", sleepTimer && "text-primary")}>
+                     <Moon className="w-5 h-5" />
+                   </Button>
+                 </PopoverTrigger>
+                 <PopoverContent className="bg-black border-primary/20 w-48 p-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-2 px-2">Sleep Timer</p>
+                    {[15, 30, 45, 60].map(m => (
+                      <Button key={m} variant="ghost" className="w-full justify-start text-xs font-bold" onClick={() => setSleepTimer(m)}>
+                        <Clock className="w-3 h-3 mr-2" /> {m} minutes
+                      </Button>
+                    ))}
+                    <Button variant="ghost" className="w-full justify-start text-xs font-bold text-destructive" onClick={() => setSleepTimer(null)}>
+                      Off
+                    </Button>
+                 </PopoverContent>
+               </Popover>
+
+               <Button variant="ghost" size="icon" onClick={handleShare} className="text-primary/60 hover:text-primary">
+                 <Share2 className="w-5 h-5" />
+               </Button>
+
                <Sheet>
                  <SheetTrigger asChild>
                    <Button variant="ghost" size="icon" onClick={fetchLyrics} className="text-primary/60 hover:text-primary">
@@ -169,9 +258,11 @@ export const Player: React.FC = () => {
                  </SheetContent>
                </Sheet>
 
-               <div className="hidden md:flex items-center gap-3 w-32 ml-4">
-                 <Volume2 className="w-4 h-4 text-primary/60" />
-                 <Slider value={[volume]} max={100} onValueChange={(v) => setVolume(v[0])} className="h-1" />
+               <div className="hidden md:flex items-center gap-3 w-28 ml-4">
+                 <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={handleToggleMute}>
+                   {isMuted ? <VolumeX className="w-4 h-4 text-primary" /> : <Volume2 className="w-4 h-4 text-primary/60" />}
+                 </Button>
+                 <Slider value={[volume]} max={100} onValueChange={(v) => { setVolume(v[0]); if(v[0]>0) setIsMuted(false); }} className="h-1" />
                </div>
             </div>
           </motion.div>
@@ -189,9 +280,14 @@ export const Player: React.FC = () => {
                 <ChevronDown className="w-8 h-8" />
               </Button>
               <span className="text-[10px] font-black uppercase tracking-[0.6em] text-primary gold-glow italic">SANCTUARY</span>
-              <Button variant="ghost" size="icon" onClick={handleLike} className={cn("active:scale-90", isLiked ? "text-primary" : "text-primary/40")}>
-                <Heart className={cn("w-6 h-6", isLiked && "fill-primary")} />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={handleShare} className="text-primary/40 hover:text-primary">
+                  <Share2 className="w-5 h-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handleLike} className={cn("active:scale-90", isLiked ? "text-primary" : "text-primary/40")}>
+                  <Heart className={cn("w-6 h-6", isLiked && "fill-primary")} />
+                </Button>
+              </div>
             </div>
 
             <div className="flex-1 flex flex-col justify-center items-center px-8 min-h-0">

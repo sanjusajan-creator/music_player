@@ -5,11 +5,7 @@ const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
- * Enhanced Search with logic to reduce API calls:
- * 1. Checks Firestore persistent cache first.
- * 2. If query is a single word, prioritizes cached broad results.
- * 3. Uses videoCategoryId=10 (Music) for relevance.
- * 4. Limits results to 15 to balance quality and quota.
+ * Enhanced Search with logic to reduce API calls
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -17,7 +13,6 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   const cacheKey = sanitizedQuery.replace(/\s+/g, '_');
   
-  // 1. Try Firestore Cache
   try {
     const db = getFirestore();
     const cacheRef = doc(db, "search_cache", cacheKey);
@@ -34,7 +29,6 @@ export async function searchTracks(query: string): Promise<Track[]> {
     console.warn("Cache fetch bypassed", e);
   }
 
-  // Fallback to Mocks if no key
   if (!YOUTUBE_API_KEY) {
     return MOCK_TRACKS.filter(t => 
       t.title.toLowerCase().includes(sanitizedQuery) || 
@@ -43,7 +37,6 @@ export async function searchTracks(query: string): Promise<Track[]> {
   }
 
   try {
-    // 2. Search for IDs (cost 100)
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(query + ' music')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
@@ -53,8 +46,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     const videoIds = searchData.items.map((item: any) => item.id.videoId).filter(Boolean).join(',');
     if (!videoIds) return [];
 
-    // 3. Get detailed info (cost 1)
-    const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
+    const listUrl = `https://www.googleapis.com/video/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl);
     const listData = await listRes.json();
 
@@ -68,7 +60,6 @@ export async function searchTracks(query: string): Promise<Track[]> {
       }))
       .filter((t: Track) => t.title.trim() !== "" && t.artist.trim() !== "");
 
-    // 4. Update Cache (Non-blocking setDoc for efficiency)
     try {
       const db = getFirestore();
       const cacheRef = doc(db, "search_cache", cacheKey);
@@ -83,6 +74,39 @@ export async function searchTracks(query: string): Promise<Track[]> {
     return tracks;
   } catch (error) {
     console.error("YouTube engine failure:", error);
+    return [];
+  }
+}
+
+/**
+ * Fetches related videos for autoplay recommendations
+ */
+export async function getRelatedVideos(videoId: string): Promise<Track[]> {
+  if (!YOUTUBE_API_KEY) return MOCK_TRACKS.slice(0, 5);
+
+  try {
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&relatedToVideoId=${videoId}&type=video&videoCategoryId=10&maxResults=10&key=${YOUTUBE_API_KEY}`;
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+
+    if (searchData.error) throw new Error(searchData.error.message);
+    
+    const videoIds = searchData.items.map((item: any) => item.id.videoId).filter(Boolean).join(',');
+    if (!videoIds) return [];
+
+    const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
+    const listRes = await fetch(listUrl);
+    const listData = await listRes.json();
+
+    return listData.items.map((item: any) => ({
+      id: item.id,
+      title: normalizeMetadata(item.snippet.title),
+      artist: normalizeMetadata(item.snippet.channelTitle),
+      thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default.url,
+      duration: parseISO8601Duration(item.contentDetails.duration),
+    }));
+  } catch (error) {
+    console.error("YouTube related fetch failure:", error);
     return [];
   }
 }

@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -24,7 +23,7 @@ type RepeatMode = 'none' | 'one' | 'all';
 interface PlayerState {
   currentTrack: Track | null;
   queue: Track[];
-  originalQueue: Track[]; // For un-shuffling
+  originalQueue: Track[]; 
   history: Track[];
   likedTrackIds: Set<string>;
   isPlaying: boolean;
@@ -36,6 +35,8 @@ interface PlayerState {
   seekRequest: number | null;
   repeatMode: RepeatMode;
   isShuffle: boolean;
+  isAutoplay: boolean;
+  sleepTimer: number | null; // minutes remaining
   hasHydrated: boolean;
   
   // Actions
@@ -55,7 +56,9 @@ interface PlayerState {
   setDuration: (duration: number) => void;
   seekTo: (time: number) => void;
   toggleShuffle: () => void;
+  toggleAutoplay: () => void;
   setRepeatMode: (mode: RepeatMode) => void;
+  setSleepTimer: (minutes: number | null) => void;
   nextTrack: () => void;
   previousTrack: () => void;
   clearQueue: () => void;
@@ -78,6 +81,8 @@ export const usePlayerStore = create<PlayerState>()(
       seekRequest: null,
       repeatMode: 'none',
       isShuffle: false,
+      isAutoplay: true,
+      sleepTimer: null,
       hasHydrated: false,
 
       setHasHydrated: (state) => set({ hasHydrated: state }),
@@ -85,7 +90,8 @@ export const usePlayerStore = create<PlayerState>()(
       setCurrentTrack: (track) => {
         const { currentTrack, history } = get();
         if (currentTrack && currentTrack.id !== track?.id) {
-          set({ history: [currentTrack, ...history.slice(0, 49)] });
+          const newHistory = [currentTrack, ...history.filter(t => t.id !== currentTrack.id)].slice(0, 50);
+          set({ history: newHistory });
         }
         set({ currentTrack: track, progress: 0, isPlaying: true, isAdPlaying: false, seekRequest: null });
       },
@@ -139,7 +145,9 @@ export const usePlayerStore = create<PlayerState>()(
         }
       }),
 
+      toggleAutoplay: () => set((state) => ({ isAutoplay: !state.isAutoplay })),
       setRepeatMode: (mode) => set({ repeatMode: mode }),
+      setSleepTimer: (minutes) => set({ sleepTimer: minutes }),
 
       nextTrack: () => {
         const { queue, repeatMode, currentTrack } = get();
@@ -169,14 +177,18 @@ export const usePlayerStore = create<PlayerState>()(
               isPlaying: true
             });
           }
+        } else {
+          // No next track, logic handled by Autoplay in YouTubePlayer.tsx
+          set({ isPlaying: false });
         }
       },
 
       previousTrack: () => {
         const { history, currentTrack, queue } = get();
         if (history.length > 0) {
+          const prev = history[0];
           set({ 
-            currentTrack: history[0], 
+            currentTrack: prev, 
             history: history.slice(1), 
             queue: currentTrack ? [currentTrack, ...queue] : queue, 
             progress: 0, 
@@ -187,14 +199,15 @@ export const usePlayerStore = create<PlayerState>()(
       },
     }),
     {
-      name: 'vibecraft-spotify-v1',
+      name: 'vibecraft-spotify-v2',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 
         history: state.history,
         likedTrackIds: Array.from(state.likedTrackIds) as any,
         repeatMode: state.repeatMode,
-        isShuffle: state.isShuffle
+        isShuffle: state.isShuffle,
+        isAutoplay: state.isAutoplay
       }),
       onRehydrateStorage: (state) => {
         return (rehydratedState, error) => {

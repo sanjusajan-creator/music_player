@@ -1,12 +1,11 @@
-
 "use client";
 
 import React, { useState } from 'react';
-import { Home, Search, Library, PlusCircle, Heart, ListMusic, Sparkles, Loader2, Wand2 } from 'lucide-react';
+import { Home, Search, Library, PlusCircle, Heart, ListMusic, Sparkles, Loader2, Wand2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter, usePathname } from 'next/navigation';
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -43,32 +42,18 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
     setNewPlaylistName('');
   };
 
-  const handleMagicPlaylist = async () => {
-    if (!magicPrompt.trim() || !user || !db) return;
-    setIsMagicLoading(true);
-    try {
-      const result = await generateMagicPlaylist({ prompt: magicPrompt });
-      const colRef = collection(db, 'users', user.uid, 'playlists');
-      await addDocumentNonBlocking(colRef, {
-        name: `✨ ${result.playlistName}`,
-        description: result.description,
-        createdAt: new Date().toISOString(),
-        tracks: [] // In a real app, we'd search and add these suggested tracks
-      });
-      toast({ title: "Magic Summoned!", description: `Playlist "${result.playlistName}" created.` });
-      setIsMagicDialogOpen(false);
-      setMagicPrompt('');
-    } catch (error) {
-      toast({ title: "Alchemy Failed", description: "The magic ritual was interrupted.", variant: "destructive" });
-    } finally {
-      setIsMagicLoading(false);
-    }
+  const handleDeletePlaylist = (playlistId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user || !db) return;
+    const playlistRef = doc(db, 'users', user.uid, 'playlists', playlistId);
+    deleteDocumentNonBlocking(playlistRef);
+    toast({ title: "Archive Deleted", description: "The collection has been purged." });
   };
 
   const navItems = [
     { label: 'Home', icon: <Home />, path: '/' },
     { label: 'Explore', icon: <Search />, path: '/?tab=trending' },
-    { label: 'Library', icon: <Library />, path: '/?tab=library' },
+    { label: 'Library', icon: <Library />, path: '/?tab=history' },
   ];
 
   return (
@@ -170,14 +155,21 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
         <ScrollArea className="flex-1 px-2">
           <div className="space-y-1">
             {playlists?.map((p) => (
-              <Button
-                key={p.id}
-                variant="ghost"
-                className="w-full justify-start h-10 px-4 text-sm font-bold text-muted-foreground truncate hover:text-primary rounded-lg"
-              >
-                <ListMusic className="w-4 h-4 mr-3 shrink-0" />
-                <span className="truncate">{p.name}</span>
-              </Button>
+              <div key={p.id} className="group relative">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-10 px-4 text-sm font-bold text-muted-foreground truncate hover:text-primary rounded-lg pr-10"
+                >
+                  <ListMusic className="w-4 h-4 mr-3 shrink-0" />
+                  <span className="truncate">{p.name}</span>
+                </Button>
+                <button 
+                  onClick={(e) => handleDeletePlaylist(p.id, e)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-primary/40 hover:text-destructive transition-all p-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             ))}
             {(!playlists || playlists.length === 0) && (
               <p className="px-4 py-4 text-[10px] italic text-muted-foreground/40">No playlists yet.</p>
