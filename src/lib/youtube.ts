@@ -5,7 +5,7 @@ const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
- * Enhanced Search with logic to reduce API calls
+ * Enhanced Search with logic to reduce API calls via Firestore Caching
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -13,6 +13,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   const cacheKey = sanitizedQuery.replace(/\s+/g, '_');
   
+  // 1. Check Firestore Cache first
   try {
     const db = getFirestore();
     const cacheRef = doc(db, "search_cache", cacheKey);
@@ -26,9 +27,10 @@ export async function searchTracks(query: string): Promise<Track[]> {
       }
     }
   } catch (e) {
-    console.warn("Cache fetch bypassed", e);
+    // Silent fail for cache reads to allow API fallback
   }
 
+  // 2. If no key or cache miss, check API
   if (!YOUTUBE_API_KEY) {
     return MOCK_TRACKS.filter(t => 
       t.title.toLowerCase().includes(sanitizedQuery) || 
@@ -41,10 +43,14 @@ export async function searchTracks(query: string): Promise<Track[]> {
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
-    if (searchData.error) throw new Error(searchData.error.message);
+    // 3. Handle Quota or API Errors gracefully with Fallback
+    if (searchData.error) {
+      console.warn("YouTube API restricted:", searchData.error.message);
+      return MOCK_TRACKS; 
+    }
     
     const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
-    if (!videoIds) return [];
+    if (!videoIds) return MOCK_TRACKS;
 
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl);
@@ -60,21 +66,24 @@ export async function searchTracks(query: string): Promise<Track[]> {
       }))
       .filter((t: Track) => t.title.trim() !== "" && t.artist.trim() !== "");
 
-    try {
-      const db = getFirestore();
-      const cacheRef = doc(db, "search_cache", cacheKey);
-      setDoc(cacheRef, {
-        results: tracks,
-        timestamp: serverTimestamp()
-      }, { merge: true });
-    } catch (e) {
-      console.warn("Cache write failed", e);
+    // 4. Update Cache for future use
+    if (tracks.length > 0) {
+      try {
+        const db = getFirestore();
+        const cacheRef = doc(db, "search_cache", cacheKey);
+        setDoc(cacheRef, {
+          results: tracks,
+          timestamp: serverTimestamp()
+        }, { merge: true });
+      } catch (e) {
+        // Silent fail for cache writes
+      }
     }
 
-    return tracks;
+    return tracks.length > 0 ? tracks : MOCK_TRACKS;
   } catch (error) {
     console.error("YouTube engine failure:", error);
-    return [];
+    return MOCK_TRACKS;
   }
 }
 
@@ -89,9 +98,8 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
-    // Gracefully handle API errors (like deprecated relatedToVideoId for certain videos)
     if (searchData.error) {
-        console.warn("YouTube related videos request restricted:", searchData.error.message);
+        console.warn("YouTube related videos restricted:", searchData.error.message);
         return []; 
     }
     
@@ -110,7 +118,6 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
       duration: parseISO8601Duration(item.contentDetails.duration),
     }));
   } catch (error) {
-    console.warn("Related videos fetch failure (handled):", error);
     return [];
   }
 }
@@ -143,5 +150,7 @@ function normalizeMetadata(text: string): string {
 const MOCK_TRACKS: Track[] = [
   { id: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley', thumbnail: 'https://picsum.photos/seed/rick/600/600', duration: 212 },
   { id: 'L_jWHffIx5E', title: 'Smells Like Teen Spirit', artist: 'Nirvana', thumbnail: 'https://picsum.photos/seed/nirvana/600/600', duration: 301 },
-  { id: 'hTWKbfoikeg', title: 'Midnight Gold', artist: 'Lux Record', thumbnail: 'https://picsum.photos/seed/gold/600/600', duration: 185 }
+  { id: 'hTWKbfoikeg', title: 'Midnight Gold', artist: 'Lux Record', thumbnail: 'https://picsum.photos/seed/gold/600/600', duration: 185 },
+  { id: 'YQHsXMglC9A', title: 'Hello', artist: 'Adele', thumbnail: 'https://picsum.photos/seed/adele/600/600', duration: 367 },
+  { id: 'JGwWNGJdvx8', title: 'Shape of You', artist: 'Ed Sheeran', thumbnail: 'https://picsum.photos/seed/ed/600/600', duration: 233 }
 ];

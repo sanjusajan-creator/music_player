@@ -12,8 +12,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  TrendingUp, Sparkles, LogIn, Heart, Music2, 
-  Loader2, Mail, Lock, UserPlus, History, Compass, Play, X
+  TrendingUp, Sparkles, LogIn, Heart, 
+  Loader2, Mail, Lock, UserPlus, History, X
 } from 'lucide-react';
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -155,7 +155,7 @@ function HomeContent() {
 
         <div className="flex-1 overflow-y-auto no-scrollbar pt-20 md:pt-32 pb-40 gradient-bg h-full">
           <div className="max-w-7xl mx-auto px-6 md:px-12 py-8">
-            <header className="mb-12 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <header className="mb-12 flex flex-col gap-6">
               <div className="min-w-0 flex-1">
                 <h2 className="text-4xl md:text-6xl lg:text-7xl font-black text-primary gold-glow tracking-tighter mb-4 truncate leading-none uppercase">
                   {searchQuery ? "Archives" : `Welcome, `}
@@ -170,25 +170,16 @@ function HomeContent() {
                       variant="ghost" 
                       size="sm" 
                       onClick={clearSearch}
-                      className="h-8 px-4 text-primary hover:bg-primary/10 border border-primary/20 rounded-full text-[10px] uppercase font-black tracking-widest"
+                      className="h-8 px-4 text-primary hover:bg-primary/10 border border-primary/20 rounded-full text-[10px] uppercase font-black tracking-widest shrink-0"
                     >
                       <X className="w-3 h-3 mr-2" /> Clear
                     </Button>
                   )}
                 </div>
               </div>
-              {!searchQuery && (
-                <Button 
-                  variant="ghost" 
-                  onClick={() => signOut(auth)}
-                  className="text-primary/30 hover:text-primary font-black uppercase text-[10px] tracking-[0.4em] p-0 h-auto"
-                >
-                  Log Out
-                </Button>
-              )}
             </header>
 
-            <div className="mt-8">
+            <div className="mt-4">
               {searchQuery ? (
                 <SearchResultsView query={searchQuery} />
               ) : (
@@ -246,24 +237,24 @@ function DashboardTabs({ userId }: { userId: string }) {
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', value);
-    params.delete('q'); // Clear search when switching tabs
+    params.delete('q'); 
     router.push(`/?${params.toString()}`);
   };
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-      <div className="w-full overflow-x-auto no-scrollbar mb-12">
-        <TabsList className="bg-white/5 border border-primary/10 p-1.5 rounded-full h-14 flex w-max flex-nowrap shrink-0">
-          <TabsTrigger value="trending" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
+      <div className="w-full overflow-x-auto no-scrollbar mb-12 flex">
+        <TabsList className="bg-white/5 border border-primary/10 p-1.5 rounded-full h-14 flex items-center shrink-0 w-max">
+          <TabsTrigger value="trending" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
             <TrendingUp className="w-4 h-4" /> Trending
           </TabsTrigger>
-          <TabsTrigger value="for-you" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
+          <TabsTrigger value="for-you" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
             <Sparkles className="w-4 h-4" /> For You
           </TabsTrigger>
-          <TabsTrigger value="liked" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
+          <TabsTrigger value="liked" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
             <Heart className="w-4 h-4" /> Liked
           </TabsTrigger>
-          <TabsTrigger value="history" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
+          <TabsTrigger value="history" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
             <History className="w-4 h-4" /> History
           </TabsTrigger>
         </TabsList>
