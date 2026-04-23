@@ -39,8 +39,9 @@
     margin: 0;
     padding: 0;
     overflow: hidden !important;
-    touch-action: pan-x pan-y;
-    overscroll-behavior: none;
+    /* Prevent pull-to-refresh and elastic bounce */
+    overscroll-behavior-y: none !important;
+    touch-action: manipulation;
   }
   
   /* Strictly Bold Typography for the Sanctuary Aesthetic */
@@ -64,11 +65,11 @@ main {
 
 /* Optimized for Mobile Performance: Moderate blur for stability */
 .glass-morphism {
-  @apply bg-black/80 backdrop-blur-lg border border-white/5;
+  @apply bg-black/80 backdrop-blur-md border border-white/5;
 }
 
 .gold-glow {
-  text-shadow: 0 0 20px hsla(43, 100% , 50%, 0.5);
+  text-shadow: 0 0 15px hsla(43, 100% , 50%, 0.4);
 }
 
 .gradient-bg {
@@ -114,4 +115,10 @@ main {
 .sanctuary-title {
   @apply font-black uppercase tracking-tighter text-primary gold-glow;
   font-weight: 900 !important;
+}
+
+/* Specific class to prevent internal pull-to-refresh */
+.no-overscroll {
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
 }
