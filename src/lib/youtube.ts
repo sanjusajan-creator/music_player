@@ -28,10 +28,10 @@ export async function searchTracks(query: string): Promise<Track[]> {
       }
     }
   } catch (e) {
-    // Silent fail for cache reads
+    // Silent fail for cache
   }
 
-  // 2. Fallback to mocks if no API key
+  // 2. Fallback if no API key
   if (!YOUTUBE_API_KEY) {
     return getMockResults(sanitizedQuery);
   }
@@ -41,7 +41,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     const searchRes = await fetch(searchUrl, { mode: 'cors' });
     
     // Explicitly handle Quota Exceeded or Forbidden
-    if (searchRes.status === 403) {
+    if (searchRes.status === 403 || searchRes.status === 429) {
       console.warn("Vibecraft Oracle: YouTube Quota Exceeded. Manifesting Cosmic Archive.");
       return getMockResults(sanitizedQuery);
     }
@@ -57,6 +57,9 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl, { mode: 'cors' });
+    
+    if (listRes.status === 403) return getMockResults(sanitizedQuery);
+
     const listData = await listRes.json();
 
     const tracks: Track[] = (listData.items || [])
@@ -79,7 +82,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
           timestamp: serverTimestamp()
         }, { merge: true });
       } catch (e) {
-        // Silent fail for cache writes
+        // Silent fail
       }
     }
 

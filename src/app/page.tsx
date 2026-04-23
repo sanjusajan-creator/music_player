@@ -82,7 +82,7 @@ function HomeContent() {
     return ORACLE_SEEDS[Math.floor(Math.random() * ORACLE_SEEDS.length)];
   }, []);
 
-  // Initialize Liked Songs as Queue on mount - Non-blocking
+  // Initialize Liked Songs as Queue on mount - Non-blocking background fetch
   useEffect(() => {
     if (user && db && hasHydrated) {
       const fetchLikedAsQueue = async () => {
@@ -377,12 +377,61 @@ function LocalArchivesView() {
   const { localTracks, setLocalTracks } = usePlayerStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Modern Folder Access API
+  const handleSummonArchives = async () => {
+    try {
+      // Check for Folder Access API support (Chrome/Edge)
+      if ('showDirectoryPicker' in window) {
+        const directoryHandle = await (window as any).showDirectoryPicker();
+        const newTracks: Track[] = [];
+        
+        const recursiveScan = async (handle: any) => {
+          for await (const entry of handle.values()) {
+            if (entry.kind === 'file') {
+              const file = await entry.getFile();
+              if (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|m4a|ogg)$/i)) {
+                newTracks.push({
+                  id: `local-${Math.random().toString(36).substr(2, 9)}`,
+                  title: file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "),
+                  artist: "Local Archive",
+                  thumbnail: "https://picsum.photos/seed/local/400/400",
+                  isLocal: true,
+                  localFile: file
+                });
+              }
+            } else if (entry.kind === 'directory') {
+              await recursiveScan(entry);
+            }
+          }
+        };
+
+        await recursiveScan(directoryHandle);
+        
+        if (newTracks.length > 0) {
+          setLocalTracks([...localTracks, ...newTracks]);
+          toast({ 
+            title: "Archives Summoned", 
+            description: `Manifested ${newTracks.length} local archives.` 
+          });
+        }
+      } else {
+        // Fallback to traditional input
+        fileInputRef.current?.click();
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error("Local Summoning Failed", err);
+        toast({ variant: "destructive", title: "Access Denied", description: "The Oracle could not reach your system files." });
+      }
+    }
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const newTracks: Track[] = Array.from(files)
-      .filter(file => file.type.startsWith('audio/'))
+      .filter(file => file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|m4a|ogg)$/i))
       .map(file => {
         const title = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
         return {
@@ -406,16 +455,16 @@ function LocalArchivesView() {
 
   return (
     <div className="space-y-12">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h3 className="text-2xl font-black text-primary gold-glow uppercase tracking-tighter">Local Sanctuary</h3>
           <p className="text-[10px] text-primary/40 font-black uppercase tracking-[0.3em]">Manifest your system's audio archives</p>
         </div>
         <Button 
-          onClick={() => fileInputRef.current?.click()}
-          className="bg-primary text-black font-black rounded-full px-8 h-12 uppercase tracking-widest hover:bg-white transition-all shadow-lg"
+          onClick={handleSummonArchives}
+          className="bg-primary text-black font-black rounded-full px-8 h-12 uppercase tracking-widest hover:bg-white transition-all shadow-lg w-full md:w-auto"
         >
-          <Plus className="w-4 h-4 mr-2" /> Summon Files
+          <Plus className="w-4 h-4 mr-2" /> Summon Folder
         </Button>
         <input 
           type="file" 
@@ -436,10 +485,10 @@ function LocalArchivesView() {
       ) : (
         <div 
           className="text-center py-40 border-2 border-dashed border-primary/10 rounded-[4rem] bg-primary/5 cursor-pointer group hover:bg-primary/10 transition-all"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={handleSummonArchives}
         >
           <Music2 className="w-16 h-16 text-primary/20 mx-auto mb-8 group-hover:scale-110 transition-transform" />
-          <p className="text-primary/40 font-black text-[10px] uppercase tracking-[0.5em]">The local archive is silent. Click to summon music.</p>
+          <p className="text-primary/40 font-black text-[10px] uppercase tracking-[0.5em] px-6">The local archive is silent. Click to summon your music folder.</p>
         </div>
       )}
     </div>
