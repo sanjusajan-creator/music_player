@@ -43,11 +43,12 @@
     overscroll-behavior: none;
   }
   
-  /* Bold Weights for all typography */
-  h1, h2, h3, h4, h5, h6, span, p, button, input, div {
-    font-weight: 700 !important;
+  /* Strictly Bold Typography */
+  h1, h2, h3, h4, h5, h6, span, p, button, input, div, a {
+    font-weight: 900 !important;
   }
 
+  /* Disable all italics as requested */
   i, em, .italic {
     font-style: normal !important;
     font-weight: 900 !important;
@@ -109,11 +110,6 @@ main {
   animation: pulse-gold 3s infinite ease-in-out;
 }
 
-[data-radix-collection-item] {
-  flex-shrink: 0;
-}
-
 .sanctuary-title {
   @apply font-black uppercase tracking-tighter text-primary gold-glow;
-  font-weight: 900 !important;
 }

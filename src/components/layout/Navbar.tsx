@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-
+import { Search, Menu, Compass, Heart, History, X, ArrowRight, LogOut } from "lucide-react";
+import { getAuth, signOut } from "firebase/auth";
+import { useUser } from "@/firebase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,37 +15,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-
-import {
-  Search,
-  Menu,
-  Compass,
-  Heart,
-  History,
-  X,
-  ArrowRight,
-  LogOut,
-} from "lucide-react";
-
-import {
-  getAuth,
-  signOut
-} from "firebase/auth";
-
-import { useUser } from "@/hooks/useUser"; // adjust if path differs
-
-import {
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-} from "@/components/ui/avatar";
-
 export const Navbar: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const { user } = useUser();
   const auth = getAuth();
 
@@ -51,7 +26,6 @@ export const Navbar: React.FC = () => {
 
   const [searchValue, setSearchValue] = useState(initialQuery);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     setSearchValue(searchParams.get("q") || "");
@@ -59,13 +33,11 @@ export const Navbar: React.FC = () => {
 
   const handleSearch = () => {
     const trimmed = searchValue.trim();
-
     if (trimmed) {
       router.push(`/?q=${encodeURIComponent(trimmed)}`);
     } else {
       router.push("/");
     }
-
     setIsMobileSearchOpen(false);
   };
 
@@ -106,7 +78,7 @@ export const Navbar: React.FC = () => {
       {/* RIGHT SECTION */}
       <div className="flex items-center gap-4 md:gap-8">
 
-        {/* MOBILE SEARCH */}
+        {/* MOBILE SEARCH TRIGGER */}
         <Button
           variant="ghost"
           size="icon"
@@ -116,32 +88,22 @@ export const Navbar: React.FC = () => {
           <Search className="w-5 h-5" />
         </Button>
 
-        {/* MOBILE MENU */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden text-primary"
-          onClick={() => setIsMobileSidebarOpen(true)}
-        >
-          <Menu className="w-6 h-6" />
-        </Button>
-
         {/* DESKTOP NAV */}
         <div className="hidden md:flex items-center gap-8">
           <NavItem
-            icon={<Compass />}
+            icon={<Compass className="w-5 h-5" />}
             label="Explore"
             active={currentTab === "trending" && !initialQuery}
             onClick={() => navigateToTab("trending")}
           />
           <NavItem
-            icon={<Heart />}
+            icon={<Heart className="w-5 h-5" />}
             label="Liked"
             active={currentTab === "liked"}
             onClick={() => navigateToTab("liked")}
           />
           <NavItem
-            icon={<History />}
+            icon={<History className="w-5 h-5" />}
             label="History"
             active={currentTab === "history"}
             onClick={() => navigateToTab("history")}
@@ -178,23 +140,19 @@ export const Navbar: React.FC = () => {
 
               <DropdownMenuSeparator className="bg-primary/10" />
 
-              <DropdownMenuItem
-                onClick={() => navigateToTab("history")}
-              >
-                History Archive
+              <DropdownMenuItem onClick={() => navigateToTab("history")} className="font-bold uppercase text-[10px] tracking-widest">
+                <History className="w-4 h-4 mr-2" /> History Archive
               </DropdownMenuItem>
 
-              <DropdownMenuItem
-                onClick={() => navigateToTab("liked")}
-              >
-                Liked Tracks
+              <DropdownMenuItem onClick={() => navigateToTab("liked")} className="font-bold uppercase text-[10px] tracking-widest">
+                <Heart className="w-4 h-4 mr-2" /> Liked Tracks
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="bg-primary/10" />
 
               <DropdownMenuItem
                 onClick={handleLogout}
-                className="text-destructive"
+                className="text-destructive font-bold uppercase text-[10px] tracking-widest"
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 Exit Sanctuary
@@ -206,29 +164,32 @@ export const Navbar: React.FC = () => {
 
       {/* MOBILE SEARCH OVERLAY */}
       {isMobileSearchOpen && (
-        <div className="fixed inset-0 bg-black z-[100] p-6 flex flex-col">
+        <div className="fixed inset-0 bg-black z-[100] p-6 flex flex-col animate-in fade-in slide-in-from-top duration-300">
           <div className="flex items-center gap-4 mb-10">
             <Button
               variant="ghost"
               size="icon"
+              className="text-primary"
               onClick={() => setIsMobileSearchOpen(false)}
             >
               <X className="w-8 h-8" />
             </Button>
 
-            <div className="flex-1 flex items-center gap-2">
+            <div className="flex-1 flex items-center gap-2 relative">
               <Input
                 autoFocus
-                className="flex-1"
+                className="flex-1 bg-white/5 border-primary/20 h-14 rounded-2xl font-black text-primary placeholder:text-primary/20"
+                placeholder="Search archives..."
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && handleSearch()
-                }
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
-
-              <Button onClick={handleSearch}>
-                <ArrowRight />
+              <Button 
+                size="icon"
+                onClick={handleSearch}
+                className="bg-primary text-black rounded-xl h-14 w-14 shrink-0"
+              >
+                <ArrowRight className="w-6 h-6" />
               </Button>
             </div>
           </div>
@@ -249,8 +210,15 @@ const NavItem = ({
   active?: boolean;
   onClick?: () => void;
 }) => (
-  <button onClick={onClick}>
-    {icon}
-    <span>{label}</span>
+  <button 
+    onClick={onClick}
+    className={`flex items-center gap-3 transition-all duration-300 group ${active ? 'text-primary' : 'text-primary/40 hover:text-primary'}`}
+  >
+    <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>
+      {icon}
+    </div>
+    <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+      {label}
+    </span>
   </button>
 );

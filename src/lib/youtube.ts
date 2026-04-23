@@ -45,7 +45,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
     // 3. Handle Quota or API Errors gracefully with Fallback
     if (searchData.error) {
-      console.warn("YouTube API restricted:", searchData.error.message);
+      console.warn("YouTube API restricted or quota exceeded:", searchData.error.message);
       return MOCK_TRACKS; 
     }
     
@@ -99,7 +99,7 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
     const searchData = await searchRes.json();
 
     if (searchData.error) {
-        console.warn("YouTube related videos restricted:", searchData.error.message);
+        console.warn("YouTube related videos restricted or quota exceeded:", searchData.error.message);
         return []; 
     }
     
@@ -118,6 +118,7 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
       duration: parseISO8601Duration(item.contentDetails.duration),
     }));
   } catch (error) {
+    console.error("YouTube related videos failure:", error);
     return [];
   }
 }
