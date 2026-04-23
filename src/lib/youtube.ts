@@ -1,5 +1,6 @@
 import { Track } from "@/store/usePlayerStore";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { getDb } from "@/firebase";
 
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
@@ -13,9 +14,9 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   const cacheKey = sanitizedQuery.replace(/\s+/g, '_');
   
-  // 1. Check Firestore Cache first
+  // 1. Check Firestore Cache first using the hardened getDb helper
   try {
-    const db = getFirestore();
+    const db = getDb();
     const cacheRef = doc(db, "search_cache", cacheKey);
     const cacheSnap = await getDoc(cacheRef);
 
@@ -69,7 +70,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     // 4. Update Cache for future use
     if (tracks.length > 0) {
       try {
-        const db = getFirestore();
+        const db = getDb();
         const cacheRef = doc(db, "search_cache", cacheKey);
         setDoc(cacheRef, {
           results: tracks,

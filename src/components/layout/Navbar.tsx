@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Menu, Compass, Heart, History, X, ArrowRight, LogOut } from "lucide-react";
+import { Search, Compass, Heart, History, X, ArrowRight, LogOut } from "lucide-react";
 import { getAuth, signOut } from "firebase/auth";
 import { useUser } from "@/firebase";
 import { Input } from "@/components/ui/input";
@@ -53,16 +53,16 @@ export const Navbar: React.FC = () => {
       
       {/* LOGO */}
       <div className="flex items-center gap-4 shrink-0">
-        <div
-          className="text-2xl md:text-3xl font-black text-primary gold-glow cursor-pointer tracking-tighter uppercase leading-none"
-          onClick={() => navigateToTab("trending")}
+        <div 
+          className="text-xl sm:text-2xl md:text-3xl font-black text-primary gold-glow cursor-pointer tracking-tighter uppercase leading-none shrink-0"
+          onClick={() => navigateToTab('trending')}
         >
           VIBECRAFT
         </div>
       </div>
 
       {/* DESKTOP SEARCH */}
-      <div className="hidden md:flex flex-1 max-w-xl px-12">
+      <div className="hidden md:flex flex-1 max-w-xl px-4 lg:px-12">
         <div className="relative w-full group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-all duration-300" />
           <Input
@@ -76,13 +76,12 @@ export const Navbar: React.FC = () => {
       </div>
 
       {/* RIGHT SECTION */}
-      <div className="flex items-center gap-4 md:gap-8">
-
+      <div className="flex items-center gap-2 sm:gap-4 md:gap-8 shrink-0">
         {/* MOBILE SEARCH TRIGGER */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden text-primary h-10 w-10 p-0"
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="md:hidden text-primary h-10 w-10 p-0" 
           onClick={() => setIsMobileSearchOpen(true)}
         >
           <Search className="w-5 h-5" />

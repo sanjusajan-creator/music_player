@@ -157,7 +157,7 @@ function HomeContent() {
           <div className="max-w-7xl mx-auto px-6 md:px-12 py-8">
             <header className="mb-12 flex flex-col gap-6">
               <div className="min-w-0 flex-1">
-                <h2 className="text-4xl md:text-6xl lg:text-7xl font-black text-primary gold-glow tracking-tighter mb-4 truncate leading-none uppercase">
+                <h2 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-black text-primary gold-glow tracking-tighter mb-4 truncate leading-none uppercase">
                   {searchQuery ? "Archives" : `Welcome, `}
                   <span className="text-white opacity-80">{searchQuery ? ` Found` : (user?.email?.split('@')[0] || 'User')}</span>
                 </h2>
@@ -244,17 +244,17 @@ function DashboardTabs({ userId }: { userId: string }) {
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
       <div className="w-full overflow-x-auto no-scrollbar mb-12 flex">
-        <TabsList className="bg-white/5 border border-primary/10 p-1.5 rounded-full h-14 flex items-center shrink-0 w-max">
-          <TabsTrigger value="trending" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
+        <TabsList className="bg-white/5 border border-primary/10 p-1.5 rounded-full h-14 flex items-center shrink-0 w-max min-w-0 flex-nowrap">
+          <TabsTrigger value="trending" className="rounded-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-2 md:gap-3 shrink-0">
             <TrendingUp className="w-4 h-4" /> Trending
           </TabsTrigger>
-          <TabsTrigger value="for-you" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
+          <TabsTrigger value="for-you" className="rounded-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-2 md:gap-3 shrink-0">
             <Sparkles className="w-4 h-4" /> For You
           </TabsTrigger>
-          <TabsTrigger value="liked" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
+          <TabsTrigger value="liked" className="rounded-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-2 md:gap-3 shrink-0">
             <Heart className="w-4 h-4" /> Liked
           </TabsTrigger>
-          <TabsTrigger value="history" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-3 shrink-0">
+          <TabsTrigger value="history" className="rounded-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-2 md:gap-3 shrink-0">
             <History className="w-4 h-4" /> History
           </TabsTrigger>
         </TabsList>
