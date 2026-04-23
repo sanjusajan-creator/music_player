@@ -25,7 +25,7 @@ export const SearchResult: React.FC<SearchResultProps> = ({ track }) => {
         <img src={track.thumbnail} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt={track.title} />
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
           <Button 
-            variant="ghost" size="icon" className="w-12 h-12 bg-primary text-black rounded-full hover:bg-accent"
+            variant="ghost" size="icon" className="w-12 h-12 bg-primary text-black rounded-full hover:bg-white"
             onClick={() => setCurrentTrack(track)}
           >
             <Play className="fill-black ml-1" />
@@ -40,8 +40,8 @@ export const SearchResult: React.FC<SearchResultProps> = ({ track }) => {
       </div>
       
       <div className="flex flex-col min-w-0 pr-8">
-        <h4 className="font-bold text-sm text-primary truncate leading-tight mb-1">{track.title}</h4>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate">{track.artist}</p>
+        <h4 className="font-bold text-sm text-primary truncate leading-tight mb-1 uppercase tracking-tighter">{track.title}</h4>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate font-bold">{track.artist}</p>
       </div>
 
       <button 

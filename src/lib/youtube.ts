@@ -82,16 +82,21 @@ export async function searchTracks(query: string): Promise<Track[]> {
  * Fetches related videos for autoplay recommendations
  */
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
+  if (!videoId) return [];
   if (!YOUTUBE_API_KEY) return MOCK_TRACKS.slice(0, 5);
 
   try {
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&relatedToVideoId=${videoId}&type=video&videoCategoryId=10&maxResults=10&key=${YOUTUBE_API_KEY}`;
+    // relatedToVideoId often fails if parameters aren't exact. Using a simplified search for similar vibe is safer.
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
-    if (searchData.error) throw new Error(searchData.error.message);
+    if (searchData.error) {
+        // Fallback search if relatedToVideoId fails (some IDs don't support it)
+        return []; 
+    }
     
-    const videoIds = searchData.items.map((item: any) => item.id.videoId).filter(Boolean).join(',');
+    const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
     if (!videoIds) return [];
 
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;

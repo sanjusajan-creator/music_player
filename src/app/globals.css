@@ -3,26 +3,26 @@
 @tailwind utilities;
 
 :root {
-  --background: 275 60% 5%;
+  --background: 0 0% 0%;
   --foreground: 0 0% 100%;
-  --card: 275 60% 8%;
+  --card: 0 0% 3%;
   --card-foreground: 0 0% 100%;
-  --popover: 275 60% 8%;
+  --popover: 0 0% 5%;
   --popover-foreground: 0 0% 100%;
-  --primary: 270 60% 50%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 240 100% 70%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 275 30% 15%;
-  --muted-foreground: 275 10% 60%;
-  --accent: 240 100% 70%;
-  --accent-foreground: 0 0% 100%;
+  --primary: 43 100% 50%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 43 50% 20%;
+  --secondary-foreground: 43 100% 70%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 43 20% 60%;
+  --accent: 43 100% 50%;
+  --accent-foreground: 0 0% 0%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
-  --border: 275 30% 20%;
-  --input: 275 30% 20%;
-  --ring: 270 60% 50%;
-  --radius: 1.25rem;
+  --border: 43 30% 15%;
+  --input: 43 30% 15%;
+  --ring: 43 100% 50%;
+  --radius: 1rem;
 }
 
 @layer base {
@@ -52,15 +52,15 @@ main {
 }
 
 .glass-morphism {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  @apply bg-black/40 backdrop-blur-2xl border border-white/5;
 }
 
 .gold-glow {
-  text-shadow: 0 0 20px rgba(128, 51, 204, 0.5);
+  text-shadow: 0 0 15px hsla(43, 100%, 50%, 0.4);
 }
 
 .gradient-bg {
-  background: radial-gradient(circle at top right, hsl(270, 60% 15%), #000000);
+  background: radial-gradient(circle at top right, hsl(43, 100%, 5%), #000000);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -72,7 +72,7 @@ main {
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   @apply bg-transparent;
@@ -90,18 +90,9 @@ main {
   pointer-events: none;
 }
 
-@keyframes pulse-purple {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.02); }
-}
-
-.animate-pulse-purple {
-  animation: pulse-purple 2s infinite ease-in-out;
-}
-
 @keyframes pulse-gold {
-  0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
-  50% { box-shadow: 0 0 50px rgba(212, 175, 55, 0.4); }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.01); }
 }
 
 .animate-pulse-gold {

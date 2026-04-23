@@ -173,7 +173,7 @@ export const Player: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs md:text-sm font-black text-primary truncate gold-glow uppercase tracking-tighter italic">{currentTrack.title}</span>
+                <span className="text-xs md:text-sm font-black text-primary truncate gold-glow uppercase tracking-tighter font-bold">{currentTrack.title}</span>
                 <span className="text-[8px] md:text-[9px] text-muted-foreground truncate uppercase tracking-[0.3em] font-black">{currentTrack.artist}</span>
               </div>
               <Button variant="ghost" size="icon" onClick={handleLike} className="text-primary ml-1 shrink-0">
@@ -230,11 +230,11 @@ export const Player: React.FC = () => {
                  <PopoverContent className="bg-black border-primary/20 w-48 p-2">
                     <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-2 px-2">Sleep Timer</p>
                     {[15, 30, 45, 60].map(m => (
-                      <Button key={m} variant="ghost" className="w-full justify-start text-xs font-bold" onClick={() => setSleepTimer(m)}>
+                      <Button key={m} variant="ghost" className="w-full justify-start text-xs font-bold uppercase" onClick={() => setSleepTimer(m)}>
                         <Clock className="w-3 h-3 mr-2" /> {m} minutes
                       </Button>
                     ))}
-                    <Button variant="ghost" className="w-full justify-start text-xs font-bold text-destructive" onClick={() => setSleepTimer(null)}>
+                    <Button variant="ghost" className="w-full justify-start text-xs font-bold text-destructive uppercase" onClick={() => setSleepTimer(null)}>
                       Off
                     </Button>
                  </PopoverContent>
@@ -253,7 +253,7 @@ export const Player: React.FC = () => {
                  <SheetContent side="right" className="bg-black border-l border-primary/20 text-primary p-0 w-full sm:max-w-md">
                    <div className="h-full flex flex-col p-8 md:p-10">
                      <SheetHeader className="mb-10 text-center">
-                       <SheetTitle className="text-primary font-black italic uppercase tracking-[0.4em] text-2xl md:text-3xl gold-glow">The Scroll</SheetTitle>
+                       <SheetTitle className="text-primary font-black font-bold uppercase tracking-[0.4em] text-2xl md:text-3xl gold-glow">The Scroll</SheetTitle>
                      </SheetHeader>
                      <ScrollArea className="flex-1 pr-4 custom-scrollbar">
                        {isLoadingLyrics ? (
@@ -292,7 +292,7 @@ export const Player: React.FC = () => {
               <Button variant="ghost" size="icon" onClick={() => setIsFullPlayer(false)} className="text-primary active:scale-90">
                 <ChevronDown className="w-8 h-8" />
               </Button>
-              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.6em] text-primary gold-glow italic">SANCTUARY</span>
+              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.6em] text-primary gold-glow font-bold">SANCTUARY</span>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={handleShare} className="text-primary/40 hover:text-primary">
                   <Share2 className="w-5 h-5" />
@@ -306,7 +306,7 @@ export const Player: React.FC = () => {
             <div className="flex-1 flex flex-col justify-center items-center px-4 md:px-12 min-h-0 py-4 overflow-hidden">
               <div className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12 lg:gap-20 h-full max-h-[70vh]">
                  <div className={cn(
-                    "aspect-square w-full max-w-[240px] md:max-w-[320px] lg:max-w-[420px] rounded-[2.5rem] border-4 border-primary/10 overflow-hidden shadow-[0_0_80px_rgba(212,175,55,0.15)] relative shrink-0 transition-all duration-700",
+                    "aspect-square w-full max-w-[240px] md:max-w-[320px] lg:max-w-[420px] rounded-[2rem] border-4 border-primary/10 overflow-hidden shadow-[0_0_80px_rgba(212,175,55,0.15)] relative shrink-0 transition-all duration-700",
                     isAdPlaying && "animate-pulse-gold",
                     showLyricsInFull && "hidden md:block scale-75 opacity-40 grayscale blur-sm"
                  )}>
@@ -316,7 +316,7 @@ export const Player: React.FC = () => {
                  <div className={cn("flex-1 flex flex-col min-w-0 w-full h-full justify-center overflow-hidden", showLyricsInFull ? "block" : "hidden md:flex")}>
                     {showLyricsInFull ? (
                         <div className="h-full flex flex-col overflow-hidden py-4">
-                            <h3 className="text-primary font-black italic uppercase tracking-[0.4em] text-sm md:text-lg mb-4 flex items-center gap-2 shrink-0">
+                            <h3 className="text-primary font-black font-bold uppercase tracking-[0.4em] text-sm md:text-lg mb-4 flex items-center gap-2 shrink-0">
                                 <Music className="w-4 h-4" /> Lyrics Scroll
                             </h3>
                             <ScrollArea className="flex-1 pr-4 custom-scrollbar">
@@ -327,7 +327,7 @@ export const Player: React.FC = () => {
                         </div>
                     ) : (
                         <div className="text-center md:text-left space-y-4">
-                            <h2 className="text-3xl md:text-5xl lg:text-7xl font-black text-primary gold-glow uppercase tracking-tighter italic leading-tight">
+                            <h2 className="text-3xl md:text-5xl lg:text-7xl font-black text-primary gold-glow uppercase tracking-tighter font-bold leading-tight">
                                 {currentTrack.title}
                             </h2>
                             <p className="text-xs md:text-xl lg:text-2xl text-muted-foreground uppercase tracking-[0.4em] font-black opacity-60">
@@ -340,7 +340,7 @@ export const Player: React.FC = () => {
 
               {!showLyricsInFull && (
                 <div className="md:hidden mt-6 text-center space-y-1 px-4 max-w-full">
-                    <h2 className="text-2xl font-black text-primary gold-glow truncate uppercase tracking-tighter italic">{currentTrack.title}</h2>
+                    <h2 className="text-2xl font-black text-primary gold-glow truncate uppercase tracking-tighter font-bold">{currentTrack.title}</h2>
                     <p className="text-[10px] text-muted-foreground truncate uppercase tracking-[0.4em] font-black opacity-60">{currentTrack.artist}</p>
                 </div>
               )}
@@ -386,7 +386,7 @@ export const Player: React.FC = () => {
                  <Button 
                     variant="ghost" 
                     className={cn(
-                        "font-black uppercase text-[10px] tracking-[0.4em] transition-all flex items-center gap-2 px-6 h-12 rounded-full",
+                        "font-black uppercase text-[10px] tracking-[0.4em] transition-all flex items-center gap-2 px-6 h-12 rounded-full font-bold",
                         showLyricsInFull ? "bg-primary text-black" : "text-primary/40 hover:text-primary"
                     )} 
                     onClick={fetchLyrics}

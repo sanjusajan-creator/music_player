@@ -94,7 +94,7 @@ function HomeContent() {
       <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden relative">
         <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500 z-10">
           <header>
-            <h1 className="text-5xl md:text-7xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase italic">VIBECRAFT</h1>
+            <h1 className="text-5xl md:text-7xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase font-bold">VIBECRAFT</h1>
             <p className="text-muted-foreground uppercase tracking-[0.4em] text-[10px] font-bold">The Sanctuary of High-Fidelity</p>
           </header>
 
@@ -125,7 +125,7 @@ function HomeContent() {
             <Button 
               type="submit" 
               disabled={isAuthLoading}
-              className="w-full bg-primary text-black font-black h-16 rounded-2xl text-lg hover:bg-accent transition-all shadow-[0_0_30px_rgba(212,175,55,0.2)] uppercase tracking-widest"
+              className="w-full bg-primary text-black font-black h-16 rounded-2xl text-lg hover:bg-white hover:text-black transition-all shadow-[0_0_30px_rgba(212,175,55,0.2)] uppercase tracking-widest"
             >
               {isAuthLoading ? <Loader2 className="animate-spin" /> : (
                 isLogin ? <><LogIn className="mr-3 w-5 h-5" /> Enter Sanctuary</> : <><UserPlus className="mr-3 w-5 h-5" /> Create Archive</>
@@ -159,7 +159,7 @@ function HomeContent() {
           <div className="max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12">
             <header className="mb-8 md:mb-12 flex flex-col md:flex-row md:justify-between md:items-end gap-6">
               <div className="min-w-0 flex-1">
-                <h2 className="text-2xl md:text-5xl lg:text-6xl font-black text-primary gold-glow italic tracking-tighter mb-2 md:mb-4 truncate leading-tight">
+                <h2 className="text-2xl md:text-5xl lg:text-6xl font-black text-primary gold-glow font-bold tracking-tighter mb-2 md:mb-4 truncate leading-tight">
                   {searchQuery ? "Manifesting..." : `Welcome, `}
                   <span className="text-white opacity-80">{searchQuery ? ` "${searchQuery}"` : (user?.email?.split('@')[0] || 'Traveler')}</span>
                 </h2>
@@ -221,7 +221,7 @@ function SearchResultsView({ query }: { query: string }) {
       ))}
       {(!results || results.length === 0) && (
         <div className="col-span-full text-center py-24 border-2 border-dashed border-primary/10 rounded-[3rem] bg-primary/5">
-           <p className="text-primary/40 font-black uppercase tracking-widest text-[10px] italic">No cosmic archives match your search.</p>
+           <p className="text-primary/40 font-black uppercase tracking-widest text-[10px] font-bold">No cosmic archives match your search.</p>
         </div>
       )}
     </div>
@@ -286,7 +286,7 @@ function DashboardTabs({ userId }: { userId: string }) {
         {recommendations.length > 0 ? (
           <div className="space-y-12">
             <section>
-              <h3 className="text-sm md:text-xl font-black italic gold-glow mb-6 uppercase tracking-widest">Recommended Mix</h3>
+              <h3 className="text-sm md:text-xl font-black font-bold gold-glow mb-6 uppercase tracking-widest">Recommended Mix</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-8">
                 {recommendations.map(t => <SearchResult key={t.id} track={t} />)}
               </div>
@@ -295,7 +295,7 @@ function DashboardTabs({ userId }: { userId: string }) {
         ) : (
           <div className="text-center py-20 border-2 border-dashed border-primary/10 rounded-[3rem] bg-primary/5">
             <Sparkles className="w-12 h-12 text-primary/20 mx-auto mb-6" />
-            <p className="text-primary/40 font-black text-[9px] italic uppercase tracking-[0.4em]">Play something to unlock Discovery...</p>
+            <p className="text-primary/40 font-black text-[9px] font-bold uppercase tracking-[0.4em]">Play something to unlock Discovery...</p>
           </div>
         )}
       </TabsContent>
@@ -312,7 +312,7 @@ function DashboardTabs({ userId }: { userId: string }) {
         ) : (
           <div className="text-center py-24 border-2 border-dashed border-primary/10 rounded-[3rem] bg-primary/5">
             <History className="w-12 h-12 text-primary/20 mx-auto mb-6" />
-            <p className="text-primary/40 font-black text-[9px] italic uppercase tracking-[0.4em]">No archives found in history.</p>
+            <p className="text-primary/40 font-black text-[9px] font-bold uppercase tracking-[0.4em]">No archives found in history.</p>
           </div>
         )}
       </TabsContent>
@@ -343,7 +343,7 @@ function LikedSongsList({ userId }: { userId: string }) {
     return (
       <div className="text-center py-24 border-2 border-dashed border-primary/10 rounded-[3rem] bg-primary/5">
         <Heart className="w-12 h-12 text-primary/20 mx-auto mb-6" />
-        <p className="text-primary/40 font-black text-[9px] italic uppercase tracking-[0.4em]">Your gold collection is empty.</p>
+        <p className="text-primary/40 font-black text-[9px] font-bold uppercase tracking-[0.4em]">Your gold collection is empty.</p>
       </div>
     );
   }

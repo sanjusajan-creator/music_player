@@ -96,7 +96,7 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
     <div className={`w-[300px] h-full bg-black border-r border-primary/10 flex flex-col p-4 gap-6 shrink-0 ${mobile ? '' : 'hidden md:flex'}`} >
       <div className="px-4 py-2">
         <h1 
-          className="text-3xl font-black text-primary gold-glow italic uppercase tracking-tighter cursor-pointer"
+          className="text-3xl font-black text-primary gold-glow font-bold uppercase tracking-tighter cursor-pointer"
           onClick={() => router.push('/')}
         >
           Vibecraft
@@ -109,7 +109,7 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
             key={item.label}
             variant="ghost"
             className={cn(
-              "w-full justify-start gap-4 h-12 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all font-bold",
+              "w-full justify-start gap-4 h-12 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all font-bold uppercase text-xs tracking-widest",
               (pathname === item.path || (item.path.includes('tab') && typeof window !== 'undefined' && window.location.search.includes(item.path.split('=')[1]))) && "text-primary bg-primary/10"
             )}
             onClick={() => router.push(item.path)}
@@ -125,13 +125,13 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
         
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-muted-foreground hover:text-primary">
+            <Button variant="ghost" className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-muted-foreground hover:text-primary uppercase text-xs tracking-widest">
               <PlusCircle className="w-6 h-6" /> Create Playlist
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-black border-primary/20 text-primary">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black italic gold-glow uppercase">New Archive</DialogTitle>
+              <DialogTitle className="text-2xl font-black font-bold gold-glow uppercase">New Archive</DialogTitle>
               <DialogDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Name your collection</DialogDescription>
             </DialogHeader>
             <Input 
@@ -148,7 +148,7 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
 
         <Button 
           variant="ghost" 
-          className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-muted-foreground hover:text-primary"
+          className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-muted-foreground hover:text-primary uppercase text-xs tracking-widest"
           onClick={() => router.push('/?tab=liked')}
         >
           <Heart className="w-6 h-6 fill-primary/10" /> Liked Songs
@@ -156,13 +156,13 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
 
         <Dialog open={isMagicDialogOpen} onOpenChange={setIsMagicDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-primary animate-pulse-gold group">
+            <Button variant="ghost" className="w-full justify-start gap-4 h-12 rounded-xl font-bold text-primary animate-pulse-gold group uppercase text-xs tracking-widest">
               <Sparkles className="w-6 h-6 group-hover:rotate-12 transition-transform" /> Magic AI Playlist
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-black border-primary/20 text-primary max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-3xl font-black italic gold-glow uppercase flex items-center gap-3">
+              <DialogTitle className="text-3xl font-black font-bold gold-glow uppercase flex items-center gap-3">
                 <Wand2 className="w-8 h-8" /> The Oracle
               </DialogTitle>
               <DialogDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-[0.3em]">Describe a mood, and I shall summon a list.</DialogDescription>
@@ -177,7 +177,7 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
               <Button 
                 onClick={handleMagicPlaylist} 
                 disabled={isMagicLoading}
-                className="w-full bg-primary text-black font-black h-14 rounded-full text-lg shadow-[0_0_20px_rgba(212,175,55,0.3)]"
+                className="w-full bg-primary text-black font-black h-14 rounded-full text-lg shadow-[0_0_20px_rgba(212,175,55,0.3)] uppercase tracking-widest"
               >
                 {isMagicLoading ? <Loader2 className="animate-spin" /> : "Summon Archive"}
               </Button>
@@ -194,7 +194,7 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
               <div key={p.id} className="group relative">
                 <Button
                   variant="ghost"
-                  className="w-full justify-start h-10 px-4 text-sm font-bold text-muted-foreground truncate hover:text-primary rounded-lg pr-10"
+                  className="w-full justify-start h-10 px-4 text-sm font-bold text-muted-foreground truncate hover:text-primary rounded-lg pr-10 uppercase tracking-tighter"
                 >
                   <ListMusic className="w-4 h-4 mr-3 shrink-0" />
                   <span className="truncate">{p.name}</span>
@@ -208,7 +208,7 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
               </div>
             ))}
             {(!playlists || playlists.length === 0) && (
-              <p className="px-4 py-4 text-[10px] italic text-muted-foreground/40">No playlists yet.</p>
+              <p className="px-4 py-4 text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">No playlists yet.</p>
             )}
           </div>
         </ScrollArea>

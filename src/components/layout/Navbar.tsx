@@ -56,7 +56,7 @@ export const Navbar: React.FC = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-2xl h-16 md:h-24 px-4 md:px-12 border-b border-primary/10 flex items-center justify-between">
       <div className="flex items-center gap-4">
         <div 
-          className="text-xl md:text-3xl font-black text-primary gold-glow cursor-pointer tracking-tighter uppercase italic"
+          className="text-xl md:text-3xl font-black text-primary gold-glow cursor-pointer tracking-tighter uppercase font-bold"
           onClick={() => navigateToTab('trending')}
         >
           Vibecraft
@@ -101,12 +101,12 @@ export const Navbar: React.FC = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-black border-primary/20 text-primary w-64 p-3 rounded-[1.5rem] shadow-2xl" align="end">
-              <DropdownMenuLabel className="font-black italic text-sm tracking-widest px-3 py-2">My Sanctuary</DropdownMenuLabel>
+              <DropdownMenuLabel className="font-black font-bold text-sm tracking-widest px-3 py-2 uppercase">My Sanctuary</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-primary/10" />
-              <DropdownMenuItem className="focus:bg-primary focus:text-black rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all mb-1" onClick={() => navigateToTab('history')}>History Archive</DropdownMenuItem>
-              <DropdownMenuItem className="focus:bg-primary focus:text-black rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all mb-1" onClick={() => navigateToTab('liked')}>Liked Tracks</DropdownMenuItem>
+              <DropdownMenuItem className="focus:bg-primary focus:text-black rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all mb-1 uppercase text-xs" onClick={() => navigateToTab('history')}>History Archive</DropdownMenuItem>
+              <DropdownMenuItem className="focus:bg-primary focus:text-black rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all mb-1 uppercase text-xs" onClick={() => navigateToTab('liked')}>Liked Tracks</DropdownMenuItem>
               <DropdownMenuSeparator className="bg-primary/10" />
-              <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-white rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all" onClick={handleLogout}>
+              <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-white rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all uppercase text-xs" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" /> Exit Sanctuary
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -140,13 +140,13 @@ export const Navbar: React.FC = () => {
            </div>
            <div className="space-y-4">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 px-4">Sanctuary Maps</p>
-              <button onClick={() => { navigateToTab('trending'); setIsMobileSearchOpen(false); }} className="w-full text-left py-4 px-4 border-b border-primary/5 text-lg font-black italic flex items-center justify-between group">
+              <button onClick={() => { navigateToTab('trending'); setIsMobileSearchOpen(false); }} className="w-full text-left py-4 px-4 border-b border-primary/5 text-lg font-black font-bold flex items-center justify-between group uppercase">
                 Explore <Compass className="text-primary group-active:scale-125 transition-all" />
               </button>
-              <button onClick={() => { navigateToTab('history'); setIsMobileSearchOpen(false); }} className="w-full text-left py-4 px-4 border-b border-primary/5 text-lg font-black italic flex items-center justify-between group">
+              <button onClick={() => { navigateToTab('history'); setIsMobileSearchOpen(false); }} className="w-full text-left py-4 px-4 border-b border-primary/5 text-lg font-black font-bold flex items-center justify-between group uppercase">
                 History Archive <Library className="text-primary group-active:scale-125 transition-all" />
               </button>
-              <button onClick={() => { navigateToTab('liked'); setIsMobileSearchOpen(false); }} className="w-full text-left py-4 px-4 border-b border-primary/5 text-lg font-black italic flex items-center justify-between group">
+              <button onClick={() => { navigateToTab('liked'); setIsMobileSearchOpen(false); }} className="w-full text-left py-4 px-4 border-b border-primary/5 text-lg font-black font-bold flex items-center justify-between group uppercase">
                 Liked Tracks <Heart className="text-primary group-active:scale-125 transition-all" />
               </button>
            </div>
