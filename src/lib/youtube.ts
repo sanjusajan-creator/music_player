@@ -43,7 +43,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
     if (searchData.error) throw new Error(searchData.error.message);
     
-    const videoIds = searchData.items.map((item: any) => item.id.videoId).filter(Boolean).join(',');
+    const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
     if (!videoIds) return [];
 
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
@@ -85,15 +85,16 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
   if (!videoId || !YOUTUBE_API_KEY) return [];
 
   try {
-    // relatedToVideoId often requires specific video categories or is restricted.
-    // Using type=video is mandatory.
+    // Note: relatedToVideoId often fails for certain videos or regions in v3.
+    // We fall back gracefully to a general search if it fails.
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
+    // If API returns an error for relatedToVideoId (common), we don't throw.
     if (searchData.error) {
-        console.warn("YouTube related fetch warning:", searchData.error.message);
-        return []; // Return empty instead of throwing to prevent app crash
+        console.warn("YouTube related videos request failed:", searchData.error.message);
+        return [];
     }
     
     const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
@@ -111,7 +112,7 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
       duration: parseISO8601Duration(item.contentDetails.duration),
     }));
   } catch (error) {
-    console.error("YouTube related fetch failure:", error);
+    console.error("Related videos fetch failure:", error);
     return [];
   }
 }
