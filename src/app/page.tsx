@@ -253,18 +253,18 @@ function DashboardTabs({ userId }: { userId: string }) {
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-      <div className="w-full overflow-x-auto no-scrollbar mb-8 md:mb-12 pb-2">
-        <TabsList className="bg-white/5 border border-white/10 p-1 rounded-full h-12 flex w-max">
-          <TabsTrigger value="trending" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
+      <div className="w-full overflow-x-auto no-scrollbar mb-8 md:mb-12 pb-4">
+        <TabsList className="bg-white/5 border border-white/10 p-1 rounded-full h-12 flex w-max flex-nowrap shrink-0">
+          <TabsTrigger value="trending" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2 shrink-0">
             <TrendingUp className="w-3.5 h-3.5" /> Trending
           </TabsTrigger>
-          <TabsTrigger value="for-you" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
+          <TabsTrigger value="for-you" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2 shrink-0">
             <Sparkles className="w-3.5 h-3.5" /> For You
           </TabsTrigger>
-          <TabsTrigger value="liked" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
+          <TabsTrigger value="liked" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2 shrink-0">
             <Heart className="w-3.5 h-3.5" /> Liked
           </TabsTrigger>
-          <TabsTrigger value="history" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
+          <TabsTrigger value="history" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2 shrink-0">
             <History className="w-3.5 h-3.5" /> History
           </TabsTrigger>
         </TabsList>

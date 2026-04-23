@@ -46,11 +46,11 @@ export async function searchTracks(query: string): Promise<Track[]> {
     const videoIds = searchData.items.map((item: any) => item.id.videoId).filter(Boolean).join(',');
     if (!videoIds) return [];
 
-    const listUrl = `https://www.googleapis.com/video/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
+    const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl);
     const listData = await listRes.json();
 
-    const tracks: Track[] = listData.items
+    const tracks: Track[] = (listData.items || [])
       .map((item: any) => ({
         id: item.id,
         title: normalizeMetadata(item.snippet.title),
@@ -98,7 +98,7 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
     const listRes = await fetch(listUrl);
     const listData = await listRes.json();
 
-    return listData.items.map((item: any) => ({
+    return (listData.items || []).map((item: any) => ({
       id: item.id,
       title: normalizeMetadata(item.snippet.title),
       artist: normalizeMetadata(item.snippet.channelTitle),
