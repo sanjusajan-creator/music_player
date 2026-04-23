@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, 
   Heart, Maximize2, Music, Loader2, Shuffle, Repeat, 
-  Share2, Moon, Clock, VolumeX, ListMusic
+  Share2, Moon, Clock, VolumeX, ListMusic, Trash2, X
 } from 'lucide-react';
-import { usePlayerStore } from '@/store/usePlayerStore';
+import { usePlayerStore, Track } from '@/store/usePlayerStore';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,7 @@ export const Player: React.FC = () => {
     currentTrack, isPlaying, setIsPlaying, nextTrack, previousTrack, 
     progress, duration, volume, setVolume, isAdPlaying, likedTrackIds, toggleLike, seekTo,
     isShuffle, toggleShuffle, repeatMode, setRepeatMode, hasHydrated,
-    sleepTimer, setSleepTimer
+    sleepTimer, setSleepTimer, queue, removeFromQueue, clearQueue
   } = usePlayerStore();
   
   const { user } = useUser();
@@ -163,7 +163,7 @@ export const Player: React.FC = () => {
         {!isFullPlayer && (
           <motion.div 
             initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
-            className="fixed bottom-0 left-0 right-0 z-40 h-24 bg-black/95 border-t border-primary/20 flex items-center px-4 md:px-12 gap-4 md:gap-6 backdrop-blur-3xl"
+            className="fixed bottom-0 left-0 right-0 z-[60] h-24 bg-black/95 border-t border-primary/20 flex items-center px-4 md:px-12 gap-4 md:gap-6 backdrop-blur-3xl"
           >
             <div className="flex-1 flex items-center gap-3 md:gap-4 min-w-0 cursor-pointer" onClick={() => setIsFullPlayer(true)}>
               <div className="relative group shrink-0">
@@ -173,7 +173,7 @@ export const Player: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs md:text-sm font-black text-primary truncate gold-glow uppercase tracking-tighter font-bold">{currentTrack.title}</span>
+                <span className="text-xs md:text-sm font-black text-primary truncate gold-glow uppercase tracking-tighter">{currentTrack.title}</span>
                 <span className="text-[8px] md:text-[9px] text-muted-foreground truncate uppercase tracking-[0.3em] font-black">{currentTrack.artist}</span>
               </div>
               <Button variant="ghost" size="icon" onClick={handleLike} className="text-primary ml-1 shrink-0">
@@ -202,7 +202,7 @@ export const Player: React.FC = () => {
                 </Button>
               </div>
               <div className="flex items-center gap-4 w-full px-2">
-                <span className="text-[9px] font-mono font-bold text-primary/40 w-10 text-right">{formatTime(progress)}</span>
+                <span className="text-[9px] font-mono font-black text-primary/40 w-10 text-right">{formatTime(progress)}</span>
                 <Slider 
                   value={[progress]} 
                   max={duration || 100} 
@@ -210,7 +210,7 @@ export const Player: React.FC = () => {
                   onValueChange={(v) => seekTo(v[0])} 
                   className="cursor-pointer flex-1 h-1" 
                 />
-                <span className="text-[9px] font-mono font-bold text-primary/40 w-10">{formatTime(duration)}</span>
+                <span className="text-[9px] font-mono font-black text-primary/40 w-10">{formatTime(duration)}</span>
               </div>
             </div>
 
@@ -230,11 +230,11 @@ export const Player: React.FC = () => {
                  <PopoverContent className="bg-black border-primary/20 w-48 p-2">
                     <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-2 px-2">Sleep Timer</p>
                     {[15, 30, 45, 60].map(m => (
-                      <Button key={m} variant="ghost" className="w-full justify-start text-xs font-bold uppercase" onClick={() => setSleepTimer(m)}>
+                      <Button key={m} variant="ghost" className="w-full justify-start text-xs font-black uppercase" onClick={() => setSleepTimer(m)}>
                         <Clock className="w-3 h-3 mr-2" /> {m} minutes
                       </Button>
                     ))}
-                    <Button variant="ghost" className="w-full justify-start text-xs font-bold text-destructive uppercase" onClick={() => setSleepTimer(null)}>
+                    <Button variant="ghost" className="w-full justify-start text-xs font-black text-destructive uppercase" onClick={() => setSleepTimer(null)}>
                       Off
                     </Button>
                  </PopoverContent>
@@ -243,6 +243,8 @@ export const Player: React.FC = () => {
                <Button variant="ghost" size="icon" onClick={handleShare} className="hidden md:flex text-primary/60 hover:text-primary">
                  <Share2 className="w-5 h-5" />
                </Button>
+
+               <QueueSheet />
 
                <Sheet>
                  <SheetTrigger asChild>
@@ -253,7 +255,7 @@ export const Player: React.FC = () => {
                  <SheetContent side="right" className="bg-black border-l border-primary/20 text-primary p-0 w-full sm:max-w-md">
                    <div className="h-full flex flex-col p-8 md:p-10">
                      <SheetHeader className="mb-10 text-center">
-                       <SheetTitle className="text-primary font-black font-bold uppercase tracking-[0.4em] text-2xl md:text-3xl gold-glow">The Scroll</SheetTitle>
+                       <SheetTitle className="text-primary font-black uppercase tracking-[0.4em] text-2xl md:text-3xl gold-glow">The Scroll</SheetTitle>
                      </SheetHeader>
                      <ScrollArea className="flex-1 pr-4 custom-scrollbar">
                        {isLoadingLyrics ? (
@@ -262,7 +264,7 @@ export const Player: React.FC = () => {
                            <p className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Summoning...</p>
                          </div>
                        ) : (
-                         <p className="text-lg md:text-xl font-bold whitespace-pre-wrap leading-[2.5] tracking-wide text-center">
+                         <p className="text-lg md:text-xl font-black whitespace-pre-wrap leading-[2.5] tracking-wide text-center">
                            {lyrics || "Silent for now."}
                          </p>
                        )}
@@ -286,13 +288,13 @@ export const Player: React.FC = () => {
         {isFullPlayer && (
           <motion.div 
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-            className="fixed inset-0 z-50 bg-black flex flex-col h-[100dvh] w-screen overflow-hidden gradient-bg"
+            className="fixed inset-0 z-[70] bg-black flex flex-col h-[100dvh] w-screen overflow-hidden gradient-bg"
           >
             <div className="flex justify-between items-center h-16 shrink-0 px-6">
               <Button variant="ghost" size="icon" onClick={() => setIsFullPlayer(false)} className="text-primary active:scale-90">
                 <ChevronDown className="w-8 h-8" />
               </Button>
-              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.6em] text-primary gold-glow font-bold">SANCTUARY</span>
+              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.6em] text-primary gold-glow">SANCTUARY</span>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={handleShare} className="text-primary/40 hover:text-primary">
                   <Share2 className="w-5 h-5" />
@@ -316,7 +318,7 @@ export const Player: React.FC = () => {
                  <div className={cn("flex-1 flex flex-col min-w-0 w-full h-full justify-center overflow-hidden", showLyricsInFull ? "block" : "hidden md:flex")}>
                     {showLyricsInFull ? (
                         <div className="h-full flex flex-col overflow-hidden py-4">
-                            <h3 className="text-primary font-black font-bold uppercase tracking-[0.4em] text-sm md:text-lg mb-4 flex items-center gap-2 shrink-0">
+                            <h3 className="text-primary font-black uppercase tracking-[0.4em] text-sm md:text-lg mb-4 flex items-center gap-2 shrink-0">
                                 <Music className="w-4 h-4" /> Lyrics Scroll
                             </h3>
                             <ScrollArea className="flex-1 pr-4 custom-scrollbar">
@@ -327,7 +329,7 @@ export const Player: React.FC = () => {
                         </div>
                     ) : (
                         <div className="text-center md:text-left space-y-4">
-                            <h2 className="text-3xl md:text-5xl lg:text-7xl font-black text-primary gold-glow uppercase tracking-tighter font-bold leading-tight">
+                            <h2 className="text-3xl md:text-5xl lg:text-7xl font-black text-primary gold-glow uppercase tracking-tighter leading-tight">
                                 {currentTrack.title}
                             </h2>
                             <p className="text-xs md:text-xl lg:text-2xl text-muted-foreground uppercase tracking-[0.4em] font-black opacity-60">
@@ -340,7 +342,7 @@ export const Player: React.FC = () => {
 
               {!showLyricsInFull && (
                 <div className="md:hidden mt-6 text-center space-y-1 px-4 max-w-full">
-                    <h2 className="text-2xl font-black text-primary gold-glow truncate uppercase tracking-tighter font-bold">{currentTrack.title}</h2>
+                    <h2 className="text-2xl font-black text-primary gold-glow truncate uppercase tracking-tighter">{currentTrack.title}</h2>
                     <p className="text-[10px] text-muted-foreground truncate uppercase tracking-[0.4em] font-black opacity-60">{currentTrack.artist}</p>
                 </div>
               )}
@@ -355,7 +357,7 @@ export const Player: React.FC = () => {
                   onValueChange={(v) => seekTo(v[0])} 
                   className="cursor-pointer h-1.5" 
                 />
-                <div className="flex justify-between text-[10px] md:text-xs font-mono text-primary/40 tracking-[0.2em] font-bold">
+                <div className="flex justify-between text-[10px] md:text-xs font-mono text-primary/40 tracking-[0.2em] font-black">
                   <span>{formatTime(progress)}</span>
                   <span>{formatTime(duration)}</span>
                 </div>
@@ -382,11 +384,11 @@ export const Player: React.FC = () => {
                 </Button>
               </div>
               
-              <div className="flex justify-center">
+              <div className="flex justify-center gap-4">
                  <Button 
                     variant="ghost" 
                     className={cn(
-                        "font-black uppercase text-[10px] tracking-[0.4em] transition-all flex items-center gap-2 px-6 h-12 rounded-full font-bold",
+                        "font-black uppercase text-[10px] tracking-[0.4em] transition-all flex items-center gap-2 px-6 h-12 rounded-full",
                         showLyricsInFull ? "bg-primary text-black" : "text-primary/40 hover:text-primary"
                     )} 
                     onClick={fetchLyrics}
@@ -394,6 +396,7 @@ export const Player: React.FC = () => {
                    {isLoadingLyrics ? <Loader2 className="animate-spin w-4 h-4" /> : <Music className="w-4 h-4" />}
                    {showLyricsInFull ? "Close Lyrics" : "Lyrics Scroll"}
                  </Button>
+                 <QueueSheet />
               </div>
             </div>
           </motion.div>
@@ -402,3 +405,91 @@ export const Player: React.FC = () => {
     </>
   );
 };
+
+const QueueSheet = () => {
+  const { queue, currentTrack, setCurrentTrack, removeFromQueue, clearQueue } = usePlayerStore();
+  
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="text-primary/60 hover:text-primary relative">
+          <ListMusic className="w-5 h-5" />
+          {queue.length > 0 && (
+            <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+          )}
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="bg-black border-l border-primary/20 text-primary p-0 w-full sm:max-w-md">
+        <div className="h-full flex flex-col p-8 md:p-10">
+          <SheetHeader className="mb-8 flex flex-row items-center justify-between">
+            <SheetTitle className="text-primary font-black uppercase tracking-[0.4em] text-2xl md:text-3xl gold-glow">The Queue</SheetTitle>
+            {queue.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearQueue} className="text-destructive hover:bg-destructive/10 font-black text-[10px] uppercase tracking-widest">
+                <Trash2 className="w-3 h-3 mr-2" /> Clear
+              </Button>
+            )}
+          </SheetHeader>
+          
+          <ScrollArea className="flex-1 pr-4 custom-scrollbar">
+            <div className="space-y-10">
+              {currentTrack && (
+                <section>
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 mb-4">Manifesting Now</p>
+                  <QueueItem track={currentTrack} isActive />
+                </section>
+              )}
+              
+              <section>
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 mb-4">Upcoming Archives</p>
+                {queue.length > 0 ? (
+                  <div className="space-y-4">
+                    {queue.map((track, i) => (
+                      <QueueItem 
+                        key={`${track.id}-${i}`} 
+                        track={track} 
+                        onPlay={() => {
+                          setCurrentTrack(track);
+                          removeFromQueue(track.id);
+                        }}
+                        onRemove={() => removeFromQueue(track.id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-20 text-center border-2 border-dashed border-primary/10 rounded-3xl bg-primary/5">
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary/30">The queue is silent.</p>
+                  </div>
+                )}
+              </section>
+            </div>
+          </ScrollArea>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+const QueueItem = ({ track, isActive = false, onPlay, onRemove }: { track: Track, isActive?: boolean, onPlay?: () => void, onRemove?: () => void }) => (
+  <div className={cn(
+    "flex items-center gap-4 group p-3 rounded-2xl transition-all",
+    isActive ? "bg-primary/10 border border-primary/20" : "hover:bg-white/5 border border-transparent"
+  )}>
+    <div className="relative w-12 h-12 shrink-0 rounded-lg overflow-hidden border border-primary/10">
+      <img src={track.thumbnail} className="w-full h-full object-cover" alt={track.title} />
+      {!isActive && onPlay && (
+        <button onClick={onPlay} className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+          <Play className="w-5 h-5 fill-primary text-primary" />
+        </button>
+      )}
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className={cn("text-xs font-black uppercase truncate tracking-tighter", isActive ? "text-primary" : "text-white")}>{track.title}</p>
+      <p className="text-[9px] font-black uppercase truncate tracking-[0.2em] text-muted-foreground">{track.artist}</p>
+    </div>
+    {!isActive && onRemove && (
+      <Button variant="ghost" size="icon" onClick={onRemove} className="opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 h-8 w-8">
+        <X className="w-4 h-4" />
+      </Button>
+    )}
+  </div>
+);

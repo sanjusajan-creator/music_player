@@ -178,7 +178,6 @@ export const usePlayerStore = create<PlayerState>()(
             });
           }
         } else {
-          // No next track, logic handled by Autoplay in YouTubePlayer.tsx
           set({ isPlaying: false });
         }
       },
@@ -199,7 +198,7 @@ export const usePlayerStore = create<PlayerState>()(
       },
     }),
     {
-      name: 'vibecraft-spotify-v2',
+      name: 'vibecraft-spotify-v3',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 
@@ -207,7 +206,8 @@ export const usePlayerStore = create<PlayerState>()(
         likedTrackIds: Array.from(state.likedTrackIds) as any,
         repeatMode: state.repeatMode,
         isShuffle: state.isShuffle,
-        isAutoplay: state.isAutoplay
+        isAutoplay: state.isAutoplay,
+        queue: state.queue
       }),
       onRehydrateStorage: (state) => {
         return (rehydratedState, error) => {
