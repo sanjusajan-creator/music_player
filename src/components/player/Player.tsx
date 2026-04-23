@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { getRelatedVideos } from '@/lib/youtube';
 
 export const Player: React.FC = () => {
   const { 
@@ -408,6 +409,13 @@ export const Player: React.FC = () => {
 
 const QueueSheet = () => {
   const { queue, currentTrack, setCurrentTrack, removeFromQueue, clearQueue } = usePlayerStore();
+  const [recommendations, setRecommendations] = useState<Track[]>([]);
+
+  useEffect(() => {
+    if (currentTrack) {
+        getRelatedVideos(currentTrack.id).then(setRecommendations);
+    }
+  }, [currentTrack]);
   
   return (
     <Sheet>
@@ -461,6 +469,21 @@ const QueueSheet = () => {
                   </div>
                 )}
               </section>
+
+              {recommendations.length > 0 && (
+                <section>
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 mb-4">The Oracle Recommends</p>
+                    <div className="space-y-4">
+                        {recommendations.slice(0, 5).map((track) => (
+                            <QueueItem 
+                                key={track.id} 
+                                track={track} 
+                                onPlay={() => setCurrentTrack(track)}
+                            />
+                        ))}
+                    </div>
+                </section>
+              )}
             </div>
           </ScrollArea>
         </div>

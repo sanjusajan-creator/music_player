@@ -6,6 +6,7 @@ import { Play, Plus, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 interface SearchResultProps {
   track: Track;
@@ -14,6 +15,15 @@ interface SearchResultProps {
 export const SearchResult: React.FC<SearchResultProps> = ({ track }) => {
   const { setCurrentTrack, addToQueue, likedTrackIds, toggleLike } = usePlayerStore();
   const isLiked = likedTrackIds.has(track.id);
+
+  const handleAddToQueue = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToQueue(track);
+    toast({
+        title: "Added to Queue",
+        description: `Archive: ${track.title}`
+    });
+  };
 
   return (
     <motion.div 
@@ -32,7 +42,7 @@ export const SearchResult: React.FC<SearchResultProps> = ({ track }) => {
           </Button>
           <Button 
             variant="ghost" size="icon" className="w-10 h-10 border border-primary/50 text-primary rounded-full hover:bg-primary/10"
-            onClick={() => addToQueue(track)}
+            onClick={handleAddToQueue}
           >
             <Plus className="w-5 h-5" />
           </Button>
@@ -40,8 +50,8 @@ export const SearchResult: React.FC<SearchResultProps> = ({ track }) => {
       </div>
       
       <div className="flex flex-col min-w-0 pr-8">
-        <h4 className="font-bold text-sm text-primary truncate leading-tight mb-1 uppercase tracking-tighter">{track.title}</h4>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate font-bold">{track.artist}</p>
+        <h4 className="font-black text-sm text-primary truncate leading-tight mb-1 uppercase tracking-tighter">{track.title}</h4>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate font-black">{track.artist}</p>
       </div>
 
       <button 
