@@ -45,7 +45,7 @@ function HomeContent() {
   const [password, setPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  // FORCE LOGIN GATE: Ensure email presence
+  // FORCE EMAIL LOGIN: Ensure we are not using an anonymous or incomplete session
   const showLogin = !isUserLoading && (!user || !user.email);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -148,11 +148,20 @@ function HomeContent() {
         <YouTubePlayer />
         <div className="flex-1 overflow-y-auto no-scrollbar pt-24 pb-32 gradient-bg px-6 md:px-12 h-full">
           <div className="max-w-7xl mx-auto">
-            <header className="mb-12">
-              <h2 className="text-4xl md:text-6xl font-black text-primary gold-glow italic tracking-tighter mb-4">
-                Welcome, <span className="text-white opacity-80">{user?.email?.split('@')[0] || 'Traveler'}</span>
-              </h2>
-              <p className="text-muted-foreground text-xs font-black uppercase tracking-[0.3em]">Curation for your late-night sessions.</p>
+            <header className="mb-12 flex justify-between items-end">
+              <div>
+                <h2 className="text-4xl md:text-6xl font-black text-primary gold-glow italic tracking-tighter mb-4">
+                  Welcome, <span className="text-white opacity-80">{user?.email?.split('@')[0] || 'Traveler'}</span>
+                </h2>
+                <p className="text-muted-foreground text-xs font-black uppercase tracking-[0.3em]">Curation for your late-night sessions.</p>
+              </div>
+              <Button 
+                variant="ghost" 
+                onClick={() => signOut(auth)}
+                className="text-primary/40 hover:text-primary font-black uppercase text-[9px] tracking-[0.3em] mb-4"
+              >
+                Sign Out
+              </Button>
             </header>
 
             <Suspense fallback={<div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}>

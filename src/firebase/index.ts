@@ -23,8 +23,7 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
-  // Use initializeFirestore with experimentalForceLongPolling to resolve connectivity issues
-  // in environments where WebSockets might be blocked or unstable.
+  // CRITICAL: experimentalForceLongPolling is REQUIRED for stable connectivity in this environment.
   let firestore: Firestore;
   try {
     firestore = initializeFirestore(firebaseApp, {
