@@ -27,8 +27,10 @@ const lyricsPrompt = ai.definePrompt({
   input: {schema: LyricsInputSchema},
   output: {schema: LyricsOutputSchema},
   prompt: `You are a premium music archive assistant. Provide the lyrics for the following song. 
-If it is a real song, provide the actual lyrics. If it's an obscure track, generate high-quality poetic lyrics fitting the title and artist style.
-Format the lyrics with line breaks.
+
+If this is a well-known song, provide the ACTUAL lyrics accurately. 
+If it is a rare or obscure track, generate high-quality, poetic, and rhythmic lyrics that fit the mood of the title and artist.
+Format the lyrics with double line breaks between stanzas for high-fidelity readability.
 
 Song Title: {{{title}}}
 Artist: {{{artist}}}`,

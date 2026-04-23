@@ -60,16 +60,18 @@ function HomeContent() {
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setQueue, hasHydrated } = usePlayerStore();
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
-  const searchParams = useSearchParams();
+  
   const searchQuery = searchParams.get('q') || '';
+  const activeTab = searchParams.get('tab') || 'trending';
 
-  // Randomize initial trending query on mount
+  // Randomize initial trending query on mount - ensures fresh discovery on refresh
   const randomTrend = useMemo(() => {
     return ORACLE_SEEDS[Math.floor(Math.random() * ORACLE_SEEDS.length)];
   }, []);
@@ -281,7 +283,7 @@ function DashboardTabs({ userId, randomSeed }: { userId: string, randomSeed: str
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', value);
-    params.delete('q'); 
+    params.delete('q'); // Navigating tabs clears search for smooth back-button flow
     router.push(`/?${params.toString()}`);
   };
 

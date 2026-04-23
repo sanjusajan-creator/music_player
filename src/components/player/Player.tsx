@@ -15,7 +15,7 @@ import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlockin
 import { doc } from 'firebase/firestore';
 import { generateLyrics } from '@/ai/flows/generate-lyrics';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getRelatedVideos } from '@/lib/youtube';
@@ -36,6 +36,7 @@ export const Player: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(80);
   const [showLyricsInFull, setShowLyricsInFull] = useState(false);
+  const [isLyricsSheetOpen, setIsLyricsSheetOpen] = useState(false);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -108,17 +109,27 @@ export const Player: React.FC = () => {
 
   const fetchLyrics = async () => {
     if (!currentTrack) return;
-    if (lyrics) {
-        if (isFullPlayer) setShowLyricsInFull(!showLyricsInFull);
+    
+    // Toggle logic for full player mode
+    if (isFullPlayer) {
+      if (lyrics) {
+        setShowLyricsInFull(!showLyricsInFull);
         return;
+      }
+    } else {
+      // Normal mode: Open the sheet
+      setIsLyricsSheetOpen(true);
     }
+
+    if (lyrics) return;
+
     setIsLoadingLyrics(true);
     try {
       const result = await generateLyrics({ title: currentTrack.title, artist: currentTrack.artist });
       setLyrics(result.lyrics);
       if (isFullPlayer) setShowLyricsInFull(true);
     } catch (error) {
-      setLyrics("Lyrics archive unavailable.");
+      setLyrics("Lyrics archive unavailable. The Oracle is silent.");
     } finally {
       setIsLoadingLyrics(false);
     }
@@ -247,14 +258,17 @@ export const Player: React.FC = () => {
 
                <QueueSheet />
 
-               <Sheet>
+               <Sheet open={isLyricsSheetOpen} onOpenChange={setIsLyricsSheetOpen}>
                  <SheetTrigger asChild>
                    <Button variant="ghost" size="icon" onClick={fetchLyrics} className="text-primary/60 hover:text-primary">
                      <Music className="w-5 h-5" />
                    </Button>
                  </SheetTrigger>
                  <SheetContent side="right" className="bg-black border-l border-primary/20 text-primary p-0 w-full sm:max-w-md">
-                   <div className="h-full flex flex-col p-8 md:p-10">
+                   <div className="h-full flex flex-col p-8 md:p-10 relative">
+                     <SheetClose className="absolute top-6 right-6 text-primary hover:text-white transition-colors">
+                        <X className="w-8 h-8" />
+                     </SheetClose>
                      <SheetHeader className="mb-10 text-center">
                        <SheetTitle className="text-primary font-black uppercase tracking-[0.4em] text-2xl md:text-3xl gold-glow">The Scroll</SheetTitle>
                      </SheetHeader>
@@ -266,7 +280,7 @@ export const Player: React.FC = () => {
                          </div>
                        ) : (
                          <p className="text-lg md:text-xl font-black whitespace-pre-wrap leading-[2.5] tracking-wide text-center">
-                           {lyrics || "Silent for now."}
+                           {lyrics || "Silent for now. Manifesting later."}
                          </p>
                        )}
                      </ScrollArea>
@@ -318,13 +332,13 @@ export const Player: React.FC = () => {
 
                  <div className={cn("flex-1 flex flex-col min-w-0 w-full h-full justify-center overflow-hidden", showLyricsInFull ? "block" : "hidden md:flex")}>
                     {showLyricsInFull ? (
-                        <div className="h-full flex flex-col overflow-hidden py-4">
+                        <div className="h-full flex flex-col overflow-hidden py-4 relative">
                             <h3 className="text-primary font-black uppercase tracking-[0.4em] text-sm md:text-lg mb-4 flex items-center gap-2 shrink-0">
                                 <Music className="w-4 h-4" /> Lyrics Scroll
                             </h3>
                             <ScrollArea className="flex-1 pr-4 custom-scrollbar">
                                 <p className="text-xl md:text-3xl lg:text-4xl font-black whitespace-pre-wrap leading-[1.8] tracking-tight text-white/90">
-                                    {lyrics || "Scanning the archives..."}
+                                    {lyrics || "Scanning the archives... the Oracle is manifesting lyrics."}
                                 </p>
                             </ScrollArea>
                         </div>
@@ -428,7 +442,10 @@ const QueueSheet = () => {
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="bg-black border-l border-primary/20 text-primary p-0 w-full sm:max-w-md">
-        <div className="h-full flex flex-col p-8 md:p-10">
+        <div className="h-full flex flex-col p-8 md:p-10 relative">
+          <SheetClose className="absolute top-6 right-6 text-primary hover:text-white transition-colors">
+            <X className="w-8 h-8" />
+          </SheetClose>
           <SheetHeader className="mb-8 flex flex-row items-center justify-between">
             <SheetTitle className="text-primary font-black uppercase tracking-[0.4em] text-2xl md:text-3xl gold-glow">The Queue</SheetTitle>
             {queue.length > 0 && (
