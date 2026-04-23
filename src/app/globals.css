@@ -107,3 +107,8 @@ main {
 .animate-pulse-gold {
   animation: pulse-gold 3s infinite ease-in-out;
 }
+
+/* Ensure tabs list doesn't wrap and stays horizontally scrollable */
+[data-radix-collection-item] {
+  flex-shrink: 0;
+}
