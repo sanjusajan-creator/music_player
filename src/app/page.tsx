@@ -49,6 +49,8 @@ function HomeContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('q') || '';
 
   // FORCE EMAIL LOGIN
   const showLogin = !isUserLoading && (!user || !user.email);
@@ -150,19 +152,24 @@ function HomeContent() {
         <div className="flex-1 overflow-y-auto no-scrollbar pt-20 md:pt-24 pb-32 gradient-bg px-4 md:px-12 h-full">
           <div className="max-w-7xl mx-auto">
             <header className="mb-8 md:mb-12 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
-              <div>
-                <h2 className="text-3xl md:text-6xl font-black text-primary gold-glow italic tracking-tighter mb-2 md:mb-4">
-                  Welcome, <span className="text-white opacity-80">{user?.email?.split('@')[0] || 'Traveler'}</span>
+              <div className="min-w-0">
+                <h2 className="text-3xl md:text-6xl font-black text-primary gold-glow italic tracking-tighter mb-2 md:mb-4 truncate">
+                  {searchQuery ? "Manifesting..." : `Welcome, `}
+                  <span className="text-white opacity-80">{searchQuery ? ` "${searchQuery}"` : (user?.email?.split('@')[0] || 'Traveler')}</span>
                 </h2>
-                <p className="text-muted-foreground text-[10px] md:text-xs font-black uppercase tracking-[0.3em]">Curation for your late-night sessions.</p>
+                <p className="text-muted-foreground text-[10px] md:text-xs font-black uppercase tracking-[0.3em]">
+                  {searchQuery ? "Searching the cosmic archives." : "Curation for your late-night sessions."}
+                </p>
               </div>
-              <Button 
-                variant="ghost" 
-                onClick={() => signOut(auth)}
-                className="text-primary/40 hover:text-primary font-black uppercase text-[9px] tracking-[0.3em] w-fit"
-              >
-                Sign Out
-              </Button>
+              {!searchQuery && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => signOut(auth)}
+                  className="text-primary/40 hover:text-primary font-black uppercase text-[9px] tracking-[0.3em] w-fit"
+                >
+                  Sign Out
+                </Button>
+              )}
             </header>
 
             <Suspense fallback={<div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}>
@@ -228,6 +235,11 @@ function DashboardTabs({ userId }: { userId: string }) {
             results?.map((track) => (
               <SearchResult key={track.id} track={track} />
             ))
+          )}
+          {results?.length === 0 && !isSearchLoading && (
+            <div className="col-span-full text-center py-20 opacity-40 font-black uppercase tracking-widest text-xs italic">
+              No cosmic archives match your search.
+            </div>
           )}
         </div>
       </TabsContent>

@@ -85,7 +85,7 @@ export const Navbar: React.FC = () => {
         </Button>
 
         <div className="hidden md:flex items-center gap-10">
-          <NavItem icon={<Compass />} label="Explore" active={currentTab === 'trending'} onClick={() => navigateToTab('trending')} />
+          <NavItem icon={<Compass />} label="Explore" active={currentTab === 'trending' && !initialQuery} onClick={() => navigateToTab('trending')} />
           <NavItem icon={<Library />} label="Library" active={currentTab === 'library'} onClick={() => navigateToTab('library')} />
           <NavItem icon={<Heart />} label="Liked" active={currentTab === 'liked'} onClick={() => navigateToTab('liked')} />
         </div>
@@ -115,15 +115,15 @@ export const Navbar: React.FC = () => {
       </div>
 
       {isMobileSearchOpen && (
-        <div className="fixed inset-0 bg-black z-[60] p-6 flex flex-col animate-in fade-in duration-300">
-           <div className="flex items-center gap-4 mb-8">
+        <div className="fixed inset-0 bg-black z-[70] p-6 flex flex-col animate-in fade-in slide-in-from-top duration-300">
+           <div className="flex items-center gap-3 mb-8">
              <Button variant="ghost" size="icon" onClick={() => setIsMobileSearchOpen(false)} className="text-primary active:scale-90">
                <X className="w-7 h-7" />
              </Button>
-             <div className="relative flex-1 flex items-center gap-2">
+             <div className="flex-1 flex items-center gap-2">
                 <Input 
                   autoFocus
-                  className="bg-white/5 border-primary/20 focus-visible:ring-primary rounded-full h-12 pr-12 pl-6 text-base font-bold"
+                  className="flex-1 bg-white/5 border-primary/20 focus-visible:ring-primary rounded-full h-12 px-6 text-base font-bold"
                   placeholder="Search songs"
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
@@ -131,7 +131,7 @@ export const Navbar: React.FC = () => {
                 />
                 <Button 
                   size="icon" 
-                  className="rounded-full bg-primary text-black h-12 w-12 shrink-0 shadow-lg"
+                  className="rounded-full bg-primary text-black h-12 w-12 shrink-0 shadow-lg active:scale-90 transition-transform"
                   onClick={handleSearch}
                 >
                   <ArrowRight className="w-6 h-6" />
