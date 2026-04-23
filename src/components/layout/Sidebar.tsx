@@ -50,6 +50,42 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
     toast({ title: "Archive Deleted", description: "The collection has been purged." });
   };
 
+  const handleMagicPlaylist = async () => {
+    if (!user || !db || !magicPrompt.trim()) return;
+    setIsMagicLoading(true);
+    try {
+      const result = await generateMagicPlaylist({ prompt: magicPrompt });
+      const colRef = collection(db, 'users', user.uid, 'playlists');
+      
+      addDocumentNonBlocking(colRef, {
+        name: result.playlistName,
+        description: result.description,
+        createdAt: new Date().toISOString(),
+        tracks: result.suggestedTracks.map(t => ({
+          id: `ai-${Math.random().toString(36).substr(2, 9)}`, // Temporary IDs until searched
+          title: t.title,
+          artist: t.artist,
+          thumbnail: "https://picsum.photos/seed/magic/400/400"
+        }))
+      });
+
+      toast({ 
+        title: "Magic Manifested", 
+        description: `Summoned: ${result.playlistName}` 
+      });
+      setIsMagicDialogOpen(false);
+      setMagicPrompt('');
+    } catch (error) {
+      toast({ 
+        variant: "destructive", 
+        title: "Summoning Failed", 
+        description: "The Oracle is silent. Try again." 
+      });
+    } finally {
+      setIsMagicLoading(false);
+    }
+  };
+
   const navItems = [
     { label: 'Home', icon: <Home />, path: '/' },
     { label: 'Explore', icon: <Search />, path: '/?tab=trending' },
