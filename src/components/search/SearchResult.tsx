@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Track, usePlayerStore } from '@/store/usePlayerStore';
 import { Play, Plus, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,10 @@ interface SearchResultProps {
   track: Track;
 }
 
-export const SearchResult: React.FC<SearchResultProps> = ({ track }) => {
+/**
+ * Optimized SearchResult with memoization to prevent lag during playback progress updates.
+ */
+export const SearchResult = memo(({ track }: SearchResultProps) => {
   const { setCurrentTrack, addToQueue, likedTrackIds, toggleLike } = usePlayerStore();
   const isLiked = likedTrackIds.has(track.id);
 
@@ -25,6 +28,16 @@ export const SearchResult: React.FC<SearchResultProps> = ({ track }) => {
     });
   };
 
+  const handlePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentTrack(track);
+  };
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleLike(track.id);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
@@ -32,11 +45,16 @@ export const SearchResult: React.FC<SearchResultProps> = ({ track }) => {
       className="group relative bg-primary/5 p-3 rounded-2xl border border-primary/10 hover:border-primary/40 transition-all flex flex-col gap-3"
     >
       <div className="relative aspect-square rounded-xl overflow-hidden border border-primary/5">
-        <img src={track.thumbnail} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt={track.title} />
+        <img 
+          src={track.thumbnail} 
+          className="w-full h-full object-cover transition-transform group-hover:scale-105" 
+          alt={track.title} 
+          loading="lazy"
+        />
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
           <Button 
             variant="ghost" size="icon" className="w-12 h-12 bg-primary text-black rounded-full hover:bg-white"
-            onClick={() => setCurrentTrack(track)}
+            onClick={handlePlay}
           >
             <Play className="fill-black ml-1" />
           </Button>
@@ -55,7 +73,7 @@ export const SearchResult: React.FC<SearchResultProps> = ({ track }) => {
       </div>
 
       <button 
-        onClick={() => toggleLike(track.id)}
+        onClick={handleLike}
         className={cn(
           "absolute bottom-4 right-4 p-2 transition-all group-hover:opacity-100 opacity-60",
           isLiked ? "text-primary opacity-100" : "text-primary/40"
@@ -65,4 +83,6 @@ export const SearchResult: React.FC<SearchResultProps> = ({ track }) => {
       </button>
     </motion.div>
   );
-};
+});
+
+SearchResult.displayName = 'SearchResult';

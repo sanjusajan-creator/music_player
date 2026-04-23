@@ -62,8 +62,9 @@ main {
   position: relative;
 }
 
+/* Optimized for Mobile Performance: Reduced blur intensity */
 .glass-morphism {
-  @apply bg-black/80 backdrop-blur-3xl border border-white/5;
+  @apply bg-black/80 backdrop-blur-xl border border-white/5;
 }
 
 .gold-glow {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useMemo } from 'react';
+import React, { Suspense, useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -24,7 +24,14 @@ import { toast } from '@/hooks/use-toast';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { getRelatedVideos } from '@/lib/youtube';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 export default function AppWrapper() {
   return (
@@ -69,14 +76,13 @@ function HomeContent() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   
   const searchQuery = searchParams.get('q') || '';
-  const activeTab = searchParams.get('tab') || 'trending';
 
-  // Randomize initial trending query on mount - ensures fresh discovery on refresh
+  // Randomize initial trending query on mount
   const randomTrend = useMemo(() => {
     return ORACLE_SEEDS[Math.floor(Math.random() * ORACLE_SEEDS.length)];
   }, []);
 
-  // Initialize Liked Songs as Queue on mount
+  // Initialize Liked Songs as Queue on mount - Optimized to be non-blocking
   useEffect(() => {
     if (user && db && hasHydrated) {
       const fetchLikedAsQueue = async () => {
@@ -100,7 +106,7 @@ function HomeContent() {
       };
       fetchLikedAsQueue();
     }
-  }, [user, db, hasHydrated, setQueue]);
+  }, [user?.uid, db, hasHydrated, setQueue]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,9 +129,9 @@ function HomeContent() {
     }
   };
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     router.push('/');
-  };
+  }, [router]);
 
   if (isUserLoading) {
     return (
@@ -280,12 +286,12 @@ function DashboardTabs({ userId, randomSeed }: { userId: string, randomSeed: str
   
   const { data: trendingResults, isLoading: isTrendingLoading } = useYouTubeSearch(activeTab === 'trending' ? randomSeed : '');
 
-  const handleTabChange = (value: string) => {
+  const handleTabChange = useCallback((value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', value);
-    params.delete('q'); // Navigating tabs clears search for smooth back-button flow
+    params.delete('q'); 
     router.push(`/?${params.toString()}`);
-  };
+  }, [router, searchParams]);
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
