@@ -77,12 +77,12 @@ function HomeContent() {
   
   const searchQuery = searchParams.get('q') || '';
 
-  // Randomize initial trending query on mount
+  // Dynamic discovery: Seed changes on every mount
   const randomTrend = useMemo(() => {
     return ORACLE_SEEDS[Math.floor(Math.random() * ORACLE_SEEDS.length)];
   }, []);
 
-  // Initialize Liked Songs as Queue on mount - Optimized to be non-blocking
+  // Initialize Liked Songs as Queue on mount - Non-blocking
   useEffect(() => {
     if (user && db && hasHydrated) {
       const fetchLikedAsQueue = async () => {
@@ -130,8 +130,10 @@ function HomeContent() {
   };
 
   const clearSearch = useCallback(() => {
-    router.push('/');
-  }, [router]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('q');
+    router.push(`/?${params.toString()}`);
+  }, [router, searchParams]);
 
   if (isUserLoading) {
     return (
@@ -145,13 +147,13 @@ function HomeContent() {
   if (!isUserLoading && (!user || !user.email)) {
     return (
       <main className="min-h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-4 md:p-12 text-center gradient-bg overflow-y-auto no-scrollbar relative">
-        <div className="w-full max-w-lg space-y-8 animate-in fade-in zoom-in duration-500 z-10 py-12">
-          <header>
+        <div className="w-full max-w-lg space-y-8 animate-in fade-in zoom-in duration-500 z-10 py-12 flex flex-col justify-center min-h-[60vh]">
+          <header className="mb-10">
             <h1 className="text-5xl md:text-8xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase leading-none">VIBECRAFT</h1>
             <p className="text-primary/40 uppercase tracking-[0.5em] text-[10px] md:text-xs font-black">High-Fidelity Sanctuary</p>
           </header>
 
-          <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-6 md:p-12 rounded-[2rem] md:rounded-[3rem] shadow-2xl space-y-8 backdrop-blur-xl">
+          <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-6 md:p-12 rounded-[2rem] md:rounded-[3rem] shadow-2xl space-y-8 backdrop-blur-xl w-full">
             <div className="space-y-4">
               <div className="relative">
                 <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />

@@ -31,7 +31,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     // Silent fail for cache reads
   }
 
-  // 2. Fallback to mocks if no API key
+  // 2. Fallback to mocks if no API key or during potential quota issues
   if (!YOUTUBE_API_KEY) {
     return MOCK_TRACKS.filter(t => 
       t.title.toLowerCase().includes(sanitizedQuery) || 
@@ -41,7 +41,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   try {
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
-    const searchRes = await fetch(searchUrl);
+    const searchRes = await fetch(searchUrl, { mode: 'cors' });
     const searchData = await searchRes.json();
 
     if (searchData.error) {
@@ -53,7 +53,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     if (!videoIds) return MOCK_TRACKS;
 
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
-    const listRes = await fetch(listUrl);
+    const listRes = await fetch(listUrl, { mode: 'cors' });
     const listData = await listRes.json();
 
     const tracks: Track[] = (listData.items || [])
@@ -95,7 +95,7 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
 
   try {
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
-    const searchRes = await fetch(searchUrl);
+    const searchRes = await fetch(searchUrl, { mode: 'cors' });
     const searchData = await searchRes.json();
 
     if (searchData.error) {
@@ -106,7 +106,7 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
     if (!videoIds) return [];
 
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
-    const listRes = await fetch(listUrl);
+    const listRes = await fetch(listUrl, { mode: 'cors' });
     const listData = await listRes.json();
 
     return (listData.items || []).map((item: any) => ({
