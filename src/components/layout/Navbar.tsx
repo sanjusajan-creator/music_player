@@ -53,10 +53,10 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-2xl h-16 md:h-24 px-6 md:px-12 border-b border-primary/10 flex items-center justify-between">
-      <div className="flex items-center gap-6">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-2xl h-16 md:h-24 px-4 md:px-12 border-b border-primary/10 flex items-center justify-between">
+      <div className="flex items-center gap-4">
         <div 
-          className="text-2xl md:text-3xl font-black text-primary gold-glow cursor-pointer tracking-tighter uppercase italic"
+          className="text-xl md:text-3xl font-black text-primary gold-glow cursor-pointer tracking-tighter uppercase italic"
           onClick={() => navigateToTab('trending')}
         >
           Vibecraft
@@ -76,9 +76,9 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 md:gap-10">
+      <div className="flex items-center gap-2 md:gap-10">
         <Button variant="ghost" size="icon" className="md:hidden text-primary" onClick={() => setIsMobileSearchOpen(true)}>
-          <Search className="w-6 h-6" />
+          <Search className="w-5 h-5" />
         </Button>
         <Button variant="ghost" size="icon" className="md:hidden text-primary" onClick={() => setIsMobileSidebarOpen(true)}>
           <Menu className="w-6 h-6" />
@@ -93,8 +93,8 @@ export const Navbar: React.FC = () => {
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all p-0 w-10 h-10">
-                <Avatar className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all p-0 w-8 h-8 md:w-10 md:h-10">
+                <Avatar className="h-6 w-6 md:h-8 md:w-8">
                   <AvatarImage src={`https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`} />
                   <AvatarFallback className="bg-primary text-black font-black">U</AvatarFallback>
                 </Avatar>
@@ -103,8 +103,8 @@ export const Navbar: React.FC = () => {
             <DropdownMenuContent className="bg-black border-primary/20 text-primary w-64 p-3 rounded-[1.5rem] shadow-2xl" align="end">
               <DropdownMenuLabel className="font-black italic text-sm tracking-widest px-3 py-2">My Sanctuary</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-primary/10" />
-              <DropdownMenuItem className="focus:bg-primary focus:text-black rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all mb-1" onClick={() => navigateToTab('library')}>Profile Archive</DropdownMenuItem>
-              <DropdownMenuItem className="focus:bg-primary focus:text-black rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all" onClick={() => navigateToTab('liked')}>Liked Tracks</DropdownMenuItem>
+              <DropdownMenuItem className="focus:bg-primary focus:text-black rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all mb-1" onClick={() => navigateToTab('history')}>History Archive</DropdownMenuItem>
+              <DropdownMenuItem className="focus:bg-primary focus:text-black rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all mb-1" onClick={() => navigateToTab('liked')}>Liked Tracks</DropdownMenuItem>
               <DropdownMenuSeparator className="bg-primary/10" />
               <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-white rounded-xl cursor-pointer font-bold px-3 py-2.5 transition-all" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" /> Exit Sanctuary
@@ -116,14 +116,14 @@ export const Navbar: React.FC = () => {
 
       {isMobileSearchOpen && (
         <div className="fixed inset-0 bg-black z-[60] p-6 flex flex-col animate-in fade-in duration-300">
-           <div className="flex items-center gap-4 mb-12">
+           <div className="flex items-center gap-4 mb-8">
              <Button variant="ghost" size="icon" onClick={() => setIsMobileSearchOpen(false)} className="text-primary active:scale-90">
-               <X className="w-8 h-8" />
+               <X className="w-7 h-7" />
              </Button>
-             <div className="relative flex-1 flex items-center gap-3">
+             <div className="relative flex-1 flex items-center gap-2">
                 <Input 
                   autoFocus
-                  className="bg-white/5 border-primary/20 focus-visible:ring-primary rounded-full h-14 pr-14 pl-6 text-lg font-bold"
+                  className="bg-white/5 border-primary/20 focus-visible:ring-primary rounded-full h-12 pr-12 pl-6 text-base font-bold"
                   placeholder="Search songs"
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
@@ -131,19 +131,22 @@ export const Navbar: React.FC = () => {
                 />
                 <Button 
                   size="icon" 
-                  className="rounded-full bg-primary text-black h-14 w-14 shrink-0 shadow-lg"
+                  className="rounded-full bg-primary text-black h-12 w-12 shrink-0 shadow-lg"
                   onClick={handleSearch}
                 >
-                  <ArrowRight className="w-7 h-7" />
+                  <ArrowRight className="w-6 h-6" />
                 </Button>
              </div>
            </div>
-           <div className="space-y-6">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 px-4">Navigation</p>
-              <button onClick={() => { navigateToTab('trending'); setIsMobileSearchOpen(false); }} className="w-full text-left py-6 px-4 border-b border-primary/5 text-xl font-black italic flex items-center justify-between group">
+           <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 px-4">Sanctuary Maps</p>
+              <button onClick={() => { navigateToTab('trending'); setIsMobileSearchOpen(false); }} className="w-full text-left py-4 px-4 border-b border-primary/5 text-lg font-black italic flex items-center justify-between group">
                 Explore <Compass className="text-primary group-active:scale-125 transition-all" />
               </button>
-              <button onClick={() => { navigateToTab('liked'); setIsMobileSearchOpen(false); }} className="w-full text-left py-6 px-4 border-b border-primary/5 text-xl font-black italic flex items-center justify-between group">
+              <button onClick={() => { navigateToTab('history'); setIsMobileSearchOpen(false); }} className="w-full text-left py-4 px-4 border-b border-primary/5 text-lg font-black italic flex items-center justify-between group">
+                History Archive <Library className="text-primary group-active:scale-125 transition-all" />
+              </button>
+              <button onClick={() => { navigateToTab('liked'); setIsMobileSearchOpen(false); }} className="w-full text-left py-4 px-4 border-b border-primary/5 text-lg font-black italic flex items-center justify-between group">
                 Liked Tracks <Heart className="text-primary group-active:scale-125 transition-all" />
               </button>
            </div>

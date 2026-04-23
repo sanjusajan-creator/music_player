@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, 
   Heart, Maximize2, Music, Loader2, Shuffle, Repeat, 
-  Share2, Moon, Clock, VolumeX
+  Share2, Moon, Clock, VolumeX, ListMusic
 } from 'lucide-react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { Slider } from '@/components/ui/slider';
@@ -34,6 +34,7 @@ export const Player: React.FC = () => {
   const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(80);
+  const [showLyricsInFull, setShowLyricsInFull] = useState(false);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -100,15 +101,21 @@ export const Player: React.FC = () => {
   useEffect(() => {
     if (currentTrack) {
       setLyrics(null);
+      setShowLyricsInFull(false);
     }
   }, [currentTrack]);
 
   const fetchLyrics = async () => {
-    if (!currentTrack || lyrics) return;
+    if (!currentTrack) return;
+    if (lyrics) {
+        if (isFullPlayer) setShowLyricsInFull(!showLyricsInFull);
+        return;
+    }
     setIsLoadingLyrics(true);
     try {
       const result = await generateLyrics({ title: currentTrack.title, artist: currentTrack.artist });
       setLyrics(result.lyrics);
+      if (isFullPlayer) setShowLyricsInFull(true);
     } catch (error) {
       setLyrics("Lyrics archive unavailable.");
     } finally {
@@ -160,22 +167,22 @@ export const Player: React.FC = () => {
           >
             <div className="flex-1 flex items-center gap-4 min-w-0 cursor-pointer" onClick={() => setIsFullPlayer(true)}>
               <div className="relative group shrink-0">
-                <img src={currentTrack.thumbnail} className="w-14 h-14 rounded-2xl border border-primary/30 shadow-2xl object-cover" alt="cover" />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all rounded-2xl">
+                <img src={currentTrack.thumbnail} className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl border border-primary/30 shadow-2xl object-cover" alt="cover" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all rounded-xl md:rounded-2xl">
                   <Maximize2 className="w-5 h-5 text-primary" />
                 </div>
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-black text-primary truncate gold-glow uppercase tracking-tighter italic">{currentTrack.title}</span>
-                <span className="text-[9px] text-muted-foreground truncate uppercase tracking-[0.3em] font-black">{currentTrack.artist}</span>
+                <span className="text-xs md:text-sm font-black text-primary truncate gold-glow uppercase tracking-tighter italic">{currentTrack.title}</span>
+                <span className="text-[8px] md:text-[9px] text-muted-foreground truncate uppercase tracking-[0.3em] font-black">{currentTrack.artist}</span>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleLike} className="text-primary ml-2 shrink-0">
-                <Heart className={cn("w-5 h-5", isLiked && "fill-primary")} />
+              <Button variant="ghost" size="icon" onClick={handleLike} className="text-primary ml-1 shrink-0">
+                <Heart className={cn("w-4 h-4 md:w-5 md:h-5", isLiked && "fill-primary")} />
               </Button>
             </div>
 
-            <div className="flex flex-col items-center gap-1.5 flex-[2] max-w-2xl">
-              <div className="flex items-center gap-4 md:gap-8">
+            <div className="hidden md:flex flex-col items-center gap-1.5 flex-[2] max-w-2xl">
+              <div className="flex items-center gap-6">
                 <Button variant="ghost" size="icon" onClick={() => toggleShuffle()} className={cn("transition-all", isShuffle ? "text-primary" : "text-primary/30")}>
                   <Shuffle className="w-4 h-4" />
                 </Button>
@@ -183,10 +190,10 @@ export const Player: React.FC = () => {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="w-12 h-12 border-2 border-primary/40 rounded-full hover:bg-primary/10 transition-all bg-primary/5 active:scale-95" 
+                  className="w-10 h-10 border-2 border-primary/40 rounded-full hover:bg-primary/10 transition-all bg-primary/5 active:scale-95" 
                   onClick={() => setIsPlaying(!isPlaying)}
                 >
-                  {isPlaying ? <Pause className="fill-primary text-primary w-5 h-5" /> : <Play className="fill-primary text-primary ml-1 w-5 h-5" />}
+                  {isPlaying ? <Pause className="fill-primary text-primary w-5 h-5" /> : <Play className="fill-primary text-primary ml-0.5 w-5 h-5" />}
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => nextTrack()} className="text-primary/60 hover:text-primary active:scale-90"><SkipForward className="w-5 h-5" /></Button>
                 <Button variant="ghost" size="icon" onClick={handleRepeatToggle} className={cn("transition-all relative", repeatMode !== 'none' ? "text-primary" : "text-primary/30")}>
@@ -207,10 +214,16 @@ export const Player: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-1 md:gap-3">
+               <div className="flex md:hidden items-center">
+                  <Button variant="ghost" size="icon" className="text-primary" onClick={() => setIsPlaying(!isPlaying)}>
+                    {isPlaying ? <Pause className="w-6 h-6 fill-primary" /> : <Play className="w-6 h-6 fill-primary ml-0.5" />}
+                  </Button>
+               </div>
+
                <Popover>
                  <PopoverTrigger asChild>
-                   <Button variant="ghost" size="icon" className={cn("text-primary/60 hover:text-primary", sleepTimer && "text-primary")}>
+                   <Button variant="ghost" size="icon" className={cn("hidden md:flex text-primary/60 hover:text-primary", sleepTimer && "text-primary")}>
                      <Moon className="w-5 h-5" />
                    </Button>
                  </PopoverTrigger>
@@ -227,7 +240,7 @@ export const Player: React.FC = () => {
                  </PopoverContent>
                </Popover>
 
-               <Button variant="ghost" size="icon" onClick={handleShare} className="text-primary/60 hover:text-primary">
+               <Button variant="ghost" size="icon" onClick={handleShare} className="hidden md:flex text-primary/60 hover:text-primary">
                  <Share2 className="w-5 h-5" />
                </Button>
 
@@ -238,9 +251,9 @@ export const Player: React.FC = () => {
                    </Button>
                  </SheetTrigger>
                  <SheetContent side="right" className="bg-black border-l border-primary/20 text-primary p-0 w-full sm:max-w-md">
-                   <div className="h-full flex flex-col p-10">
+                   <div className="h-full flex flex-col p-8 md:p-10">
                      <SheetHeader className="mb-10 text-center">
-                       <SheetTitle className="text-primary font-black italic uppercase tracking-[0.4em] text-3xl gold-glow">The Scroll</SheetTitle>
+                       <SheetTitle className="text-primary font-black italic uppercase tracking-[0.4em] text-2xl md:text-3xl gold-glow">The Scroll</SheetTitle>
                      </SheetHeader>
                      <ScrollArea className="flex-1 pr-4 custom-scrollbar">
                        {isLoadingLyrics ? (
@@ -249,7 +262,7 @@ export const Player: React.FC = () => {
                            <p className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Summoning...</p>
                          </div>
                        ) : (
-                         <p className="text-xl font-bold whitespace-pre-wrap leading-[2.5] tracking-wide text-center">
+                         <p className="text-lg md:text-xl font-bold whitespace-pre-wrap leading-[2.5] tracking-wide text-center">
                            {lyrics || "Silent for now."}
                          </p>
                        )}
@@ -258,7 +271,7 @@ export const Player: React.FC = () => {
                  </SheetContent>
                </Sheet>
 
-               <div className="hidden md:flex items-center gap-3 w-28 ml-4">
+               <div className="hidden lg:flex items-center gap-3 w-28 ml-4">
                  <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={handleToggleMute}>
                    {isMuted ? <VolumeX className="w-4 h-4 text-primary" /> : <Volume2 className="w-4 h-4 text-primary/60" />}
                  </Button>
@@ -279,7 +292,7 @@ export const Player: React.FC = () => {
               <Button variant="ghost" size="icon" onClick={() => setIsFullPlayer(false)} className="text-primary active:scale-90">
                 <ChevronDown className="w-8 h-8" />
               </Button>
-              <span className="text-[10px] font-black uppercase tracking-[0.6em] text-primary gold-glow italic">SANCTUARY</span>
+              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.6em] text-primary gold-glow italic">SANCTUARY</span>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={handleShare} className="text-primary/40 hover:text-primary">
                   <Share2 className="w-5 h-5" />
@@ -290,18 +303,50 @@ export const Player: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center items-center px-8 min-h-0">
-              <div className={cn("aspect-square w-full max-w-[350px] rounded-[2.5rem] border-4 border-primary/10 overflow-hidden shadow-[0_0_80px_rgba(212,175,55,0.15)] relative group transition-all duration-700", isAdPlaying && "animate-pulse-gold")}>
-                <img src={currentTrack.thumbnail} className={cn("w-full h-full object-cover transition-all duration-1000", isAdPlaying && "blur-3xl grayscale scale-125")} alt="artwork" />
+            <div className="flex-1 flex flex-col justify-center items-center px-6 md:px-12 min-h-0 py-4">
+              <div className="w-full max-w-4xl flex flex-col md:flex-row items-center gap-8 md:gap-16">
+                 <div className={cn(
+                    "aspect-square w-full max-w-[280px] md:max-w-[400px] rounded-[2.5rem] border-4 border-primary/10 overflow-hidden shadow-[0_0_80px_rgba(212,175,55,0.15)] relative shrink-0 transition-all duration-700",
+                    isAdPlaying && "animate-pulse-gold",
+                    showLyricsInFull && "hidden md:block scale-75 opacity-40 grayscale blur-sm"
+                 )}>
+                    <img src={currentTrack.thumbnail} className={cn("w-full h-full object-cover transition-all duration-1000", isAdPlaying && "blur-3xl grayscale scale-125")} alt="artwork" />
+                 </div>
+
+                 <div className={cn("flex-1 flex flex-col min-w-0 w-full", showLyricsInFull ? "block" : "hidden md:block")}>
+                    {showLyricsInFull ? (
+                        <div className="h-[40vh] md:h-[50vh] flex flex-col">
+                            <h3 className="text-primary font-black italic uppercase tracking-[0.4em] text-lg mb-6 flex items-center gap-2">
+                                <Music className="w-4 h-4" /> Lyrics Scroll
+                            </h3>
+                            <ScrollArea className="flex-1 pr-4 custom-scrollbar">
+                                <p className="text-xl md:text-3xl font-black whitespace-pre-wrap leading-[1.8] tracking-tight text-white/90">
+                                    {lyrics || "Scanning the archives..."}
+                                </p>
+                            </ScrollArea>
+                        </div>
+                    ) : (
+                        <div className="text-center md:text-left space-y-4">
+                            <h2 className="text-3xl md:text-6xl font-black text-primary gold-glow uppercase tracking-tighter italic leading-tight">
+                                {currentTrack.title}
+                            </h2>
+                            <p className="text-sm md:text-xl text-muted-foreground uppercase tracking-[0.4em] font-black opacity-60">
+                                {currentTrack.artist}
+                            </p>
+                        </div>
+                    )}
+                 </div>
               </div>
 
-              <div className="w-full max-w-[350px] mt-8 text-center">
-                <h2 className="text-2xl md:text-3xl font-black text-primary gold-glow truncate mb-1 uppercase tracking-tighter italic">{currentTrack.title}</h2>
-                <p className="text-xs text-muted-foreground truncate uppercase tracking-[0.4em] font-black opacity-60">{currentTrack.artist}</p>
-              </div>
+              {!showLyricsInFull && (
+                <div className="md:hidden mt-8 text-center space-y-2">
+                    <h2 className="text-2xl font-black text-primary gold-glow truncate uppercase tracking-tighter italic">{currentTrack.title}</h2>
+                    <p className="text-[10px] text-muted-foreground truncate uppercase tracking-[0.4em] font-black opacity-60">{currentTrack.artist}</p>
+                </div>
+              )}
             </div>
 
-            <div className="px-10 pb-12 shrink-0 w-full max-w-lg mx-auto space-y-8">
+            <div className="px-8 md:px-12 pb-10 md:pb-16 shrink-0 w-full max-w-2xl mx-auto space-y-8">
               <div className="space-y-4">
                 <Slider 
                   value={[progress]} 
@@ -310,34 +355,44 @@ export const Player: React.FC = () => {
                   onValueChange={(v) => seekTo(v[0])} 
                   className="cursor-pointer h-1.5" 
                 />
-                <div className="flex justify-between text-[10px] font-mono text-primary/40 tracking-[0.2em] font-bold">
+                <div className="flex justify-between text-[10px] md:text-xs font-mono text-primary/40 tracking-[0.2em] font-bold">
                   <span>{formatTime(progress)}</span>
                   <span>{formatTime(duration)}</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <Button variant="ghost" size="icon" onClick={() => toggleShuffle()} className={cn("transition-all", isShuffle ? "text-primary" : "text-primary/20")}>
-                  <Shuffle className="w-6 h-6" />
+                  <Shuffle className="w-5 h-5 md:w-6 md:h-6" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => previousTrack()} className="text-primary transition-all active:scale-75"><SkipBack className="w-8 h-8" /></Button>
-                <Button 
-                  variant="ghost" 
-                  className="w-20 h-20 border-2 border-primary/30 rounded-full hover:bg-primary/10 bg-primary/5 shadow-2xl transition-all active:scale-90 flex items-center justify-center" 
-                  onClick={() => setIsPlaying(!isPlaying)}
-                >
-                  {isPlaying ? <Pause className="w-8 h-8 fill-primary text-primary" /> : <Play className="w-8 h-8 fill-primary text-primary ml-1" />}
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => nextTrack()} className="text-primary transition-all active:scale-75"><SkipForward className="w-8 h-8" /></Button>
+                <div className="flex items-center gap-4 md:gap-10">
+                    <Button variant="ghost" size="icon" onClick={() => previousTrack()} className="text-primary transition-all active:scale-75"><SkipBack className="w-7 h-7 md:w-10 md:h-10" /></Button>
+                    <Button 
+                      variant="ghost" 
+                      className="w-16 h-16 md:w-24 md:h-24 border-2 border-primary/30 rounded-full hover:bg-primary/10 bg-primary/5 shadow-2xl transition-all active:scale-90 flex items-center justify-center shrink-0" 
+                      onClick={() => setIsPlaying(!isPlaying)}
+                    >
+                      {isPlaying ? <Pause className="w-7 h-7 md:w-10 md:h-10 fill-primary text-primary" /> : <Play className="w-7 h-7 md:w-10 md:h-10 fill-primary text-primary ml-1.5" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => nextTrack()} className="text-primary transition-all active:scale-75"><SkipForward className="w-7 h-7 md:w-10 md:h-10" /></Button>
+                </div>
                 <Button variant="ghost" size="icon" onClick={handleRepeatToggle} className={cn("transition-all relative", repeatMode !== 'none' ? "text-primary" : "text-primary/20")}>
-                  <Repeat className="w-6 h-6" />
+                  <Repeat className="w-5 h-5 md:w-6 md:h-6" />
                   {repeatMode === 'one' && <span className="absolute -top-1 -right-1 text-[8px] font-black">1</span>}
                 </Button>
               </div>
               
-              <div className="flex justify-center pt-2">
-                 <Button variant="ghost" className="text-primary/40 font-black uppercase text-[9px] tracking-[0.4em] hover:text-primary transition-all flex items-center gap-2" onClick={fetchLyrics}>
-                   <Music className="w-3.5 h-3.5" /> Lyrics Archive
+              <div className="flex justify-center gap-8">
+                 <Button 
+                    variant="ghost" 
+                    className={cn(
+                        "font-black uppercase text-[10px] tracking-[0.4em] transition-all flex items-center gap-2 px-6 h-12 rounded-full",
+                        showLyricsInFull ? "bg-primary text-black" : "text-primary/40 hover:text-primary"
+                    )} 
+                    onClick={fetchLyrics}
+                 >
+                   {isLoadingLyrics ? <Loader2 className="animate-spin w-4 h-4" /> : <Music className="w-4 h-4" />}
+                   Lyrics Scroll
                  </Button>
               </div>
             </div>
