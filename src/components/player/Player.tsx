@@ -1,7 +1,9 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, 
   Heart, Maximize2, Music, Loader2, Shuffle, Repeat, 
@@ -21,6 +23,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { getRelatedVideos } from '@/lib/youtube';
 
 export const Player: React.FC = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { 
     currentTrack, isPlaying, setIsPlaying, nextTrack, previousTrack, 
     progress, duration, volume, setVolume, isAdPlaying, likedTrackIds, toggleLike, seekTo,
@@ -30,13 +34,17 @@ export const Player: React.FC = () => {
   
   const { user } = useUser();
   const db = useFirestore();
-  const [isFullPlayer, setIsFullPlayer] = useState(false);
+
+  // URL state for back-button functionality
+  const isFullPlayer = searchParams.get('view') === 'full';
+  const isLyricsSheetOpen = searchParams.get('sheet') === 'lyrics';
+  const isQueueSheetOpen = searchParams.get('sheet') === 'queue';
+
   const [lyrics, setLyrics] = useState<string | null>(null);
   const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(80);
   const [showLyricsInFull, setShowLyricsInFull] = useState(false);
-  const [isLyricsSheetOpen, setIsLyricsSheetOpen] = useState(false);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -110,15 +118,15 @@ export const Player: React.FC = () => {
   const fetchLyrics = async () => {
     if (!currentTrack) return;
     
-    // Toggle logic for full player mode
     if (isFullPlayer) {
       if (lyrics) {
         setShowLyricsInFull(!showLyricsInFull);
         return;
       }
     } else {
-      // Normal mode: Open the sheet
-      setIsLyricsSheetOpen(true);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('sheet', 'lyrics');
+      router.push(`/?${params.toString()}`);
     }
 
     if (lyrics) return;
@@ -133,6 +141,25 @@ export const Player: React.FC = () => {
     } finally {
       setIsLoadingLyrics(false);
     }
+  };
+
+  const closeOverlays = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('view');
+    params.delete('sheet');
+    router.push(`/?${params.toString()}`);
+  };
+
+  const openFullPlayer = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('view', 'full');
+    router.push(`/?${params.toString()}`);
+  };
+
+  const openSheet = (sheetType: 'lyrics' | 'queue') => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('sheet', sheetType);
+    router.push(`/?${params.toString()}`);
   };
 
   if (!currentTrack || !hasHydrated) return null;
@@ -177,7 +204,7 @@ export const Player: React.FC = () => {
             initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
             className="fixed bottom-0 left-0 right-0 z-[60] h-24 bg-black/95 border-t border-primary/20 flex items-center px-4 md:px-12 gap-4 md:gap-6 backdrop-blur-3xl"
           >
-            <div className="flex-1 flex items-center gap-3 md:gap-4 min-w-0 cursor-pointer" onClick={() => setIsFullPlayer(true)}>
+            <div className="flex-1 flex items-center gap-3 md:gap-4 min-w-0 cursor-pointer" onClick={openFullPlayer}>
               <div className="relative group shrink-0">
                 <img src={currentTrack.thumbnail} className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl border border-primary/30 shadow-2xl object-cover" alt="cover" />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all rounded-xl md:rounded-2xl">
@@ -256,9 +283,9 @@ export const Player: React.FC = () => {
                  <Share2 className="w-5 h-5" />
                </Button>
 
-               <QueueSheet />
+               <QueueSheet isOpen={isQueueSheetOpen} onOpenChange={(open) => !open && closeOverlays()} />
 
-               <Sheet open={isLyricsSheetOpen} onOpenChange={setIsLyricsSheetOpen}>
+               <Sheet open={isLyricsSheetOpen} onOpenChange={(open) => !open && closeOverlays()}>
                  <SheetTrigger asChild>
                    <Button variant="ghost" size="icon" onClick={fetchLyrics} className="text-primary/60 hover:text-primary">
                      <Music className="w-5 h-5" />
@@ -266,7 +293,7 @@ export const Player: React.FC = () => {
                  </SheetTrigger>
                  <SheetContent side="right" className="bg-black border-l border-primary/20 text-primary p-0 w-full sm:max-w-md">
                    <div className="h-full flex flex-col p-8 md:p-10 relative">
-                     <SheetClose className="absolute top-6 right-6 text-primary hover:text-white transition-colors">
+                     <SheetClose className="absolute top-6 right-6 text-primary hover:text-white transition-colors" onClick={closeOverlays}>
                         <X className="w-8 h-8" />
                      </SheetClose>
                      <SheetHeader className="mb-10 text-center">
@@ -306,7 +333,7 @@ export const Player: React.FC = () => {
             className="fixed inset-0 z-[70] bg-black flex flex-col h-[100dvh] w-screen overflow-hidden gradient-bg"
           >
             <div className="flex justify-between items-center h-16 shrink-0 px-6">
-              <Button variant="ghost" size="icon" onClick={() => setIsFullPlayer(false)} className="text-primary active:scale-90">
+              <Button variant="ghost" size="icon" onClick={closeOverlays} className="text-primary active:scale-90">
                 <ChevronDown className="w-8 h-8" />
               </Button>
               <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.6em] text-primary gold-glow">SANCTUARY</span>
@@ -411,7 +438,7 @@ export const Player: React.FC = () => {
                    {isLoadingLyrics ? <Loader2 className="animate-spin w-4 h-4" /> : <Music className="w-4 h-4" />}
                    {showLyricsInFull ? "Close Lyrics" : "Lyrics Scroll"}
                  </Button>
-                 <QueueSheet />
+                 <QueueSheet isOpen={isQueueSheetOpen} onOpenChange={(open) => !open && closeOverlays()} />
               </div>
             </div>
           </motion.div>
@@ -421,7 +448,9 @@ export const Player: React.FC = () => {
   );
 };
 
-const QueueSheet = () => {
+const QueueSheet = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { queue, currentTrack, setCurrentTrack, removeFromQueue, clearQueue } = usePlayerStore();
   const [recommendations, setRecommendations] = useState<Track[]>([]);
 
@@ -430,11 +459,23 @@ const QueueSheet = () => {
         getRelatedVideos(currentTrack.id).then(setRecommendations);
     }
   }, [currentTrack]);
+
+  const close = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('sheet');
+    router.push(`/?${params.toString()}`);
+  };
+
+  const openQueue = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('sheet', 'queue');
+    router.push(`/?${params.toString()}`);
+  };
   
   return (
-    <Sheet>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-primary/60 hover:text-primary relative">
+        <Button variant="ghost" size="icon" onClick={openQueue} className="text-primary/60 hover:text-primary relative">
           <ListMusic className="w-5 h-5" />
           {queue.length > 0 && (
             <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
@@ -443,7 +484,7 @@ const QueueSheet = () => {
       </SheetTrigger>
       <SheetContent side="right" className="bg-black border-l border-primary/20 text-primary p-0 w-full sm:max-w-md">
         <div className="h-full flex flex-col p-8 md:p-10 relative">
-          <SheetClose className="absolute top-6 right-6 text-primary hover:text-white transition-colors">
+          <SheetClose className="absolute top-6 right-6 text-primary hover:text-white transition-colors" onClick={close}>
             <X className="w-8 h-8" />
           </SheetClose>
           <SheetHeader className="mb-8 flex flex-row items-center justify-between">
