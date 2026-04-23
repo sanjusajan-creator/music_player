@@ -43,7 +43,7 @@
     overscroll-behavior: none;
   }
   
-  /* Remove all italics */
+  /* Remove all italics and replace with Bold/Black weights */
   i, em, .italic {
     font-style: normal !important;
     font-weight: 700 !important;

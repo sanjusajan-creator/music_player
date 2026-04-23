@@ -85,16 +85,14 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
   if (!videoId || !YOUTUBE_API_KEY) return [];
 
   try {
-    // Note: relatedToVideoId often fails for certain videos or regions in v3.
-    // We fall back gracefully to a general search if it fails.
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
-    // If API returns an error for relatedToVideoId (common), we don't throw.
+    // Gracefully handle API errors (like deprecated relatedToVideoId for certain videos)
     if (searchData.error) {
-        console.warn("YouTube related videos request failed:", searchData.error.message);
-        return [];
+        console.warn("YouTube related videos request restricted:", searchData.error.message);
+        return []; 
     }
     
     const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
@@ -112,7 +110,7 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
       duration: parseISO8601Duration(item.contentDetails.duration),
     }));
   } catch (error) {
-    console.error("Related videos fetch failure:", error);
+    console.warn("Related videos fetch failure (handled):", error);
     return [];
   }
 }
