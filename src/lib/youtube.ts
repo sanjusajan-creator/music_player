@@ -6,7 +6,7 @@ const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
- * Enhanced Search with logic to reduce API calls via Firestore Caching
+ * Enhanced Search with resilient logic to handle 403 Quota Errors
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -31,26 +31,29 @@ export async function searchTracks(query: string): Promise<Track[]> {
     // Silent fail for cache reads
   }
 
-  // 2. Fallback to mocks if no API key or during potential quota issues
+  // 2. Fallback to mocks if no API key
   if (!YOUTUBE_API_KEY) {
-    return MOCK_TRACKS.filter(t => 
-      t.title.toLowerCase().includes(sanitizedQuery) || 
-      t.artist.toLowerCase().includes(sanitizedQuery)
-    ).length > 0 ? MOCK_TRACKS : MOCK_TRACKS;
+    return getMockResults(sanitizedQuery);
   }
 
   try {
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
     const searchRes = await fetch(searchUrl, { mode: 'cors' });
+    
+    // Explicitly handle Quota Exceeded or Forbidden
+    if (searchRes.status === 403) {
+      console.warn("Vibecraft Oracle: YouTube Quota Exceeded. Manifesting Cosmic Archive.");
+      return getMockResults(sanitizedQuery);
+    }
+
     const searchData = await searchRes.json();
 
     if (searchData.error) {
-      console.warn("YouTube API Error:", searchData.error.message);
-      return MOCK_TRACKS; 
+      return getMockResults(sanitizedQuery); 
     }
     
     const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
-    if (!videoIds) return MOCK_TRACKS;
+    if (!videoIds) return getMockResults(sanitizedQuery);
 
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl, { mode: 'cors' });
@@ -80,10 +83,9 @@ export async function searchTracks(query: string): Promise<Track[]> {
       }
     }
 
-    return tracks.length > 0 ? tracks : MOCK_TRACKS;
+    return tracks.length > 0 ? tracks : getMockResults(sanitizedQuery);
   } catch (error) {
-    console.error("YouTube engine failure:", error);
-    return MOCK_TRACKS;
+    return getMockResults(sanitizedQuery);
   }
 }
 
@@ -91,19 +93,18 @@ export async function searchTracks(query: string): Promise<Track[]> {
  * Fetches related videos for autoplay recommendations
  */
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
-  if (!videoId || !YOUTUBE_API_KEY) return [];
+  if (!videoId || videoId.startsWith('local-')) return [];
+  if (!YOUTUBE_API_KEY) return MOCK_TRACKS.slice(0, 5);
 
   try {
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
     const searchRes = await fetch(searchUrl, { mode: 'cors' });
-    const searchData = await searchRes.json();
 
-    if (searchData.error) {
-        return []; 
-    }
-    
+    if (searchRes.status === 403) return MOCK_TRACKS.slice(0, 5);
+
+    const searchData = await searchRes.json();
     const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
-    if (!videoIds) return [];
+    if (!videoIds) return MOCK_TRACKS.slice(0, 5);
 
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl, { mode: 'cors' });
@@ -117,7 +118,7 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
       duration: parseISO8601Duration(item.contentDetails.duration),
     }));
   } catch (error) {
-    return [];
+    return MOCK_TRACKS.slice(0, 5);
   }
 }
 
@@ -146,10 +147,25 @@ function normalizeMetadata(text: string): string {
     .trim();
 }
 
+function getMockResults(query: string): Track[] {
+  return MOCK_TRACKS.filter(t => 
+    t.title.toLowerCase().includes(query) || 
+    t.artist.toLowerCase().includes(query)
+  ).length > 0 ? MOCK_TRACKS.filter(t => 
+    t.title.toLowerCase().includes(query) || 
+    t.artist.toLowerCase().includes(query)
+  ) : MOCK_TRACKS;
+}
+
 const MOCK_TRACKS: Track[] = [
   { id: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley', thumbnail: 'https://picsum.photos/seed/rick/600/600', duration: 212 },
   { id: 'L_jWHffIx5E', title: 'Smells Like Teen Spirit', artist: 'Nirvana', thumbnail: 'https://picsum.photos/seed/nirvana/600/600', duration: 301 },
   { id: 'hTWKbfoikeg', title: 'Midnight Gold', artist: 'Lux Record', thumbnail: 'https://picsum.photos/seed/gold/600/600', duration: 185 },
   { id: 'YQHsXMglC9A', title: 'Hello', artist: 'Adele', thumbnail: 'https://picsum.photos/seed/adele/600/600', duration: 367 },
-  { id: 'JGwWNGJdvx8', title: 'Shape of You', artist: 'Ed Sheeran', thumbnail: 'https://picsum.photos/seed/ed/600/600', duration: 233 }
+  { id: 'JGwWNGJdvx8', title: 'Shape of You', artist: 'Ed Sheeran', thumbnail: 'https://picsum.photos/seed/ed/600/600', duration: 233 },
+  { id: 'kJQP7kiw5Fk', title: 'Despacito', artist: 'Luis Fonsi', thumbnail: 'https://picsum.photos/seed/fonsi/600/600', duration: 288 },
+  { id: '9bZkp7q19f0', title: 'Gangnam Style', artist: 'PSY', thumbnail: 'https://picsum.photos/seed/psy/600/600', duration: 252 },
+  { id: 'RgKAFK5djSk', title: 'See You Again', artist: 'Wiz Khalifa', thumbnail: 'https://picsum.photos/seed/wiz/600/600', duration: 237 },
+  { id: 'fRh_vgS2dFE', title: 'Sorry', artist: 'Justin Bieber', thumbnail: 'https://picsum.photos/seed/bieber/600/600', duration: 205 },
+  { id: 'OPf0YbXqDm0', title: 'Uptown Funk', artist: 'Mark Ronson', thumbnail: 'https://picsum.photos/seed/mark/600/600', duration: 270 }
 ];
