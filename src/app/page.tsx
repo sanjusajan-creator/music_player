@@ -88,11 +88,11 @@ function HomeContent() {
       <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden relative">
         <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500 z-10">
           <header>
-            <h1 className="text-6xl md:text-7xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase italic">VIBECRAFT</h1>
+            <h1 className="text-5xl md:text-7xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase italic">VIBECRAFT</h1>
             <p className="text-muted-foreground uppercase tracking-[0.4em] text-[10px] font-bold">The Sanctuary of High-Fidelity</p>
           </header>
 
-          <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-10 rounded-[2.5rem] shadow-2xl space-y-6">
+          <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-8 md:p-10 rounded-[2.5rem] shadow-2xl space-y-6">
             <div className="space-y-4">
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
@@ -147,19 +147,19 @@ function HomeContent() {
           <Navbar />
         </Suspense>
         <YouTubePlayer />
-        <div className="flex-1 overflow-y-auto no-scrollbar pt-24 pb-32 gradient-bg px-6 md:px-12 h-full">
+        <div className="flex-1 overflow-y-auto no-scrollbar pt-20 md:pt-24 pb-32 gradient-bg px-4 md:px-12 h-full">
           <div className="max-w-7xl mx-auto">
-            <header className="mb-12 flex justify-between items-end">
+            <header className="mb-8 md:mb-12 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
               <div>
-                <h2 className="text-4xl md:text-6xl font-black text-primary gold-glow italic tracking-tighter mb-4">
+                <h2 className="text-3xl md:text-6xl font-black text-primary gold-glow italic tracking-tighter mb-2 md:mb-4">
                   Welcome, <span className="text-white opacity-80">{user?.email?.split('@')[0] || 'Traveler'}</span>
                 </h2>
-                <p className="text-muted-foreground text-xs font-black uppercase tracking-[0.3em]">Curation for your late-night sessions.</p>
+                <p className="text-muted-foreground text-[10px] md:text-xs font-black uppercase tracking-[0.3em]">Curation for your late-night sessions.</p>
               </div>
               <Button 
                 variant="ghost" 
                 onClick={() => signOut(auth)}
-                className="text-primary/40 hover:text-primary font-black uppercase text-[9px] tracking-[0.3em] mb-4"
+                className="text-primary/40 hover:text-primary font-black uppercase text-[9px] tracking-[0.3em] w-fit"
               >
                 Sign Out
               </Button>
@@ -203,23 +203,25 @@ function DashboardTabs({ userId }: { userId: string }) {
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-      <TabsList className="bg-white/5 border border-white/10 p-1 rounded-full h-12 mb-12 w-fit">
-        <TabsTrigger value="trending" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
-          <TrendingUp className="w-3.5 h-3.5" /> Trending
-        </TabsTrigger>
-        <TabsTrigger value="for-you" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
-          <Sparkles className="w-3.5 h-3.5" /> For You
-        </TabsTrigger>
-        <TabsTrigger value="liked" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
-          <Heart className="w-3.5 h-3.5" /> Liked
-        </TabsTrigger>
-        <TabsTrigger value="history" className="rounded-full px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
-          <History className="w-3.5 h-3.5" /> History
-        </TabsTrigger>
-      </TabsList>
+      <div className="w-full overflow-x-auto no-scrollbar mb-8 md:mb-12">
+        <TabsList className="bg-white/5 border border-white/10 p-1 rounded-full h-12 flex w-max">
+          <TabsTrigger value="trending" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
+            <TrendingUp className="w-3.5 h-3.5" /> Trending
+          </TabsTrigger>
+          <TabsTrigger value="for-you" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
+            <Sparkles className="w-3.5 h-3.5" /> For You
+          </TabsTrigger>
+          <TabsTrigger value="liked" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
+            <Heart className="w-3.5 h-3.5" /> Liked
+          </TabsTrigger>
+          <TabsTrigger value="history" className="rounded-full px-6 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[9px] tracking-[0.2em] flex gap-2">
+            <History className="w-3.5 h-3.5" /> History
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="trending" className="mt-0 focus-visible:ring-0">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-10">
           {isSearchLoading ? (
             [...Array(10)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-3xl" />)
           ) : (
@@ -297,7 +299,7 @@ function LikedSongsList({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-8">
       {likedDocs.map((doc: any) => (
         <SearchResult key={doc.id} track={{
           id: doc.id,

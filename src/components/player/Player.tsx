@@ -163,9 +163,9 @@ export const Player: React.FC = () => {
         {!isFullPlayer && (
           <motion.div 
             initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
-            className="fixed bottom-0 left-0 right-0 z-40 h-24 bg-black/95 border-t border-primary/20 flex items-center px-4 md:px-12 gap-6 backdrop-blur-3xl"
+            className="fixed bottom-0 left-0 right-0 z-40 h-24 bg-black/95 border-t border-primary/20 flex items-center px-4 md:px-12 gap-4 md:gap-6 backdrop-blur-3xl"
           >
-            <div className="flex-1 flex items-center gap-4 min-w-0 cursor-pointer" onClick={() => setIsFullPlayer(true)}>
+            <div className="flex-1 flex items-center gap-3 md:gap-4 min-w-0 cursor-pointer" onClick={() => setIsFullPlayer(true)}>
               <div className="relative group shrink-0">
                 <img src={currentTrack.thumbnail} className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl border border-primary/30 shadow-2xl object-cover" alt="cover" />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all rounded-xl md:rounded-2xl">
@@ -303,34 +303,34 @@ export const Player: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center items-center px-6 md:px-12 min-h-0 py-4">
-              <div className="w-full max-w-4xl flex flex-col md:flex-row items-center gap-8 md:gap-16">
+            <div className="flex-1 flex flex-col justify-center items-center px-4 md:px-12 min-h-0 py-4 overflow-hidden">
+              <div className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12 lg:gap-20 h-full max-h-[70vh]">
                  <div className={cn(
-                    "aspect-square w-full max-w-[280px] md:max-w-[400px] rounded-[2.5rem] border-4 border-primary/10 overflow-hidden shadow-[0_0_80px_rgba(212,175,55,0.15)] relative shrink-0 transition-all duration-700",
+                    "aspect-square w-full max-w-[240px] md:max-w-[320px] lg:max-w-[420px] rounded-[2.5rem] border-4 border-primary/10 overflow-hidden shadow-[0_0_80px_rgba(212,175,55,0.15)] relative shrink-0 transition-all duration-700",
                     isAdPlaying && "animate-pulse-gold",
                     showLyricsInFull && "hidden md:block scale-75 opacity-40 grayscale blur-sm"
                  )}>
                     <img src={currentTrack.thumbnail} className={cn("w-full h-full object-cover transition-all duration-1000", isAdPlaying && "blur-3xl grayscale scale-125")} alt="artwork" />
                  </div>
 
-                 <div className={cn("flex-1 flex flex-col min-w-0 w-full", showLyricsInFull ? "block" : "hidden md:block")}>
+                 <div className={cn("flex-1 flex flex-col min-w-0 w-full h-full justify-center overflow-hidden", showLyricsInFull ? "block" : "hidden md:flex")}>
                     {showLyricsInFull ? (
-                        <div className="h-[40vh] md:h-[50vh] flex flex-col">
-                            <h3 className="text-primary font-black italic uppercase tracking-[0.4em] text-lg mb-6 flex items-center gap-2">
+                        <div className="h-full flex flex-col overflow-hidden py-4">
+                            <h3 className="text-primary font-black italic uppercase tracking-[0.4em] text-sm md:text-lg mb-4 flex items-center gap-2 shrink-0">
                                 <Music className="w-4 h-4" /> Lyrics Scroll
                             </h3>
                             <ScrollArea className="flex-1 pr-4 custom-scrollbar">
-                                <p className="text-xl md:text-3xl font-black whitespace-pre-wrap leading-[1.8] tracking-tight text-white/90">
+                                <p className="text-xl md:text-3xl lg:text-4xl font-black whitespace-pre-wrap leading-[1.8] tracking-tight text-white/90">
                                     {lyrics || "Scanning the archives..."}
                                 </p>
                             </ScrollArea>
                         </div>
                     ) : (
                         <div className="text-center md:text-left space-y-4">
-                            <h2 className="text-3xl md:text-6xl font-black text-primary gold-glow uppercase tracking-tighter italic leading-tight">
+                            <h2 className="text-3xl md:text-5xl lg:text-7xl font-black text-primary gold-glow uppercase tracking-tighter italic leading-tight">
                                 {currentTrack.title}
                             </h2>
-                            <p className="text-sm md:text-xl text-muted-foreground uppercase tracking-[0.4em] font-black opacity-60">
+                            <p className="text-xs md:text-xl lg:text-2xl text-muted-foreground uppercase tracking-[0.4em] font-black opacity-60">
                                 {currentTrack.artist}
                             </p>
                         </div>
@@ -339,15 +339,15 @@ export const Player: React.FC = () => {
               </div>
 
               {!showLyricsInFull && (
-                <div className="md:hidden mt-8 text-center space-y-2">
+                <div className="md:hidden mt-6 text-center space-y-1 px-4 max-w-full">
                     <h2 className="text-2xl font-black text-primary gold-glow truncate uppercase tracking-tighter italic">{currentTrack.title}</h2>
                     <p className="text-[10px] text-muted-foreground truncate uppercase tracking-[0.4em] font-black opacity-60">{currentTrack.artist}</p>
                 </div>
               )}
             </div>
 
-            <div className="px-8 md:px-12 pb-10 md:pb-16 shrink-0 w-full max-w-2xl mx-auto space-y-8">
-              <div className="space-y-4">
+            <div className="px-6 md:px-12 pb-8 md:pb-12 shrink-0 w-full max-w-2xl mx-auto space-y-6 md:space-y-8">
+              <div className="space-y-3">
                 <Slider 
                   value={[progress]} 
                   max={duration || 100} 
@@ -382,7 +382,7 @@ export const Player: React.FC = () => {
                 </Button>
               </div>
               
-              <div className="flex justify-center gap-8">
+              <div className="flex justify-center">
                  <Button 
                     variant="ghost" 
                     className={cn(
@@ -392,7 +392,7 @@ export const Player: React.FC = () => {
                     onClick={fetchLyrics}
                  >
                    {isLoadingLyrics ? <Loader2 className="animate-spin w-4 h-4" /> : <Music className="w-4 h-4" />}
-                   Lyrics Scroll
+                   {showLyricsInFull ? "Close Lyrics" : "Lyrics Scroll"}
                  </Button>
               </div>
             </div>
