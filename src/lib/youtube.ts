@@ -14,7 +14,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   const cacheKey = sanitizedQuery.replace(/\s+/g, '_');
   
-  // 1. Check Firestore Cache first using the hardened getDb helper
+  // 1. Check Firestore Cache first
   try {
     const db = getDb();
     const cacheRef = doc(db, "search_cache", cacheKey);
@@ -28,7 +28,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
       }
     }
   } catch (e) {
-    // Silent fail for cache reads to allow API fallback
+    // Silent fail for cache reads
   }
 
   // 2. If no key or cache miss, check API
@@ -40,7 +40,6 @@ export async function searchTracks(query: string): Promise<Track[]> {
   }
 
   try {
-    // CORRECT ENDPOINT: youtube/v3/search
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
@@ -53,7 +52,6 @@ export async function searchTracks(query: string): Promise<Track[]> {
     const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
     if (!videoIds) return MOCK_TRACKS;
 
-    // CORRECT ENDPOINT: youtube/v3/videos
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl);
     const listData = await listRes.json();
@@ -68,7 +66,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
       }))
       .filter((t: Track) => t.title.trim() !== "" && t.artist.trim() !== "");
 
-    // 4. Update Cache for future use
+    // 4. Update Cache
     if (tracks.length > 0) {
       try {
         const db = getDb();
@@ -101,7 +99,7 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
     const searchData = await searchRes.json();
 
     if (searchData.error) {
-        console.warn("YouTube related videos restricted or quota exceeded:", searchData.error.message);
+        console.warn("YouTube related videos restricted:", searchData.error.message);
         return []; 
     }
     
@@ -120,7 +118,6 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
       duration: parseISO8601Duration(item.contentDetails.duration),
     }));
   } catch (error) {
-    console.error("YouTube related videos failure:", error);
     return [];
   }
 }
