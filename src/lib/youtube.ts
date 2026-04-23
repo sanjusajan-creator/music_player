@@ -31,30 +31,27 @@ export async function searchTracks(query: string): Promise<Track[]> {
     // Silent fail for cache reads
   }
 
-  // 2. Fallback to mocks if no API key or during network issues
+  // 2. Fallback to mocks if no API key
   if (!YOUTUBE_API_KEY) {
     return MOCK_TRACKS.filter(t => 
       t.title.toLowerCase().includes(sanitizedQuery) || 
       t.artist.toLowerCase().includes(sanitizedQuery)
-    );
+    ).length > 0 ? MOCK_TRACKS : MOCK_TRACKS;
   }
 
   try {
-    // Corrected YouTube Search endpoint
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
     if (searchData.error) {
       console.warn("YouTube API Error:", searchData.error.message);
-      // Return mock if quota is exceeded
       return MOCK_TRACKS; 
     }
     
     const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
     if (!videoIds) return MOCK_TRACKS;
 
-    // Corrected YouTube Video details endpoint
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl);
     const listData = await listRes.json();
@@ -85,7 +82,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
     return tracks.length > 0 ? tracks : MOCK_TRACKS;
   } catch (error) {
-    console.error("YouTube engine critical failure:", error);
+    console.error("YouTube engine failure:", error);
     return MOCK_TRACKS;
   }
 }
@@ -102,7 +99,6 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
     const searchData = await searchRes.json();
 
     if (searchData.error) {
-        console.warn("YouTube related videos restricted:", searchData.error.message);
         return []; 
     }
     
