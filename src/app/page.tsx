@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -16,10 +16,10 @@ import {
   Loader2, Mail, Lock, UserPlus, History, X
 } from 'lucide-react';
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { query, collection, orderBy, limit } from 'firebase/firestore';
+import { query, collection, orderBy, limit, getDocs } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { getRelatedVideos } from '@/lib/youtube';
@@ -42,10 +42,26 @@ export default function AppWrapper() {
   );
 }
 
+const ORACLE_SEEDS = [
+  'Billboard Hot 100 2025',
+  'AMOLED Gold Chill Mix',
+  'Cyberpunk Synthwave 2077',
+  'Midnight Jazz Sanctuary',
+  'High Fidelity Soul Classics',
+  'Deep House Manifestation',
+  'Acoustic Gold Sessions',
+  'Orchestral Cinematic Epic',
+  'Underground Techno Vault',
+  'Lofi Hip Hop Sanctuary'
+];
+
 function HomeContent() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const db = useFirestore();
   const router = useRouter();
+  const { setQueue, hasHydrated } = usePlayerStore();
+  
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,7 +69,36 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
 
-  const showLogin = !isUserLoading && (!user || !user.email);
+  // Randomize initial trending query on mount
+  const randomTrend = useMemo(() => {
+    return ORACLE_SEEDS[Math.floor(Math.random() * ORACLE_SEEDS.length)];
+  }, []);
+
+  // Initialize Liked Songs as Queue on mount
+  useEffect(() => {
+    if (user && db && hasHydrated) {
+      const fetchLikedAsQueue = async () => {
+        try {
+          const likedRef = collection(db, 'users', user.uid, 'likedSongs');
+          const q = query(likedRef, orderBy('likedAt', 'desc'), limit(50));
+          const snap = await getDocs(q);
+          const tracks = snap.docs.map(doc => ({
+            id: doc.id,
+            title: doc.data().title,
+            artist: doc.data().artist,
+            thumbnail: doc.data().thumbnailUrl,
+            duration: doc.data().durationSeconds
+          }));
+          if (tracks.length > 0) {
+            setQueue(tracks);
+          }
+        } catch (e) {
+          console.error("Queue initialization failed", e);
+        }
+      };
+      fetchLikedAsQueue();
+    }
+  }, [user, db, hasHydrated, setQueue]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,16 +134,16 @@ function HomeContent() {
     );
   }
 
-  if (showLogin) {
+  if (!isUserLoading && (!user || !user.email)) {
     return (
-      <main className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center gradient-bg overflow-hidden relative">
-        <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500 z-10">
+      <main className="min-h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-4 md:p-12 text-center gradient-bg overflow-y-auto no-scrollbar relative">
+        <div className="w-full max-w-lg space-y-8 animate-in fade-in zoom-in duration-500 z-10 py-12">
           <header>
-            <h1 className="text-6xl md:text-8xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase leading-none">VIBECRAFT</h1>
-            <p className="text-primary/40 uppercase tracking-[0.5em] text-[10px] font-black">High-Fidelity Sanctuary</p>
+            <h1 className="text-5xl md:text-8xl font-black text-primary gold-glow mb-4 tracking-tighter uppercase leading-none">VIBECRAFT</h1>
+            <p className="text-primary/40 uppercase tracking-[0.5em] text-[10px] md:text-xs font-black">High-Fidelity Sanctuary</p>
           </header>
 
-          <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-8 md:p-12 rounded-[3rem] shadow-2xl space-y-8">
+          <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-6 md:p-12 rounded-[2rem] md:rounded-[3rem] shadow-2xl space-y-8 backdrop-blur-xl">
             <div className="space-y-4">
               <div className="relative">
                 <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
@@ -107,7 +152,7 @@ function HomeContent() {
                   placeholder="Email Address" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-black/60 border-primary/20 pl-14 h-16 rounded-2xl focus-visible:ring-primary text-primary font-black placeholder:text-primary/20"
+                  className="bg-black/60 border-primary/20 pl-14 h-14 md:h-16 rounded-xl md:rounded-2xl focus-visible:ring-primary text-primary font-black placeholder:text-primary/20"
                 />
               </div>
               <div className="relative">
@@ -117,7 +162,7 @@ function HomeContent() {
                   placeholder="Password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="bg-black/60 border-primary/20 pl-14 h-16 rounded-2xl focus-visible:ring-primary text-primary font-black placeholder:text-primary/20"
+                  className="bg-black/60 border-primary/20 pl-14 h-14 md:h-16 rounded-xl md:rounded-2xl focus-visible:ring-primary text-primary font-black placeholder:text-primary/20"
                 />
               </div>
             </div>
@@ -125,7 +170,7 @@ function HomeContent() {
             <Button 
               type="submit" 
               disabled={isAuthLoading}
-              className="w-full bg-primary text-black font-black h-16 rounded-2xl text-xl hover:bg-white transition-all shadow-[0_0_40px_rgba(212,175,55,0.3)] uppercase tracking-[0.2em]"
+              className="w-full bg-primary text-black font-black h-14 md:h-16 rounded-xl md:rounded-2xl text-lg md:text-xl hover:bg-white transition-all shadow-[0_0_40px_rgba(212,175,55,0.3)] uppercase tracking-[0.2em]"
             >
               {isAuthLoading ? <Loader2 className="animate-spin" /> : (
                 isLogin ? <><LogIn className="mr-3 w-5 h-5" /> Enter Sanctuary</> : <><UserPlus className="mr-3 w-5 h-5" /> Create Archive</>
@@ -135,7 +180,7 @@ function HomeContent() {
             <button 
               type="button" 
               onClick={() => setIsLogin(!isLogin)}
-              className="text-primary/40 hover:text-primary text-[10px] uppercase font-black tracking-[0.4em] transition-colors"
+              className="text-primary/40 hover:text-primary text-[10px] md:text-xs uppercase font-black tracking-[0.4em] transition-colors w-full"
             >
               {isLogin ? "Need a new archive? Sign up" : "Already registered? Log in"}
             </button>
@@ -183,7 +228,7 @@ function HomeContent() {
               {searchQuery ? (
                 <SearchResultsView query={searchQuery} />
               ) : (
-                <DashboardTabs userId={user!.uid} />
+                <DashboardTabs userId={user!.uid} randomSeed={randomTrend} />
               )}
             </div>
           </div>
@@ -217,7 +262,7 @@ function SearchResultsView({ query }: { query: string }) {
   );
 }
 
-function DashboardTabs({ userId }: { userId: string }) {
+function DashboardTabs({ userId, randomSeed }: { userId: string, randomSeed: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || 'trending';
@@ -231,8 +276,7 @@ function DashboardTabs({ userId }: { userId: string }) {
     }
   }, [currentTrack]);
   
-  const trendingQuery = 'Billboard Hot 100 2025';
-  const { data: trendingResults, isLoading: isTrendingLoading } = useYouTubeSearch(activeTab === 'trending' ? trendingQuery : '');
+  const { data: trendingResults, isLoading: isTrendingLoading } = useYouTubeSearch(activeTab === 'trending' ? randomSeed : '');
 
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
