@@ -31,7 +31,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     // Silent fail for cache reads
   }
 
-  // 2. If no key or cache miss, check API
+  // 2. Fallback to mocks if no API key
   if (!YOUTUBE_API_KEY) {
     return MOCK_TRACKS.filter(t => 
       t.title.toLowerCase().includes(sanitizedQuery) || 
