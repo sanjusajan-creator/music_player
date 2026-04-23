@@ -7,6 +7,8 @@ export interface Track {
   artist: string;
   thumbnail: string;
   duration?: number;
+  isLocal?: boolean;
+  localFile?: File;
 }
 
 export interface Playlist {
@@ -25,6 +27,7 @@ interface PlayerState {
   queue: Track[];
   originalQueue: Track[]; 
   history: Track[];
+  localTracks: Track[];
   likedTrackIds: Set<string>;
   isPlaying: boolean;
   isBuffering: boolean;
@@ -46,6 +49,7 @@ interface PlayerState {
   addToQueue: (track: Track) => void;
   setQueue: (tracks: Track[]) => void;
   removeFromQueue: (trackId: string) => void;
+  setLocalTracks: (tracks: Track[]) => void;
   setLikedTracks: (ids: string[]) => void;
   toggleLike: (trackId: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -71,6 +75,7 @@ export const usePlayerStore = create<PlayerState>()(
       queue: [],
       originalQueue: [],
       history: [],
+      localTracks: [],
       likedTrackIds: new Set(),
       isPlaying: false,
       isBuffering: false,
@@ -111,6 +116,8 @@ export const usePlayerStore = create<PlayerState>()(
         queue: tracks,
         originalQueue: tracks
       }),
+
+      setLocalTracks: (tracks) => set({ localTracks: tracks }),
 
       removeFromQueue: (trackId) => set((state) => ({ 
         queue: state.queue.filter((t) => t.id !== trackId),

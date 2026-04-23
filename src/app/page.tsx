@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useYouTubeSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
@@ -13,7 +13,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   TrendingUp, Sparkles, LogIn, Heart, 
-  Loader2, Mail, Lock, UserPlus, History, X
+  Loader2, Mail, Lock, UserPlus, History, X, FolderOpen, Music2, Plus
 } from 'lucide-react';
 import { useUser, useAuth, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { query, collection, orderBy, limit, getDocs } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { usePlayerStore } from '@/store/usePlayerStore';
+import { usePlayerStore, Track } from '@/store/usePlayerStore';
 import { getRelatedVideos } from '@/lib/youtube';
 
 const queryClient = new QueryClient({
@@ -305,6 +305,9 @@ function DashboardTabs({ userId, randomSeed }: { userId: string, randomSeed: str
           <TabsTrigger value="for-you" className="rounded-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-2 md:gap-3 shrink-0">
             <Sparkles className="w-4 h-4" /> For You
           </TabsTrigger>
+          <TabsTrigger value="local" className="rounded-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-2 md:gap-3 shrink-0">
+            <FolderOpen className="w-4 h-4" /> Local
+          </TabsTrigger>
           <TabsTrigger value="liked" className="rounded-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-black font-black uppercase text-[10px] tracking-[0.3em] flex gap-2 md:gap-3 shrink-0">
             <Heart className="w-4 h-4" /> Liked
           </TabsTrigger>
@@ -345,6 +348,10 @@ function DashboardTabs({ userId, randomSeed }: { userId: string, randomSeed: str
           )}
         </TabsContent>
 
+        <TabsContent value="local" className="m-0">
+          <LocalArchivesView />
+        </TabsContent>
+
         <TabsContent value="liked" className="m-0">
           <LikedSongsList userId={userId} />
         </TabsContent>
@@ -363,6 +370,79 @@ function DashboardTabs({ userId, randomSeed }: { userId: string, randomSeed: str
         </TabsContent>
       </div>
     </Tabs>
+  );
+}
+
+function LocalArchivesView() {
+  const { localTracks, setLocalTracks } = usePlayerStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newTracks: Track[] = Array.from(files)
+      .filter(file => file.type.startsWith('audio/'))
+      .map(file => {
+        const title = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
+        return {
+          id: `local-${Math.random().toString(36).substr(2, 9)}`,
+          title: title,
+          artist: "Local Archive",
+          thumbnail: "https://picsum.photos/seed/local/400/400",
+          isLocal: true,
+          localFile: file
+        };
+      });
+
+    if (newTracks.length > 0) {
+      setLocalTracks([...localTracks, ...newTracks]);
+      toast({ 
+        title: "Archives Summoned", 
+        description: `${newTracks.length} tracks added to your local collection.` 
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-12">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-2xl font-black text-primary gold-glow uppercase tracking-tighter">Local Sanctuary</h3>
+          <p className="text-[10px] text-primary/40 font-black uppercase tracking-[0.3em]">Manifest your system's audio archives</p>
+        </div>
+        <Button 
+          onClick={() => fileInputRef.current?.click()}
+          className="bg-primary text-black font-black rounded-full px-8 h-12 uppercase tracking-widest hover:bg-white transition-all shadow-lg"
+        >
+          <Plus className="w-4 h-4 mr-2" /> Summon Files
+        </Button>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          multiple 
+          accept="audio/*" 
+          onChange={handleFileSelect} 
+        />
+      </div>
+
+      {localTracks.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
+          {localTracks.map((track) => (
+            <SearchResult key={track.id} track={track} />
+          ))}
+        </div>
+      ) : (
+        <div 
+          className="text-center py-40 border-2 border-dashed border-primary/10 rounded-[4rem] bg-primary/5 cursor-pointer group hover:bg-primary/10 transition-all"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Music2 className="w-16 h-16 text-primary/20 mx-auto mb-8 group-hover:scale-110 transition-transform" />
+          <p className="text-primary/40 font-black text-[10px] uppercase tracking-[0.5em]">The local archive is silent. Click to summon music.</p>
+        </div>
+      )}
+    </div>
   );
 }
 

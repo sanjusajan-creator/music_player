@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Home, Search, Library, PlusCircle, Heart, ListMusic, Sparkles, Loader2, Wand2, Trash2 } from 'lucide-react';
+import { Home, Search, Library, PlusCircle, Heart, ListMusic, Sparkles, Loader2, Wand2, Trash2, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -89,6 +89,7 @@ export const Sidebar = ({ mobile = false }: { mobile?: boolean } = {}) => {
   const navItems = [
     { label: 'Home', icon: <Home />, path: '/' },
     { label: 'Explore', icon: <Search />, path: '/?tab=trending' },
+    { label: 'Local Archive', icon: <FolderOpen />, path: '/?tab=local' },
     { label: 'Library', icon: <Library />, path: '/?tab=history' },
   ];
 

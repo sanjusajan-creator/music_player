@@ -22,35 +22,93 @@ export const YouTubePlayer: React.FC = () => {
   } = usePlayerStore();
 
   const playerRef = useRef<YTPlayer | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
 
+  // Cleanup for local audio
   useEffect(() => {
-    if (!playerRef.current) return;
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
+
+  // Handle local track playback
+  useEffect(() => {
+    if (currentTrack?.isLocal && currentTrack.localFile) {
+      if (!audioRef.current) {
+        audioRef.current = new Audio();
+        audioRef.current.addEventListener('timeupdate', () => {
+          if (audioRef.current) setProgress(audioRef.current.currentTime);
+        });
+        audioRef.current.addEventListener('loadedmetadata', () => {
+          if (audioRef.current) setDuration(audioRef.current.duration);
+        });
+        audioRef.current.addEventListener('ended', () => {
+          nextTrack();
+        });
+      }
+
+      const url = URL.createObjectURL(currentTrack.localFile);
+      audioRef.current.src = url;
+      if (isPlaying) audioRef.current.play();
+
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+  }, [currentTrack, nextTrack, setProgress, setDuration]);
+
+  // Handle local audio control
+  useEffect(() => {
+    if (!audioRef.current || !currentTrack?.isLocal) return;
+    if (isPlaying) audioRef.current.play();
+    else audioRef.current.pause();
+  }, [isPlaying, currentTrack]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume / 100;
+  }, [volume]);
+
+  useEffect(() => {
+    if (audioRef.current && seekRequest !== null && currentTrack?.isLocal) {
+      audioRef.current.currentTime = seekRequest;
+    }
+  }, [seekRequest, currentTrack]);
+
+  // Handle YouTube playback
+  useEffect(() => {
+    if (!playerRef.current || currentTrack?.isLocal) return;
     if (isPlaying) playerRef.current.playVideo();
     else playerRef.current.pauseVideo();
   }, [isPlaying, currentTrack]);
 
   useEffect(() => {
-    if (playerRef.current) playerRef.current.setVolume(volume);
-  }, [volume]);
+    if (playerRef.current && !currentTrack?.isLocal) playerRef.current.setVolume(volume);
+  }, [volume, currentTrack]);
 
   useEffect(() => {
-    if (playerRef.current && seekRequest !== null) {
+    if (playerRef.current && seekRequest !== null && !currentTrack?.isLocal) {
       playerRef.current.seekTo(seekRequest, true);
     }
-  }, [seekRequest]);
+  }, [seekRequest, currentTrack]);
 
-  // Fetch recommendations for current track
+  // Fetch recommendations for cloud tracks
   useEffect(() => {
-    if (currentTrack) {
+    if (currentTrack && !currentTrack.isLocal) {
       getRelatedVideos(currentTrack.id).then(setRecommendations);
     }
   }, [currentTrack]);
 
-  // Update progress and detect ads
+  // Update progress for YouTube
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!playerRef.current || !isPlaying || !currentTrack) return;
+      if (!playerRef.current || !isPlaying || !currentTrack || currentTrack.isLocal) return;
 
       const currentTime = playerRef.current.getCurrentTime();
       const totalTime = playerRef.current.getDuration();
@@ -86,7 +144,6 @@ export const YouTubePlayer: React.FC = () => {
       if (queue.length > 0) {
         nextTrack();
       } else if (isAutoplay && recommendations.length > 0) {
-        // Autoplay logic: Pick the first recommendation
         setCurrentTrack(recommendations[0]);
       } else {
         nextTrack();
@@ -98,15 +155,17 @@ export const YouTubePlayer: React.FC = () => {
 
   return (
     <div className="yt-player-hidden">
-      <YouTube
-        videoId={currentTrack.id}
-        opts={{
-          height: '1', width: '1',
-          playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1 },
-        }}
-        onReady={onReady}
-        onStateChange={onStateChange}
-      />
+      {!currentTrack.isLocal && (
+        <YouTube
+          videoId={currentTrack.id}
+          opts={{
+            height: '1', width: '1',
+            playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1 },
+          }}
+          onReady={onReady}
+          onStateChange={onStateChange}
+        />
+      )}
     </div>
   );
 };

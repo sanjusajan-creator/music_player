@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Compass, Heart, History, X, ArrowRight, LogOut } from "lucide-react";
+import { Search, Compass, Heart, History, X, ArrowRight, LogOut, FolderOpen } from "lucide-react";
 import { getAuth, signOut } from "firebase/auth";
 import { useUser } from "@/firebase";
 import { Input } from "@/components/ui/input";
@@ -96,6 +96,12 @@ export const Navbar: React.FC = () => {
             onClick={() => navigateToTab("trending")}
           />
           <NavItem
+            icon={<FolderOpen className="w-5 h-5" />}
+            label="Local"
+            active={currentTab === "local"}
+            onClick={() => navigateToTab("local")}
+          />
+          <NavItem
             icon={<Heart className="w-5 h-5" />}
             label="Liked"
             active={currentTab === "liked"}
@@ -138,6 +144,10 @@ export const Navbar: React.FC = () => {
               </DropdownMenuLabel>
 
               <DropdownMenuSeparator className="bg-primary/10" />
+
+              <DropdownMenuItem onClick={() => navigateToTab("local")} className="font-bold uppercase text-[10px] tracking-widest">
+                <FolderOpen className="w-4 h-4 mr-2" /> Local Archives
+              </DropdownMenuItem>
 
               <DropdownMenuItem onClick={() => navigateToTab("history")} className="font-bold uppercase text-[10px] tracking-widest">
                 <History className="w-4 h-4 mr-2" /> History Archive
