@@ -112,4 +112,5 @@ main {
 
 .sanctuary-title {
   @apply font-black uppercase tracking-tighter text-primary gold-glow;
+  font-weight: 900 !important;
 }

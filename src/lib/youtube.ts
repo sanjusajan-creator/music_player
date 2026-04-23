@@ -40,11 +40,11 @@ export async function searchTracks(query: string): Promise<Track[]> {
   }
 
   try {
+    // CORRECT ENDPOINT: youtube/v3/search
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
-    // 3. Handle Quota or API Errors gracefully with Fallback
     if (searchData.error) {
       console.warn("YouTube API restricted or quota exceeded:", searchData.error.message);
       return MOCK_TRACKS; 
@@ -53,6 +53,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
     if (!videoIds) return MOCK_TRACKS;
 
+    // CORRECT ENDPOINT: youtube/v3/videos
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl);
     const listData = await listRes.json();
