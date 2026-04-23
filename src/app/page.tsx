@@ -161,7 +161,7 @@ function HomeContent() {
               <div className="min-w-0 flex-1">
                 <h2 className="text-2xl md:text-5xl lg:text-6xl font-black text-primary gold-glow font-bold tracking-tighter mb-2 md:mb-4 truncate leading-tight">
                   {searchQuery ? "Manifesting..." : `Welcome, `}
-                  <span className="text-white opacity-80">{searchQuery ? ` "${searchQuery}"` : (user?.email?.split('@')[0] || 'Traveler')}</span>
+                  <span className="text-white opacity-80 font-bold">{searchQuery ? ` "${searchQuery}"` : (user?.email?.split('@')[0] || 'Traveler')}</span>
                 </h2>
                 <div className="flex items-center gap-4">
                   <p className="text-muted-foreground text-[9px] md:text-xs font-black uppercase tracking-[0.3em]">

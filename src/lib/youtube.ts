@@ -37,7 +37,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
   }
 
   try {
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(query + ' music')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music')}&type=video&videoCategoryId=10&maxResults=15&key=${YOUTUBE_API_KEY}&regionCode=US&relevanceLanguage=en`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
@@ -82,18 +82,18 @@ export async function searchTracks(query: string): Promise<Track[]> {
  * Fetches related videos for autoplay recommendations
  */
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
-  if (!videoId) return [];
-  if (!YOUTUBE_API_KEY) return MOCK_TRACKS.slice(0, 5);
+  if (!videoId || !YOUTUBE_API_KEY) return [];
 
   try {
-    // relatedToVideoId often fails if parameters aren't exact. Using a simplified search for similar vibe is safer.
+    // relatedToVideoId often requires specific video categories or is restricted.
+    // Using type=video is mandatory.
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
 
     if (searchData.error) {
-        // Fallback search if relatedToVideoId fails (some IDs don't support it)
-        return []; 
+        console.warn("YouTube related fetch warning:", searchData.error.message);
+        return []; // Return empty instead of throwing to prevent app crash
     }
     
     const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
