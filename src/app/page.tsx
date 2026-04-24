@@ -14,7 +14,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { 
   TrendingUp, Sparkles, Heart, 
   Loader2, FolderOpen, Music2, FolderPlus, Play, 
-  Disc, User, ListMusic, Home, Search, Library, Settings as SettingsIcon, Clock
+  Disc, User, ListMusic, Home, Search, Library, Settings as SettingsIcon, Clock, X
 } from 'lucide-react';
 import { useUser, useAuth, useMemoFirebase, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -58,7 +58,7 @@ function HomeContent() {
   const db = useFirestore();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setLikedTracks, hasHydrated } = usePlayerStore();
+  const { setLikedTracks, hasHydrated, currentTrack, setCurrentTrack } = usePlayerStore();
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -126,14 +126,43 @@ function HomeContent() {
   );
 
   return (
-    <div className="flex h-screen w-screen bg-black overflow-hidden relative selection:bg-primary/20 text-primary">
+    <div className="flex h-screen w-screen bg-[#000000] overflow-hidden relative selection:bg-primary/20 text-primary">
       <Sidebar />
-      <main className="flex-1 flex flex-col min-w-0 bg-black relative h-full">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#000000] relative h-full">
         <Navbar />
         <YouTubePlayer />
         
-        <ScrollArea className="flex-1 h-full bg-black">
+        <ScrollArea className="flex-1 h-full bg-[#000000]">
           <div className="p-4 md:p-8 max-w-7xl mx-auto pb-44 md:pb-32">
+            
+            <AnimatePresence>
+              {currentTrack?.isYouTube && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="mb-10 w-full aspect-video rounded-3xl overflow-hidden bg-black border border-primary/20 relative group"
+                >
+                  <iframe 
+                    src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1`}
+                    className="w-full h-full"
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                  />
+                  <button 
+                    onClick={() => setCurrentTrack(null)}
+                    className="absolute top-4 right-4 bg-black/80 p-2 rounded-full text-primary opacity-0 group-hover:opacity-100 transition-opacity border border-primary/20"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4 backdrop-blur-md border-t border-primary/20">
+                    <p className="text-primary font-black uppercase text-xs tracking-widest">YouTube Discovery Manifested</p>
+                    <h3 className="text-white font-black text-xl tracking-tighter uppercase truncate">{currentTrack.title}</h3>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentTab + searchQuery + detailId}
@@ -141,7 +170,7 @@ function HomeContent() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
-                className="bg-black"
+                className="bg-[#000000]"
               >
                 {currentTab === 'home' && <HomeView />}
                 {currentTab === 'search' && <SearchResultsView query={searchQuery} />}
@@ -154,8 +183,8 @@ function HomeContent() {
           </div>
         </ScrollArea>
 
-        {/* Mobile Navigation Bar - Fixed at absolute bottom */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-black/95 backdrop-blur-xl border-t border-white/5 flex items-center justify-around z-50">
+        {/* Mobile Navigation Bar */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#000000] backdrop-blur-xl border-t border-primary/20 flex items-center justify-around z-50">
           <MobileNavItem icon={<Home />} label="Home" active={currentTab === 'home'} onClick={() => router.push('/?tab=home')} />
           <MobileNavItem icon={<Search />} label="Search" active={currentTab === 'search'} onClick={() => router.push('/?tab=search')} />
           <MobileNavItem icon={<Library />} label="Library" active={currentTab === 'liked'} onClick={() => router.push('/?tab=liked')} />
@@ -184,7 +213,7 @@ function HomeView() {
   }, []);
 
   return (
-    <div className="space-y-10 bg-black">
+    <div className="space-y-10 bg-[#000000]">
       <section>
         <h2 className="text-3xl font-black text-primary mb-6 gold-glow uppercase tracking-tighter">{greeting}</h2>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
@@ -197,7 +226,7 @@ function HomeView() {
       </section>
 
       <SectionLayout title="Fresh Manifestations" query="Latest Hits" />
-      <SectionLayout title="Gold Trending" query="Trending Music" />
+      <SectionLayout title="Gold Discovery" query="Trending Music" />
       <SectionLayout title="Melodic Sanctuaries" query="Relaxing Music" />
     </div>
   );
@@ -208,7 +237,7 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
   const songs = data?.songs?.results || [];
   
   return (
-    <section className="bg-black">
+    <section className="bg-[#000000]">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl md:text-2xl font-black text-primary hover:text-white cursor-pointer transition-all uppercase tracking-tighter gold-glow">{title}</h3>
         <button className="text-[10px] font-black uppercase tracking-widest text-primary/40 hover:text-primary">Show all</button>
@@ -216,15 +245,7 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {isLoading ? [...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
           songs.slice(0, 5).map((track: any) => (
-            <SearchResult key={track.id} track={{
-              id: track.id,
-              title: track.title,
-              artist: track.primaryArtists || track.artist,
-              thumbnail: track.image?.[2]?.url || track.image?.[1]?.url || track.thumbnail,
-              album: track.album,
-              isSaavn: true,
-              isYouTube: false
-            }} />
+            <SearchResult key={track.id} track={track} />
           ))
         }
       </div>
@@ -236,7 +257,7 @@ function SearchResultsView({ query }: { query: string }) {
   const { data: results, isLoading } = useSaavnSearch(query);
   
   if (isLoading) return (
-    <div className="space-y-12 bg-black">
+    <div className="space-y-12 bg-[#000000]">
       {[...Array(3)].map((_, i) => (
         <div key={i} className="space-y-4">
           <div className="h-8 w-48 bg-white/5 animate-pulse rounded-md" />
@@ -256,21 +277,13 @@ function SearchResultsView({ query }: { query: string }) {
   );
 
   return (
-    <div className="space-y-12 bg-black">
+    <div className="space-y-12 bg-[#000000]">
       {results.songs?.results?.length > 0 && (
         <section>
-          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Top Songs</h2>
+          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Hybrid Archives</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
             {results.songs.results.map((t: any) => (
-              <SearchResult key={t.id} track={{
-                id: t.id,
-                title: t.title,
-                artist: t.primaryArtists || t.artist,
-                thumbnail: (t.image && t.image[2]?.url) || t.thumbnail,
-                album: t.album,
-                isSaavn: true,
-                isYouTube: false
-              }} />
+              <SearchResult key={t.id} track={t} />
             ))}
           </div>
         </section>
@@ -300,7 +313,7 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
   };
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500 bg-black">
+    <div className="space-y-10 animate-in fade-in duration-500 bg-[#000000]">
       <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
         <img src={data.image?.[2]?.url} className={cn("w-48 h-48 md:w-64 md:h-64 shadow-2xl object-cover gold-border-glow", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
         <div className="space-y-4 flex-1 text-center md:text-left">
@@ -384,37 +397,6 @@ const GreetingCard = ({ label, icon }: { label: string, icon: React.ReactNode })
   </div>
 );
 
-const CategoryCard = ({ label, image, subtitle, type, id, isCircle }: { label: string, image?: string, subtitle?: string, type: string, id: string, isCircle?: boolean }) => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  return (
-    <div 
-      onClick={() => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('tab', 'detail');
-        params.set('type', type);
-        params.set('id', id);
-        router.push(`/?${params.toString()}`);
-      }}
-      className="spotify-card flex flex-col gap-3 md:gap-4 group"
-    >
-      <div className={cn("relative aspect-square overflow-hidden", isCircle ? "rounded-full" : "rounded-xl")}>
-        <img src={image} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="c" />
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-        {!isCircle && (
-          <button className="absolute bottom-2 right-2 md:bottom-3 md:right-3 w-10 h-10 md:w-12 md:h-12 bg-primary rounded-full flex items-center justify-center shadow-2xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-            <Play className="fill-black text-black w-5 h-5 md:w-6 md:h-6 ml-1" />
-          </button>
-        )}
-      </div>
-      <div className="space-y-1">
-        <p className="text-xs md:text-sm font-black text-primary truncate uppercase tracking-tighter gold-glow group-hover:scale-105 transition-all">{label}</p>
-        {subtitle && <p className="text-[9px] md:text-[10px] text-primary/40 font-black uppercase tracking-widest truncate">{subtitle}</p>}
-      </div>
-    </div>
-  );
-};
-
 function LikedSongsView({ userId }: { userId: string }) {
   const db = useFirestore();
   const q = useMemoFirebase(() => {
@@ -423,7 +405,7 @@ function LikedSongsView({ userId }: { userId: string }) {
   }, [userId, db]);
   const { data: likedDocs } = useCollection(q);
   return (
-    <div className="space-y-10 bg-black">
+    <div className="space-y-10 bg-[#000000]">
       <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
         <div className="w-48 h-48 md:w-64 md:h-64 bg-primary/10 rounded-2xl shadow-2xl flex items-center justify-center gold-border-glow">
           <Heart className="w-24 h-24 md:w-32 md:h-32 text-primary fill-current animate-pulse-gold" />
@@ -483,7 +465,7 @@ function LocalArchivesView() {
   };
 
   return (
-    <div className="space-y-12 bg-black">
+    <div className="space-y-12 bg-[#000000]">
       <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
         <div className="text-center md:text-left">
           <h2 className="text-4xl md:text-7xl font-black text-primary gold-glow tracking-tighter uppercase leading-none">Local Vault</h2>

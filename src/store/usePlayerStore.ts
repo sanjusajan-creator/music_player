@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -13,6 +12,7 @@ export interface Track {
   localFile?: File;
   isSaavn?: boolean;
   isYouTube?: boolean;
+  videoId?: string;
   language?: string;
   hasLyrics?: boolean;
   bitrates?: string[];
@@ -199,7 +199,7 @@ export const usePlayerStore = create<PlayerState>()(
       })),
     }),
     {
-      name: 'vibecraft-sovereign-v3',
+      name: 'vibecraft-sovereign-v4',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 

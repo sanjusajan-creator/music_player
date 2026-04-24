@@ -62,12 +62,7 @@ export const YouTubePlayer: React.FC = () => {
 
       audio.addEventListener('error', (e) => {
         if (!audio.src || audio.src === window.location.href || audio.src === "") return;
-        console.warn("Sovereign Stream Interruption:", audio.error?.message);
         setIsBuffering(false);
-        if (audio.error?.code === 4) {
-          toast({ title: "Stream Unavailable", description: "Skipping to next archive...", variant: "destructive" });
-          setTimeout(() => nextTrack(), 2000);
-        }
       });
 
       audioRef.current = audio;
@@ -80,7 +75,7 @@ export const YouTubePlayer: React.FC = () => {
         audioRef.current = null;
       }
     };
-  }, [nextTrack, setDuration, setIsBuffering, setIsPlaying, setProgress]);
+  }, [nextTrack, setDuration, setIsBuffering, setIsPlaying, setProgress, currentTrack?.id]);
 
   // Handle Manifestation Switching
   useEffect(() => {
@@ -103,22 +98,20 @@ export const YouTubePlayer: React.FC = () => {
           if (manifestedUrl) {
             url = manifestedUrl;
           } else {
-            console.error("Saavn Vault returned no stream for:", currentTrack.title);
             setIsBuffering(false);
-            toast({ title: "Stream Unavailable", description: "This archive could not be manifested.", variant: "destructive" });
             return;
           }
         } else if (currentTrack.isYouTube) {
           source = "YouTube Discovery";
-          // Simulation for YouTube manifest via native engine (requires proxy/scrapper)
-          // For now we toast the limitation or fallback to saavn if possible
-          toast({ title: "YouTube discovery", description: "Native audio fallback coming soon." });
+          // YouTube tracks use Iframe, so stop native audio
+          audioRef.current.pause();
+          audioRef.current.src = "";
+          console.log(`%cOracle: Pausing Native Audio for YouTube Discovery`, "color: #FFD700; font-weight: 900;");
           return;
         }
 
         if (url && audioRef.current) {
-          // Log the source manifesting the track
-          console.log(`%cOracle: Manifesting track from ${source}`, "color: #FFD700; font-weight: bold; font-size: 14px; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);");
+          console.log(`%cOracle: Manifesting track from ${source}`, "color: #FFD700; font-weight: 900; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);");
           
           const wasPlaying = !audioRef.current.paused;
           
@@ -128,13 +121,11 @@ export const YouTubePlayer: React.FC = () => {
           
           if (wasPlaying || isPlaying) {
             audioRef.current.play().catch(error => {
-              console.warn("Playback blocked by browser policy. Interaction required.", error);
               setIsPlaying(false);
             });
           }
         }
       } catch (error) {
-        console.error("Sovereign Initialization Error:", error);
         setIsBuffering(false);
       }
     };
@@ -144,13 +135,13 @@ export const YouTubePlayer: React.FC = () => {
 
   // Sync Global Play/Pause
   useEffect(() => {
-    if (!audioRef.current || !audioRef.current.src || audioRef.current.src === window.location.href) return;
+    if (!audioRef.current || !audioRef.current.src || audioRef.current.src === window.location.href || currentTrack?.isYouTube) return;
     if (isPlaying) {
       if (audioRef.current.paused) audioRef.current.play().catch(() => {});
     } else {
       if (!audioRef.current.paused) audioRef.current.pause();
     }
-  }, [isPlaying]);
+  }, [isPlaying, currentTrack?.isYouTube]);
 
   // Sync Global Volume
   useEffect(() => {
