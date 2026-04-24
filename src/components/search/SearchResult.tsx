@@ -1,12 +1,14 @@
+
 "use client";
 
 import React, { memo } from 'react';
 import { Track, usePlayerStore } from '@/store/usePlayerStore';
-import { Play, Heart, Music2, Youtube } from 'lucide-react';
+import { Play, Heart, Music2, Youtube, Disc } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
 
 interface SearchResultProps {
   track: Track;
@@ -42,6 +44,13 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
     }
   };
 
+  const getSourceLabel = () => {
+    if (track.isSaavn) return "JioSaavn";
+    if (track.isGaana) return "Gaana";
+    if (track.isYouTube) return "YouTube";
+    return null;
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -56,11 +65,18 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
           <div className="w-full h-full bg-white/5 flex items-center justify-center"><Music2 className="w-12 h-12 text-primary/20" /></div>
         )}
         
-        {track.isYouTube && (
-          <div className="absolute top-2 left-2 bg-black/80 p-1.5 rounded-full z-10 border border-primary/20">
-            <Youtube className="w-4 h-4 text-primary" />
-          </div>
-        )}
+        <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+          {track.isYouTube && (
+            <div className="bg-black/80 p-1.5 rounded-full border border-primary/20">
+              <Youtube className="w-4 h-4 text-primary" />
+            </div>
+          )}
+          {track.isGaana && (
+             <div className="bg-black/80 p-1.5 rounded-full border border-primary/20">
+               <Disc className="w-4 h-4 text-primary" />
+             </div>
+          )}
+        </div>
 
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
         <button 
@@ -72,14 +88,18 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
       </div>
       
       <div className="space-y-1 min-w-0 flex-1 flex flex-col">
-        <h4 className="font-black text-sm text-primary truncate uppercase tracking-tighter leading-none gold-glow">{track.title}</h4>
+        <div className="flex items-start justify-between gap-2">
+          <h4 className="font-black text-sm text-primary truncate uppercase tracking-tighter leading-none gold-glow flex-1">{track.title}</h4>
+          {getSourceLabel() && (
+             <span className="text-[8px] font-black text-primary/40 border border-primary/10 px-1 rounded uppercase tracking-widest">{getSourceLabel()}</span>
+          )}
+        </div>
         <div className="flex items-center justify-between gap-2 mt-auto pt-1">
           <p className="text-[10px] text-primary/40 uppercase tracking-widest truncate font-black flex-1">{track.artist}</p>
           <button onClick={handleLike} className="shrink-0 p-1 transition-all active:scale-125">
             <Heart className={cn("w-4 h-4 transition-all", isLiked ? "fill-primary text-primary" : "text-primary/20 opacity-0 group-hover:opacity-100 hover:text-primary")} />
           </button>
         </div>
-        {track.isYouTube && <span className="text-[8px] font-black uppercase text-primary/60 tracking-widest mt-1">YouTube Discovery</span>}
       </div>
     </motion.div>
   );

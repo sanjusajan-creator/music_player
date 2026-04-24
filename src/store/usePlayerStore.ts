@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -12,10 +13,12 @@ export interface Track {
   localFile?: File;
   isSaavn?: boolean;
   isYouTube?: boolean;
+  isGaana?: boolean;
   videoId?: string;
   language?: string;
   hasLyrics?: boolean;
   bitrates?: string[];
+  source?: 'jiosaavn' | 'gaana' | 'youtube' | 'local';
 }
 
 export type AudioQuality = 'low' | 'medium' | 'high' | 'auto';
@@ -199,7 +202,7 @@ export const usePlayerStore = create<PlayerState>()(
       })),
     }),
     {
-      name: 'vibecraft-sovereign-v4',
+      name: 'vibecraft-sovereign-v5',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 

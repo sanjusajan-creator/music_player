@@ -1,35 +1,47 @@
+
 'use server';
 
 import { Track } from '@/store/usePlayerStore';
 
 const SAAVN_API_BASE = 'https://my-jiosaavn-api.onrender.com';
+const GAANA_API_BASE = 'https://my-gaana-api.onrender.com';
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
 
 /**
- * Sovereign Unified Search Oracle
- * Aggregates JioSaavn (Audio), Gaana (Metadata), and YouTube (Fallback Video)
+ * Sovereign Hybrid Search Oracle
+ * Aggregates JioSaavn (Primary), Gaana (Secondary), and YouTube (Fallback)
  */
 export async function searchAllAction(query: string) {
   try {
-    const [saavnData, ytResults] = await Promise.all([
+    const [saavnData, gaanaData] = await Promise.all([
       fetchSaavn(query),
-      fetchYouTube(query)
+      fetchGaana(query)
     ]);
 
-    // Format results into a unified Spotify-like structure
+    // Unified Song List (JioSaavn + Gaana merged)
+    const mergedSongs = [...saavnData.songs, ...(gaanaData.songs || [])];
+    
+    // Check if music archives are empty
+    const isMusicEmpty = mergedSongs.length === 0 && (gaanaData.albums?.length || 0) === 0;
+    
+    let ytResults = [];
+    if (isMusicEmpty) {
+      ytResults = await fetchYouTube(query);
+    }
+
     return {
       songs: { 
-        results: saavnData.songs 
+        results: mergedSongs 
       },
       albums: { 
-        results: saavnData.albums 
+        results: gaanaData.albums || [] 
       },
       artists: { 
-        results: saavnData.artists 
+        results: gaanaData.artists || [] 
       },
       playlists: { 
-        results: saavnData.playlists 
+        results: gaanaData.playlists || [] 
       },
       videos: {
         results: ytResults
@@ -46,7 +58,7 @@ async function fetchSaavn(query: string) {
     const res = await fetch(`${SAAVN_API_BASE}/api/search?query=${encodeURIComponent(query)}`, {
       next: { revalidate: 3600 } 
     });
-    if (!res.ok) return { songs: [], albums: [], artists: [], playlists: [] };
+    if (!res.ok) return { songs: [] };
     const data = await res.json();
     const results = data.data || {};
     
@@ -57,29 +69,57 @@ async function fetchSaavn(query: string) {
       thumbnail: track.image?.[2]?.url || track.image?.[1]?.url,
       album: track.album || "Saavn Vault",
       isSaavn: true,
-      isYouTube: false
+      source: 'jiosaavn'
     }));
 
-    const albums = (results.albums?.results || []).map((album: any) => ({
+    return { songs };
+  } catch (e) {
+    return { songs: [] };
+  }
+}
+
+async function fetchGaana(query: string) {
+  try {
+    const res = await fetch(`${GAANA_API_BASE}/api/search?q=${encodeURIComponent(query)}`, {
+      next: { revalidate: 3600 }
+    });
+    if (!res.ok) return { songs: [], albums: [], artists: [], playlists: [] };
+    const data = await res.json();
+    const results = data.data || {};
+
+    const songs = (results.songs || []).map((track: any) => ({
+      id: track.id,
+      title: track.title,
+      artist: track.artist || "Gaana Artist",
+      thumbnail: track.image || track.thumbnail,
+      album: track.album || "Gaana Archive",
+      isGaana: true,
+      source: 'gaana'
+    }));
+
+    const albums = (results.albums || []).map((album: any) => ({
       id: album.id,
       title: album.title,
-      artist: album.artist || "Various Artists",
-      thumbnail: album.image?.[2]?.url,
-      type: 'albums'
+      artist: album.artist || "Gaana Collection",
+      thumbnail: album.image,
+      type: 'albums',
+      source: 'gaana'
     }));
 
-    const artists = (results.artists?.results || []).map((artist: any) => ({
+    const artists = (results.artists || []).map((artist: any) => ({
       id: artist.id,
       title: artist.title,
-      thumbnail: artist.image?.[2]?.url,
-      type: 'artists'
+      thumbnail: artist.image,
+      type: 'artists',
+      source: 'gaana'
     }));
 
-    const playlists = (results.playlists?.results || []).map((pl: any) => ({
+    const playlists = (results.playlists || []).map((pl: any) => ({
       id: pl.id,
       title: pl.title,
-      thumbnail: pl.image?.[2]?.url,
-      type: 'playlists'
+      thumbnail: pl.image,
+      type: 'playlists',
+      source: 'gaana'
     }));
 
     return { songs, albums, artists, playlists };
@@ -108,9 +148,9 @@ async function fetchYouTube(query: string): Promise<Track[]> {
       artist: item.channelTitle || item.author || "YouTube Discovery",
       thumbnail: item.thumbnail?.url || item.thumbnails?.[0]?.url,
       album: "YouTube Video Discovery",
-      isSaavn: false,
       isYouTube: true,
-      videoId: item.id || item.videoId
+      videoId: item.id || item.videoId,
+      source: 'youtube'
     }));
   } catch (e) {
     return [];
@@ -130,7 +170,11 @@ export async function getSongDetailsAction(id: string) {
 
 export async function getDetailAction(type: 'albums' | 'playlists' | 'artists', id: string) {
   try {
-    const res = await fetch(`${SAAVN_API_BASE}/api/${type}/${id}`);
+    // Attempt Saavn first, then Gaana
+    let res = await fetch(`${SAAVN_API_BASE}/api/${type}/${id}`);
+    if (!res.ok) {
+        res = await fetch(`${GAANA_API_BASE}/api/${type}/${id}`);
+    }
     if (!res.ok) return null;
     const data = await res.json();
     return data.data || null;
@@ -143,7 +187,6 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
   try {
     const song = await getSongDetailsAction(id);
     if (!song || !song.downloadUrl) return null;
-    // Strictly use .url from the highest quality stream
     const links = song.downloadUrl;
     const url = links[links.length - 1]?.url || null;
     return url;

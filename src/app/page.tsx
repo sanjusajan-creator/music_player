@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
@@ -16,7 +17,7 @@ import {
   Loader2, FolderOpen, Music2, FolderPlus, Play, 
   Disc, User, ListMusic, Home, Search, Library, Settings as SettingsIcon, Clock, X, Youtube
 } from 'lucide-react';
-import { useUser, useAuth, useMemoFirebase, useFirestore } from '@/firebase';
+import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -222,15 +223,17 @@ function SearchResultsView({ query }: { query: string }) {
 
   return (
     <div className="space-y-12 pb-20">
+      {/* 🎵 Songs (JioSaavn + Gaana merged) */}
       {results.songs?.results?.length > 0 && (
         <section>
-          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Sovereign Songs</h2>
+          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Unified Songs</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
             {results.songs.results.map((t: any) => <SearchResult key={t.id} track={t} />)}
           </div>
         </section>
       )}
 
+      {/* 📀 Albums (Gaana) */}
       {results.albums?.results?.length > 0 && (
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Artifact Albums</h2>
@@ -242,6 +245,31 @@ function SearchResultsView({ query }: { query: string }) {
         </section>
       )}
 
+      {/* 📃 Playlists (Gaana) */}
+      {results.playlists?.results?.length > 0 && (
+        <section>
+          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Sovereign Playlists</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+            {results.playlists.results.map((p: any) => (
+              <CollectionCard key={p.id} data={p} type="playlists" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 👤 Artists (Gaana) */}
+      {results.artists?.results?.length > 0 && (
+        <section>
+          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Oracle Artists</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+            {results.artists.results.map((ar: any) => (
+              <CollectionCard key={ar.id} data={ar} type="artists" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 🎬 Videos (YouTube fallback) */}
       {results.videos?.results?.length > 0 && (
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">YouTube Discovery</h2>
