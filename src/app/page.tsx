@@ -133,7 +133,7 @@ function HomeContent() {
         <YouTubePlayer />
         
         <ScrollArea className="flex-1 h-full bg-black">
-          <div className="p-4 md:p-8 max-w-7xl mx-auto pb-40">
+          <div className="p-4 md:p-8 max-w-7xl mx-auto pb-44 md:pb-32">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentTab + searchQuery + detailId}
@@ -154,8 +154,8 @@ function HomeContent() {
           </div>
         </ScrollArea>
 
-        {/* Mobile Navigation Bar */}
-        <nav className="md:hidden fixed bottom-20 left-0 right-0 h-16 bg-black/95 backdrop-blur-xl border-t border-white/5 flex items-center justify-around z-50">
+        {/* Mobile Navigation Bar - Fixed at absolute bottom */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-black/95 backdrop-blur-xl border-t border-white/5 flex items-center justify-around z-50">
           <MobileNavItem icon={<Home />} label="Home" active={currentTab === 'home'} onClick={() => router.push('/?tab=home')} />
           <MobileNavItem icon={<Search />} label="Search" active={currentTab === 'search'} onClick={() => router.push('/?tab=search')} />
           <MobileNavItem icon={<Library />} label="Library" active={currentTab === 'liked'} onClick={() => router.push('/?tab=liked')} />

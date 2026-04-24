@@ -181,7 +181,7 @@ export const Player: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[60] h-20 md:h-24 bg-black/95 backdrop-blur-xl border-t border-white/5 flex items-center px-4 md:px-6 gap-4 shadow-2xl">
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-[60] h-20 md:h-24 bg-black/95 backdrop-blur-xl border-t border-white/5 flex items-center px-4 md:px-6 gap-4 shadow-2xl pointer-events-auto">
         {/* Track Info (Left) */}
         <div className="flex-1 flex items-center gap-3 min-w-0">
           <div className="relative group shrink-0" onClick={() => router.push(`/?view=full&${searchParams.toString()}`)}>
