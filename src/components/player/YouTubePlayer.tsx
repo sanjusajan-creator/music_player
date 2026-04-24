@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import YouTube, { YouTubePlayer as YTPlayer, YouTubeProps } from 'react-youtube';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { getRelatedVideos } from '@/lib/youtube';
 
 export const YouTubePlayer: React.FC = () => {
   const { 
@@ -17,113 +16,121 @@ export const YouTubePlayer: React.FC = () => {
     setDuration,
     nextTrack,
     seekRequest,
-    isAutoplay,
     setCurrentTrack
   } = usePlayerStore();
 
   const playerRef = useRef<YTPlayer | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [recommendations, setRecommendations] = useState<any[]>([]);
 
-  // Cleanup for local/preview audio
+  // Initialize Native Audio Engine
   useEffect(() => {
+    if (!audioRef.current) {
+      const audio = new Audio();
+      audio.crossOrigin = "anonymous";
+      
+      audio.addEventListener('timeupdate', () => {
+        if (audioRef.current) setProgress(audioRef.current.currentTime);
+      });
+      
+      audio.addEventListener('loadedmetadata', () => {
+        if (audioRef.current) setDuration(audioRef.current.duration);
+      });
+      
+      audio.addEventListener('ended', () => {
+        nextTrack();
+      });
+
+      audio.addEventListener('error', (e) => {
+        console.error("Vibecraft Audio Engine Error:", e);
+      });
+
+      audioRef.current = audio;
+    }
+
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
       }
     };
-  }, []);
+  }, [nextTrack, setProgress, setDuration]);
 
-  // Handle local track OR public API preview playback
+  // Handle Track Source Switching
   useEffect(() => {
-    const isPublicPreview = currentTrack?.previewUrl && !currentTrack.isLocal;
-    const isLocalTrack = currentTrack?.isLocal && currentTrack.localFile;
+    if (!currentTrack) return;
 
-    if (isLocalTrack || isPublicPreview) {
-      if (!audioRef.current) {
-        audioRef.current = new Audio();
-        audioRef.current.addEventListener('timeupdate', () => {
-          if (audioRef.current) setProgress(audioRef.current.currentTime);
-        });
-        audioRef.current.addEventListener('loadedmetadata', () => {
-          if (audioRef.current) setDuration(audioRef.current.duration);
-        });
-        audioRef.current.addEventListener('ended', () => {
-          nextTrack();
-        });
+    const isYouTube = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
+    const isNative = currentTrack.isLocal || currentTrack.previewUrl;
+
+    if (isNative && audioRef.current) {
+      // Pause YouTube if it exists
+      if (playerRef.current) {
+        try { playerRef.current.pauseVideo(); } catch (e) {}
       }
 
       let url = "";
-      if (isLocalTrack) {
-        url = URL.createObjectURL(currentTrack.localFile!);
-      } else if (isPublicPreview) {
-        url = currentTrack.previewUrl!;
+      if (currentTrack.isLocal && currentTrack.localFile) {
+        url = URL.createObjectURL(currentTrack.localFile);
+      } else if (currentTrack.previewUrl) {
+        url = currentTrack.previewUrl;
       }
 
-      audioRef.current.src = url;
-      if (isPlaying) audioRef.current.play();
+      if (url && audioRef.current.src !== url) {
+        audioRef.current.src = url;
+        audioRef.current.load();
+        if (isPlaying) {
+          audioRef.current.play().catch(err => {
+            console.warn("Vibecraft: Autoplay prevented for native source.", err);
+          });
+        }
+      }
 
       return () => {
-        if (isLocalTrack) URL.revokeObjectURL(url);
+        if (currentTrack.isLocal && url) URL.revokeObjectURL(url);
       };
-    } else if (audioRef.current) {
+    } else if (isYouTube && audioRef.current) {
+      // Stop native audio if we are on YouTube
       audioRef.current.pause();
       audioRef.current.src = "";
     }
-  }, [currentTrack, nextTrack, setProgress, setDuration]);
+  }, [currentTrack, isPlaying]);
 
-  // Handle Audio Control (Play/Pause)
+  // Handle Play/Pause Control (Global)
   useEffect(() => {
-    if (!audioRef.current) return;
-    const isAudioActive = currentTrack?.isLocal || currentTrack?.previewUrl;
-    if (!isAudioActive) return;
-
-    if (isPlaying) audioRef.current.play().catch(() => {});
-    else audioRef.current.pause();
+    const isNative = currentTrack?.isLocal || currentTrack?.previewUrl;
+    
+    if (isNative && audioRef.current) {
+      if (isPlaying) audioRef.current.play().catch(() => {});
+      else audioRef.current.pause();
+    } else if (playerRef.current) {
+      if (isPlaying) playerRef.current.playVideo();
+      else playerRef.current.pauseVideo();
+    }
   }, [isPlaying, currentTrack]);
 
   // Handle Volume
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume / 100;
-    if (playerRef.current && !currentTrack?.isLocal && !currentTrack?.previewUrl) {
-      playerRef.current.setVolume(volume);
-    }
-  }, [volume, currentTrack]);
+    if (playerRef.current) playerRef.current.setVolume(volume);
+  }, [volume]);
 
   // Handle Seek
   useEffect(() => {
     if (seekRequest !== null) {
-      if (audioRef.current && (currentTrack?.isLocal || currentTrack?.previewUrl)) {
+      const isNative = currentTrack?.isLocal || currentTrack?.previewUrl;
+      if (isNative && audioRef.current) {
         audioRef.current.currentTime = seekRequest;
-      } else if (playerRef.current && !currentTrack?.isLocal && !currentTrack?.previewUrl) {
+      } else if (playerRef.current) {
         playerRef.current.seekTo(seekRequest, true);
       }
     }
   }, [seekRequest, currentTrack]);
 
-  // Handle YouTube Playback
-  useEffect(() => {
-    if (!playerRef.current) return;
-    const isYouTubeTrack = currentTrack && !currentTrack.isLocal && !currentTrack.previewUrl;
-    if (!isYouTubeTrack) return;
-
-    if (isPlaying) playerRef.current.playVideo();
-    else playerRef.current.pauseVideo();
-  }, [isPlaying, currentTrack]);
-
-  // Fetch recommendations for cloud tracks
-  useEffect(() => {
-    if (currentTrack && !currentTrack.isLocal) {
-      getRelatedVideos(currentTrack.id).then(setRecommendations);
-    }
-  }, [currentTrack]);
-
-  // Update progress for YouTube
+  // Update YouTube Progress
   useEffect(() => {
     const interval = setInterval(() => {
-      const isYouTubeTrack = currentTrack && !currentTrack.isLocal && !currentTrack.previewUrl;
-      if (!playerRef.current || !isPlaying || !isYouTubeTrack) return;
+      const isYouTube = currentTrack && !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
+      if (!playerRef.current || !isPlaying || !isYouTube) return;
 
       try {
         const currentTime = playerRef.current.getCurrentTime();
@@ -132,10 +139,9 @@ export const YouTubePlayer: React.FC = () => {
         setProgress(currentTime);
         setDuration(totalTime);
 
-        if (currentTrack.duration && totalTime > 0) {
+        if (currentTrack?.duration && totalTime > 0) {
           const diff = Math.abs(totalTime - currentTrack.duration);
-          const isAd = diff > 5; 
-          setIsAdPlaying(isAd);
+          setIsAdPlaying(diff > 5);
         }
       } catch (e) {}
     }, 1000);
@@ -146,6 +152,7 @@ export const YouTubePlayer: React.FC = () => {
   const onReady: YouTubeProps['onReady'] = (event) => {
     playerRef.current = event.target;
     playerRef.current.setVolume(volume);
+    if (isPlaying) playerRef.current.playVideo();
   };
 
   const onStateChange: YouTubeProps['onStateChange'] = (event) => {
@@ -157,20 +164,12 @@ export const YouTubePlayer: React.FC = () => {
     } else if (event.data === 3) { // Buffering
       setIsBuffering(true);
     } else if (event.data === 0) { // Ended
-      const { queue } = usePlayerStore.getState();
-      if (queue.length > 0) {
-        nextTrack();
-      } else if (isAutoplay && recommendations.length > 0) {
-        setCurrentTrack(recommendations[0]);
-      } else {
-        nextTrack();
-      }
+      nextTrack();
     }
   };
 
   if (!currentTrack) return null;
 
-  // Render YouTube component ONLY if it's a valid YouTube ID and not a preview/local track
   const isYouTubeTrack = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
 
   return (
@@ -186,7 +185,7 @@ export const YouTubePlayer: React.FC = () => {
           onStateChange={onStateChange}
         />
       ) : (
-        <div id="no-yt-active" />
+        <div id="vibecraft-native-active" />
       )}
     </div>
   );

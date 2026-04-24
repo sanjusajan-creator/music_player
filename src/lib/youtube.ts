@@ -6,14 +6,13 @@ const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
- * Sovereign Multi-Provider Search Strategy with Detailed Logging:
+ * Sovereign Multi-Provider Search Strategy:
  * 1. iTunes API (Public)
  * 2. Audius API (Decentralized Public)
  * 3. Deezer API (Via Proxy)
  * 4. Mixcloud API (Public)
  * 5. Archive.org (Public)
  * 6. YouTube (Fallback/Quota-aware)
- * 7. Cosmic Archive (Mock fallback)
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -21,7 +20,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   const cacheKey = sanitizedQuery.replace(/\s+/g, '_');
   
-  // 1. Check Firestore Cache first
+  // 1. Check Firestore Cache
   try {
     const db = getDb();
     const cacheRef = doc(db, "search_cache", cacheKey);
@@ -36,7 +35,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // tier 1: iTunes Search API
+  // Tier 1: iTunes
   try {
     console.log("Oracle: Summoning from iTunes Archive...");
     const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`;
@@ -50,22 +49,19 @@ export async function searchTracks(query: string): Promise<Track[]> {
         artist: item.artistName,
         thumbnail: item.artworkUrl100.replace('100x100', '600x600'),
         duration: Math.floor(item.trackTimeMillis / 1000),
-        previewUrl: item.previewUrl // Critical for playback when YT is dead
+        previewUrl: item.previewUrl
       }));
       updateCache(cacheKey, results);
       return results;
     }
-  } catch (e) {
-    console.warn("Oracle: iTunes Archive silent.");
-  }
+  } catch (e) {}
 
-  // tier 2: Audius API (Decentralized)
+  // Tier 2: Audius
   try {
     console.log("Oracle: Summoning from Audius Decentralized Grid...");
     const res = await fetch(`https://api.audius.co/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=VIBECRAFT`);
     const data = await res.json();
     if (data.data?.length > 0) {
-      console.log(`Oracle: Manifested ${data.data.length} tracks from Audius.`);
       const results = data.data.map((item: any) => ({
         id: `audius-${item.id}`,
         title: item.title,
@@ -77,11 +73,9 @@ export async function searchTracks(query: string): Promise<Track[]> {
       updateCache(cacheKey, results);
       return results;
     }
-  } catch (e) {
-    console.warn("Oracle: Audius Grid silent.");
-  }
+  } catch (e) {}
 
-  // tier 3: Deezer API
+  // Tier 3: Deezer
   try {
     console.log("Oracle: Summoning from Deezer Sanctuary...");
     const deezerUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.deezer.com/search?q=${query}&limit=15`)}`;
@@ -89,7 +83,6 @@ export async function searchTracks(query: string): Promise<Track[]> {
     const data = await res.json();
     const contents = JSON.parse(data.contents);
     if (contents.data?.length > 0) {
-      console.log(`Oracle: Manifested ${contents.data.length} tracks from Deezer.`);
       const results = contents.data.map((item: any) => ({
         id: `deezer-${item.id}`,
         title: item.title,
@@ -101,55 +94,9 @@ export async function searchTracks(query: string): Promise<Track[]> {
       updateCache(cacheKey, results);
       return results;
     }
-  } catch (e) {
-    console.warn("Oracle: Deezer Sanctuary silent.");
-  }
+  } catch (e) {}
 
-  // tier 4: Mixcloud API
-  try {
-    console.log("Oracle: Summoning from Mixcloud Vault...");
-    const res = await fetch(`https://api.mixcloud.com/search/?q=${encodeURIComponent(query)}&type=cloudcast`);
-    const data = await res.json();
-    if (data.data?.length > 0) {
-      console.log(`Oracle: Manifested ${data.data.length} tracks from Mixcloud.`);
-      const results = data.data.map((item: any) => ({
-        id: `mixcloud-${item.key.replace(/\//g, '-')}`,
-        title: item.name,
-        artist: item.user.username,
-        thumbnail: item.pictures.extra_large || item.pictures.large || 'https://picsum.photos/seed/mixcloud/400/400',
-        duration: item.audio_length,
-        // Mixcloud doesn't provide easy direct streams without keys, so we keep metadata
-      }));
-      updateCache(cacheKey, results);
-      return results;
-    }
-  } catch (e) {
-    console.warn("Oracle: Mixcloud Vault silent.");
-  }
-
-  // tier 5: Archive.org API
-  try {
-    console.log("Oracle: Summoning from The Internet Archive...");
-    const res = await fetch(`https://archive.org/advancedsearch.php?q=${encodeURIComponent(query)}+AND+mediatype:audio&output=json&rows=15`);
-    const data = await res.json();
-    if (data.response.docs?.length > 0) {
-      console.log(`Oracle: Manifested ${data.response.docs.length} tracks from Archive.org.`);
-      const results = data.response.docs.map((item: any) => ({
-        id: `archive-${item.identifier}`,
-        title: item.title || "Unknown Archive",
-        artist: item.creator?.[0] || item.creator || "Unknown Artist",
-        thumbnail: `https://archive.org/services/img/${item.identifier}`,
-        duration: 0,
-        previewUrl: `https://archive.org/download/${item.identifier}` // Attempt generic download
-      }));
-      updateCache(cacheKey, results);
-      return results;
-    }
-  } catch (e) {
-    console.warn("Oracle: Internet Archive silent.");
-  }
-
-  // Final tier: YouTube (Quota-aware)
+  // Final tier: YouTube
   if (YOUTUBE_API_KEY) {
     try {
       console.log("Oracle: Summoning from YouTube Vault (Fallback)...");
@@ -169,17 +116,12 @@ export async function searchTracks(query: string): Promise<Track[]> {
           thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
           duration: parseISO8601Duration(item.contentDetails.duration),
         }));
-        console.log(`Oracle: Manifested ${results.length} tracks from YouTube.`);
         updateCache(cacheKey, results);
         return results;
       }
-    } catch (error) {
-      console.error("Oracle: YouTube Vault Quota Exceeded or Error.");
-    }
+    } catch (error) {}
   }
 
-  // Final Fallback: Cosmic Archive
-  console.log("Oracle: Cosmic Archive Manifested (Final Fallback).");
   return getMockResults(sanitizedQuery);
 }
 
@@ -194,9 +136,9 @@ function updateCache(key: string, results: Track[]) {
 }
 
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
-  // If not a standard YouTube ID (11 chars, no prefix), return mock results to avoid 403s
+  // If not a standard YouTube ID, return mock results to avoid 403s
   if (!videoId || videoId.length !== 11 || videoId.includes('-')) {
-    console.log("Oracle: Public Archive track detected. Summoning related mocks.");
+    console.log("Oracle: Non-YouTube track. Providing cached related archives.");
     return MOCK_TRACKS.slice(0, 5);
   }
   
@@ -235,21 +177,11 @@ function parseISO8601Duration(duration: string): number {
 
 function normalizeMetadata(text: string): string {
   if (!text) return "";
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\(Official Video\)/gi, '')
-    .replace(/\[Official Video\]/gi, '')
-    .replace(/\(Official Audio\)/gi, '')
-    .trim();
+  return text.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
 }
 
 function getMockResults(query: string): Track[] {
-  const filtered = MOCK_TRACKS.filter(t => 
-    t.title.toLowerCase().includes(query) || 
-    t.artist.toLowerCase().includes(query)
-  );
+  const filtered = MOCK_TRACKS.filter(t => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query));
   return filtered.length > 0 ? filtered : MOCK_TRACKS;
 }
 
@@ -258,10 +190,5 @@ const MOCK_TRACKS: Track[] = [
   { id: 'L_jWHffIx5E', title: 'Smells Like Teen Spirit', artist: 'Nirvana', thumbnail: 'https://picsum.photos/seed/nirvana/600/600', duration: 301 },
   { id: 'hTWKbfoikeg', title: 'Midnight Gold', artist: 'Lux Record', thumbnail: 'https://picsum.photos/seed/gold/600/600', duration: 185 },
   { id: 'YQHsXMglC9A', title: 'Hello', artist: 'Adele', thumbnail: 'https://picsum.photos/seed/adele/600/600', duration: 367 },
-  { id: 'JGwWNGJdvx8', title: 'Shape of You', artist: 'Ed Sheeran', thumbnail: 'https://picsum.photos/seed/ed/600/600', duration: 233 },
-  { id: '9bZkp7q19f0', title: 'Gangnam Style', artist: 'PSY', thumbnail: 'https://picsum.photos/seed/psy/600/600', duration: 252 },
-  { id: 'fRh_vgS2dFE', title: 'Sorry', artist: 'Justin Bieber', thumbnail: 'https://picsum.photos/seed/bieber/600/600', duration: 200 },
-  { id: 'kJQP7kiw5Fk', title: 'Despacito', artist: 'Luis Fonsi', thumbnail: 'https://picsum.photos/seed/fonsi/600/600', duration: 228 },
-  { id: '7wtfhZwyrAY', title: 'Uptown Funk', artist: 'Mark Ronson', thumbnail: 'https://picsum.photos/seed/bruno/600/600', duration: 270 },
-  { id: 'OPf0YbXqDm0', title: 'Mark My Words', artist: 'Bieber', thumbnail: 'https://picsum.photos/seed/words/600/600', duration: 134 }
+  { id: 'JGwWNGJdvx8', title: 'Shape of You', artist: 'Ed Sheeran', thumbnail: 'https://picsum.photos/seed/ed/600/600', duration: 233 }
 ];

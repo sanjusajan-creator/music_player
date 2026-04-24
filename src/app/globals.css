@@ -39,7 +39,7 @@
     margin: 0;
     padding: 0;
     overflow: hidden !important;
-    /* Prevent pull-to-refresh and elastic bounce */
+    /* Prevent pull-to-refresh and elastic bounce - NUCLEAR FIX */
     overscroll-behavior-y: none !important;
     touch-action: manipulation;
   }
@@ -65,7 +65,7 @@ main {
 
 /* Optimized for Mobile Performance: Moderate blur for stability */
 .glass-morphism {
-  @apply bg-black/80 backdrop-blur-md border border-white/5;
+  @apply bg-black/80 backdrop-blur-xl border border-white/5;
 }
 
 .gold-glow {
