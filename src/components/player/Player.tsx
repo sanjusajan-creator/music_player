@@ -82,8 +82,8 @@ export const Player: React.FC = () => {
     
     setIsLoadingLyrics(true);
     try {
-      // Step 1: Try Sovereign API Archives
-      const apiLyrics = await getLyricsAction(currentTrack.id);
+      // Step 1: Try Sovereign API Archives (Double-Tier Fetch: ID + Link)
+      const apiLyrics = await getLyricsAction(currentTrack.id, currentTrack.url);
       if (apiLyrics) {
         setLyrics(apiLyrics);
       } else {

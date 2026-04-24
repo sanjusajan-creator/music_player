@@ -94,6 +94,7 @@ async function fetchSaavn(query: string) {
       artist: track.primaryArtists || "Unknown Artist",
       thumbnail: track.image?.[2]?.url || track.image?.[1]?.url,
       album: track.album || "Saavn Vault",
+      url: track.url, // Store the web link for lyrics fallback
       source: 'jiosaavn' as const,
       isSaavn: true,
       isIndiaContent: true,
@@ -175,7 +176,6 @@ async function fetchYouTube(query: string) {
     return [];
   }
   try {
-    // Robust search: removing trailing slash for API compatibility
     const res = await fetch(`https://${RAPIDAPI_HOST}/search?query=${encodeURIComponent(query)}&regionCode=IN&hl=en-IN`, {
       headers: {
         'x-rapidapi-key': RAPIDAPI_KEY,
@@ -236,24 +236,28 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
 
 /**
  * Sovereign Lyrics Oracle
- * Fetches archived lyrics from JioSaavn or returns null for AI fallback
+ * Fetches archived lyrics from JioSaavn.
+ * Hardened logic: Does not rely on lyricsId. Retries with web link for robustness.
  */
-export async function getLyricsAction(songId: string) {
+export async function getLyricsAction(songId: string, songUrl?: string) {
   try {
-    const res = await fetch(`${SAAVN_API_BASE}/api/songs/${songId}`);
+    // Step 1: Fetch by Sovereign ID
+    let res = await fetch(`${SAAVN_API_BASE}/api/songs/${songId}`);
     if (!res.ok) return null;
-    const data = await res.json();
-    const song = data?.data?.[0];
+    let data = await res.json();
+    let song = data?.data?.[0];
 
-    // Priority 1: Direct Lyrics
+    // Priority 1: Direct Manifestation from ID detail
     if (song?.lyrics) return song.lyrics;
 
-    // Priority 2: Lyrics ID Fallback
-    if (song?.lyricsId) {
-      const lyricRes = await fetch(`${SAAVN_API_BASE}/api/lyrics/${song.lyricsId}`);
-      if (lyricRes.ok) {
-        const lyricData = await lyricRes.json();
-        return lyricData?.data?.lyrics || null;
+    // Priority 2: Fallback to Sovereign Link (Website URL)
+    if (songUrl || song?.url) {
+      const urlToFetch = songUrl || song?.url;
+      res = await fetch(`${SAAVN_API_BASE}/api/songs?link=${encodeURIComponent(urlToFetch)}`);
+      if (res.ok) {
+        data = await res.json();
+        const fallbackSong = data?.data?.[0];
+        if (fallbackSong?.lyrics) return fallbackSong.lyrics;
       }
     }
 
