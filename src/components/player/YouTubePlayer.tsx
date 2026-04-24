@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 /**
  * Vibecraft Sovereign Audio Engine
  * Pure HTML5 Native Audio implementation with Hybrid Resolution Fallback.
+ * Hardened to prevent overlap and ghost playback.
  */
 export const YouTubePlayer: React.FC = () => {
   const { 
@@ -61,9 +62,15 @@ export const YouTubePlayer: React.FC = () => {
   }, [nextTrack, setDuration, setIsBuffering, setIsPlaying, setProgress]);
 
   useEffect(() => {
-    if (!currentTrack || !audioRef.current) return;
+    if (!audioRef.current) return;
     
     const initializePlayback = async () => {
+      // MANDATORY: Immediately stop and clear any existing buffer to prevent overlap
+      audioRef.current!.pause();
+      audioRef.current!.src = "";
+      
+      if (!currentTrack) return;
+
       let url = "";
       let sourceLog = "Unknown Vault";
 
@@ -75,10 +82,8 @@ export const YouTubePlayer: React.FC = () => {
           sourceLog = "Local Vault";
         } else if (currentTrack.source === 'youtube') {
           sourceLog = "YouTube Discovery (Iframe Mode)";
-          audioRef.current.pause();
-          audioRef.current.src = "";
+          // YouTube handled via iframe in page.tsx
           setIsBuffering(false);
-          // Handled via iframe in page.tsx
           return;
         } else {
           // Resolve Gaana or Saavn
@@ -87,13 +92,8 @@ export const YouTubePlayer: React.FC = () => {
             url = resolvedUrl;
             sourceLog = currentTrack.source === 'gaana' ? "Gaana Resolved via Saavn Vault" : "JioSaavn Vault";
           } else if (currentTrack.source === 'gaana') {
-            // Gaana fallback to YouTube discovery
             sourceLog = "Gaana Fallback to YouTube Discovery";
             toast({ title: "Resolution Fallback", description: "Manifesting via YouTube Discovery." });
-            // In a real app, we'd trigger a youtube search and play the first result
-            // For now, we pause native audio
-            audioRef.current.pause();
-            audioRef.current.src = "";
             setIsBuffering(false);
             return;
           }
@@ -101,16 +101,20 @@ export const YouTubePlayer: React.FC = () => {
 
         if (url && audioRef.current) {
           console.log(`%cOracle: Manifesting track from ${sourceLog}`, "color: #FFD700; font-weight: 900; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);");
-          audioRef.current.pause();
           audioRef.current.src = url;
           audioRef.current.load();
           if (isPlaying) {
-            audioRef.current.play().catch(() => setIsPlaying(false));
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(() => setIsPlaying(false));
+            }
           }
         } else {
           setIsBuffering(false);
-          console.error("Saavn Vault returned no stream for:", currentTrack.title);
-          toast({ title: "Manifestation Failed", description: "Archive unreachable.", variant: "destructive" });
+          if (currentTrack.source !== 'youtube') {
+            console.error("Saavn Vault returned no stream for:", currentTrack.title);
+            toast({ title: "Manifestation Failed", description: "Archive unreachable.", variant: "destructive" });
+          }
         }
       } catch (error) {
         setIsBuffering(false);
@@ -118,7 +122,7 @@ export const YouTubePlayer: React.FC = () => {
     };
 
     initializePlayback();
-  }, [currentTrack?.id]);
+  }, [currentTrack?.id, setIsBuffering, setIsPlaying, isPlaying]);
 
   useEffect(() => {
     if (!audioRef.current || !audioRef.current.src || currentTrack?.isYouTube) return;

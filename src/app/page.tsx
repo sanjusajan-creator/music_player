@@ -69,7 +69,7 @@ function HomeContent() {
       };
       syncLiked();
     }
-  }, [user?.uid, db, hasHydrated]);
+  }, [user?.uid, db, hasHydrated, setLikedTracks]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,6 +210,7 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
 
 function SearchResultsView({ query }: { query: string }) {
   const { data: results, isLoading } = useSaavnSearch(query);
+  const ytMode = query.toLowerCase().includes(":yt");
   
   if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
 
@@ -222,7 +223,7 @@ function SearchResultsView({ query }: { query: string }) {
 
   return (
     <div className="space-y-12 pb-20">
-      {/* 🎵 Songs (JioSaavn + Gaana merged) */}
+      {/* 🎧 Songs (JioSaavn + Gaana merged) */}
       {results.songs?.results?.length > 0 && (
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Unified Songs (IN)</h2>
@@ -246,8 +247,8 @@ function SearchResultsView({ query }: { query: string }) {
         </section>
       )}
 
-      {/* 🎬 Videos (YouTube fallback) */}
-      {results.videos?.results?.length > 0 && (
+      {/* 🎬 Videos (YouTube fallback - ONLY IF :yt) */}
+      {ytMode && results.videos?.results?.length > 0 && (
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">YouTube Discovery (IN)</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
@@ -288,7 +289,7 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
     artist: s.primaryArtists || s.artists?.primary?.[0]?.name || data.title,
     thumbnail: getImage(s),
     album: data.title || data.name,
-    source: 'jiosaavn',
+    source: 'jiosaavn' as const,
     isSaavn: true
   }));
 
@@ -353,7 +354,6 @@ const GreetingCard = ({ label, icon }: { label: string, icon: React.ReactNode })
 
 function LikedSongsView({ userId }: { userId: string }) {
   const db = useFirestore();
-  const { setQueue } = usePlayerStore();
   const q = useMemoFirebase(() => {
     if (!userId || !db) return null;
     return query(collection(db, 'users', userId, 'likedSongs'), orderBy('likedAt', 'desc'), limit(50));
@@ -367,7 +367,7 @@ function LikedSongsView({ userId }: { userId: string }) {
       artist: doc.artist,
       thumbnail: doc.thumbnailUrl,
       album: "Liked Songs",
-      source: 'jiosaavn' as any,
+      source: 'jiosaavn' as const,
       isSaavn: true
     }));
   }, [likedDocs]);
@@ -398,7 +398,7 @@ function LikedSongsView({ userId }: { userId: string }) {
 }
 
 function LocalArchivesView() {
-  const { localTracks, setLocalTracks, setQueue } = usePlayerStore();
+  const { localTracks, setLocalTracks } = usePlayerStore();
   const handleSummon = async () => {
     if ('showDirectoryPicker' in window) {
       try {
@@ -412,7 +412,7 @@ function LocalArchivesView() {
               title: file.name.replace(/\.[^/.]+$/, ""),
               artist: "Local Archive",
               thumbnail: "https://picsum.photos/seed/local/400/400",
-              source: 'local',
+              source: 'local' as const,
               isLocal: true,
               localFile: file
             });

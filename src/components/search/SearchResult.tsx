@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import { Track, usePlayerStore } from '@/store/usePlayerStore';
-import { Play, Heart, Music2, Youtube, Disc, Plus } from 'lucide-react';
+import { Play, Heart, Music2, Youtube, Disc, Plus, Headphones } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn, getImage } from '@/lib/utils';
 import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -66,6 +66,12 @@ export const SearchResult = memo(({ track, results = [], index = 0 }: SearchResu
     return "Local";
   };
 
+  const getSourceIcon = () => {
+    if (track.source === 'youtube') return <Youtube className="w-4 h-4 text-primary" />;
+    if (track.source === 'gaana') return <Disc className="w-4 h-4 text-primary" />;
+    return <Headphones className="w-4 h-4 text-primary" />;
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -77,16 +83,9 @@ export const SearchResult = memo(({ track, results = [], index = 0 }: SearchResu
         <img src={getImage(track)} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={track.title} loading="lazy" />
         
         <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
-          {track.isYouTube && (
-            <div className="bg-black/80 p-1.5 rounded-full border border-primary/20">
-              <Youtube className="w-4 h-4 text-primary" />
-            </div>
-          )}
-          {track.isGaana && (
-             <div className="bg-black/80 p-1.5 rounded-full border border-primary/20">
-               <Disc className="w-4 h-4 text-primary" />
-             </div>
-          )}
+          <div className="bg-black/80 p-1.5 rounded-full border border-primary/20">
+            {getSourceIcon()}
+          </div>
           <div className="bg-black/80 px-2 py-0.5 rounded-full border border-primary/40 flex items-center gap-1">
             <span className="text-[7px] font-black text-primary uppercase tracking-widest">🇮🇳 INDIA</span>
           </div>

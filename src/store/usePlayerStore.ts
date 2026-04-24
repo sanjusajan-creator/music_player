@@ -112,6 +112,7 @@ export const usePlayerStore = create<PlayerState>()(
           const newHistory = [currentTrack, ...history.filter(t => t.id !== currentTrack.id)].slice(0, 50);
           set({ history: newHistory });
         }
+        // Force immediate progress reset on new track selection
         set({ currentTrack: track, progress: 0, isPlaying: true, seekRequest: null });
       },
 
@@ -206,7 +207,7 @@ export const usePlayerStore = create<PlayerState>()(
             isPlaying: true 
           });
         } else {
-          set({ isPlaying: false });
+          set({ isPlaying: false, progress: 0 });
         }
       },
 

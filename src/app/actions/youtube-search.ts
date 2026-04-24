@@ -11,14 +11,29 @@ const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
 
 /**
  * Sovereign Hybrid Search Oracle - India Optimized
- * Aggregates JioSaavn (Primary), Gaana (Secondary), and YouTube (Fallback)
+ * Aggregates JioSaavn (Primary), Gaana (Secondary), and YouTube (Explicit Fallback via :yt)
  */
 export async function searchAllAction(query: string) {
   try {
-    const [saavnData, gaanaData] = await Promise.all([
-      fetchSaavn(query),
-      fetchGaana(query)
-    ]);
+    const ytMode = query.toLowerCase().includes(":yt");
+    const cleanQuery = query.replace(/:yt/gi, "").trim();
+
+    if (!cleanQuery) return null;
+
+    // Parallel Summoning for High Performance
+    const searchPromises: Promise<any>[] = [
+      fetchSaavn(cleanQuery),
+      fetchGaana(cleanQuery)
+    ];
+
+    if (ytMode) {
+      searchPromises.push(fetchYouTube(cleanQuery));
+    }
+
+    const results = await Promise.all(searchPromises);
+    const saavnData = results[0];
+    const gaanaData = results[1];
+    const ytResults = ytMode ? results[2] : [];
 
     // Unified Song List (JioSaavn + Gaana merged)
     const allSongs = [...saavnData.songs, ...(gaanaData.songs || [])];
@@ -31,19 +46,14 @@ export async function searchAllAction(query: string) {
       seen.add(key);
       return true;
     });
-    
-    let ytResults = [];
-    // Only fetch YouTube if music archives are dry or for discovery
-    if (uniqueSongs.length < 5) {
-      ytResults = await fetchYouTube(query);
-    }
 
     return {
       songs: { results: uniqueSongs },
       albums: { results: gaanaData.albums || [] },
       artists: { results: gaanaData.artists || [] },
       playlists: { results: gaanaData.playlists || [] },
-      videos: { results: ytResults }
+      videos: { results: ytResults || [] },
+      ytMode
     };
   } catch (error) {
     console.error("Oracle Unified Search Error:", error);
@@ -66,7 +76,7 @@ async function fetchSaavn(query: string) {
       artist: track.primaryArtists || "Unknown Artist",
       thumbnail: track.image?.[2]?.url || track.image?.[1]?.url,
       album: track.album || "Saavn Vault",
-      source: 'jiosaavn',
+      source: 'jiosaavn' as const,
       isSaavn: true,
       isIndiaContent: true
     }));
@@ -77,9 +87,6 @@ async function fetchSaavn(query: string) {
   }
 }
 
-/**
- * Fetches and normalizes results from the Gaana Vercel Sanctuary.
- */
 async function fetchGaana(query: string) {
   try {
     const res = await fetch(`${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}&country=IN`, {
@@ -89,13 +96,12 @@ async function fetchGaana(query: string) {
     const data = await res.json();
     const results = data.data || {};
 
-    // Normalize Gaana song response into unified format BEFORE rendering
     const normalizeGaanaSong = (item: any) => ({
       id: item.track_id || item.id,
       title: item.title,
       artist: item.artists || item.artist || "Gaana Artist",
       album: item.album || "Gaana Archive",
-      image: item.artworkUrl,   // IMPORTANT FIX
+      image: item.artworkUrl,
       artworkUrl: item.artworkUrl,
       thumbnail: item.artworkUrl || item.image || item.thumbnail || "https://via.placeholder.com/150",
       url: item.song_url,
@@ -114,7 +120,7 @@ async function fetchGaana(query: string) {
       thumbnail: album.artworkUrl || album.image,
       artworkUrl: album.artworkUrl,
       type: 'albums',
-      source: 'gaana',
+      source: 'gaana' as const,
       isIndiaContent: true
     }));
 
@@ -124,7 +130,7 @@ async function fetchGaana(query: string) {
       thumbnail: artist.artworkUrl || artist.image,
       artworkUrl: artist.artworkUrl,
       type: 'artists',
-      source: 'gaana',
+      source: 'gaana' as const,
       isIndiaContent: true
     }));
 
@@ -134,7 +140,7 @@ async function fetchGaana(query: string) {
       thumbnail: pl.artworkUrl || pl.image,
       artworkUrl: pl.artworkUrl,
       type: 'playlists',
-      source: 'gaana',
+      source: 'gaana' as const,
       isIndiaContent: true
     }));
 
@@ -144,15 +150,42 @@ async function fetchGaana(query: string) {
   }
 }
 
+async function fetchYouTube(query: string) {
+  if (!RAPIDAPI_KEY) return [];
+  try {
+    const res = await fetch(`https://${RAPIDAPI_HOST}/search/?query=${encodeURIComponent(query)}&regionCode=IN&hl=en-IN`, {
+      headers: {
+        'x-rapidapi-key': RAPIDAPI_KEY,
+        'x-rapidapi-host': RAPIDAPI_HOST
+      },
+      next: { revalidate: 86400 }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    
+    return (data || []).map((v: any) => ({
+      id: v.videoId,
+      videoId: v.videoId,
+      title: v.title,
+      artist: v.channelTitle || "YouTube Discovery",
+      thumbnail: v.thumbnail?.[0]?.url || v.thumbnail || "https://via.placeholder.com/150",
+      source: 'youtube' as const,
+      isYouTube: true,
+      url: `https://www.youtube.com/watch?v=${v.videoId}`,
+      isIndiaContent: true
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
 export async function resolveTrackAudio(track: Track): Promise<string | null> {
-  // If Gaana, try to resolve from Saavn first
   if (track.source === 'gaana') {
     const saavnResults = await fetchSaavn(`${track.title} ${track.artist}`);
     if (saavnResults.songs.length > 0) {
-      // Return highest quality stream from matched Saavn track
       return getSaavnPlaybackUrl(saavnResults.songs[0].id);
     }
-    return null; // Fallback to YouTube handled in Player component
+    return null; 
   }
   
   if (track.source === 'jiosaavn') {
