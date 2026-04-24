@@ -45,7 +45,7 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
 
   const getSourceLabel = () => {
     if (track.isSaavn) return "JioSaavn";
-    if (track.isGaana) return "Gaana";
+    if (track.isGaana) return "Gaana (Vercel)";
     if (track.isYouTube) return "YouTube";
     return null;
   };

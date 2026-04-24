@@ -4,7 +4,9 @@
 import { Track } from '@/store/usePlayerStore';
 
 const SAAVN_API_BASE = 'https://my-jiosaavn-api.onrender.com';
-const GAANA_API_BASE = 'https://my-gaana-api.onrender.com';
+const GAANA_API_BASE = 'https://my-gaana-api-tau.vercel.app';
+const GAANA_API_SEARCH_URL = `${GAANA_API_BASE}/api/search?q=`;
+
 const RAPIDAPI_KEY = process.env.NEXT_PUBLIC_RAPIDAPI_KEY || process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
 
@@ -21,19 +23,26 @@ export async function searchAllAction(query: string) {
     ]);
 
     // Unified Song List (JioSaavn + Gaana merged)
-    const mergedSongs = [...saavnData.songs, ...(gaanaData.songs || [])];
+    const allSongs = [...saavnData.songs, ...(gaanaData.songs || [])];
     
-    // Check if music archives are empty
-    const isMusicEmpty = mergedSongs.length === 0 && (gaanaData.albums?.length || 0) === 0;
+    // De-duplication Strategy: Compare Title and Artist (Normalize to lowercase)
+    const seen = new Set<string>();
+    const uniqueSongs = allSongs.filter(song => {
+      const key = `${song.title.toLowerCase().trim()}-${song.artist.toLowerCase().trim()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     
     let ytResults = [];
-    // Only fetch YouTube if specifically needed or as fallback discovery
-    // Enforcing regionCode=IN for all YouTube requests
-    ytResults = await fetchYouTube(query);
+    // Only fetch YouTube if specifically needed or as fallback discovery when music archives are empty
+    if (uniqueSongs.length === 0 && (gaanaData.albums?.length || 0) === 0) {
+      ytResults = await fetchYouTube(query);
+    }
 
     return {
       songs: { 
-        results: mergedSongs 
+        results: uniqueSongs 
       },
       albums: { 
         results: gaanaData.albums || [] 
@@ -53,6 +62,9 @@ export async function searchAllAction(query: string) {
     return null;
   }
 }
+
+// Exporting as searchMusicAction for background lib compatibility
+export { searchAllAction as searchMusicAction };
 
 async function fetchSaavn(query: string) {
   try {
@@ -83,8 +95,8 @@ async function fetchSaavn(query: string) {
 
 async function fetchGaana(query: string) {
   try {
-    // Appending country=IN to Gaana request as requested
-    const res = await fetch(`${GAANA_API_BASE}/api/search?q=${encodeURIComponent(query)}&country=IN`, {
+    // New Gaana API (Vercel) with India-Sovereign filter
+    const res = await fetch(`${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}&country=IN`, {
       next: { revalidate: 3600 }
     });
     if (!res.ok) return { songs: [], albums: [], artists: [], playlists: [] };
@@ -183,6 +195,7 @@ export async function getDetailAction(type: 'albums' | 'playlists' | 'artists', 
   try {
     let res = await fetch(`${SAAVN_API_BASE}/api/${type}/${id}`);
     if (!res.ok) {
+        // Fallback to the new Vercel Gaana base
         res = await fetch(`${GAANA_API_BASE}/api/${type}/${id}`);
     }
     if (!res.ok) return null;
