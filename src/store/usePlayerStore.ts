@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -56,7 +55,7 @@ interface PlayerState {
   setCurrentTrack: (track: Track | null) => void;
   playNextFromQueue: (track: Track) => void;
   addToQueue: (track: Track) => void;
-  setQueue: (tracks: Track[]) => void;
+  setQueue: (tracks: Track[], startIndex?: number) => void;
   removeFromQueue: (trackId: string) => void;
   setLocalTracks: (tracks: Track[]) => void;
   setLikedTracks: (ids: string[]) => void;
@@ -120,14 +119,23 @@ export const usePlayerStore = create<PlayerState>()(
         originalQueue: [...state.originalQueue, track]
       })),
 
-      setQueue: (tracks) => set({ 
-        currentTrack: tracks[0] || null,
-        queue: tracks.slice(1), 
-        originalQueue: tracks,
-        isPlaying: !!tracks[0],
-        progress: 0,
-        seekRequest: null
-      }),
+      setQueue: (tracks, startIndex = 0) => {
+        const selected = tracks[startIndex];
+        if (!selected) return;
+
+        const { currentTrack, history } = get();
+        const nextHistory = currentTrack ? [currentTrack, ...history].slice(0, 50) : history;
+
+        set({ 
+          currentTrack: selected,
+          queue: tracks.slice(startIndex + 1), 
+          originalQueue: tracks,
+          history: nextHistory,
+          isPlaying: true,
+          progress: 0,
+          seekRequest: null
+        });
+      },
 
       setLocalTracks: (tracks) => set({ localTracks: tracks }),
 
@@ -168,15 +176,32 @@ export const usePlayerStore = create<PlayerState>()(
       setRepeatMode: (mode) => set({ repeatMode: mode }),
 
       nextTrack: () => {
-        const { queue, repeatMode, currentTrack, originalQueue } = get();
+        const { queue, repeatMode, currentTrack, originalQueue, history } = get();
         if (repeatMode === 'one' && currentTrack) {
           set({ progress: 0, seekRequest: 0, isPlaying: true });
           return;
         }
+        
+        const nextHistory = currentTrack ? [currentTrack, ...history].slice(0, 50) : history;
+
         if (queue.length > 0) {
-          set({ currentTrack: queue[0], queue: queue.slice(1), progress: 0, seekRequest: null, isPlaying: true });
+          set({ 
+            currentTrack: queue[0], 
+            queue: queue.slice(1), 
+            history: nextHistory,
+            progress: 0, 
+            seekRequest: null, 
+            isPlaying: true 
+          });
         } else if (repeatMode === 'all' && originalQueue.length > 0) {
-          set({ currentTrack: originalQueue[0], queue: originalQueue.slice(1), progress: 0, seekRequest: null, isPlaying: true });
+          set({ 
+            currentTrack: originalQueue[0], 
+            queue: originalQueue.slice(1), 
+            history: nextHistory,
+            progress: 0, 
+            seekRequest: null, 
+            isPlaying: true 
+          });
         } else {
           set({ isPlaying: false });
         }
@@ -202,7 +227,7 @@ export const usePlayerStore = create<PlayerState>()(
       })),
     }),
     {
-      name: 'vibecraft-sovereign-v5',
+      name: 'vibecraft-sovereign-v6',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 

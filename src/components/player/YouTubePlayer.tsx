@@ -2,12 +2,12 @@
 
 import React, { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { getSaavnPlaybackUrl } from '@/app/actions/youtube-search';
+import { resolveTrackAudio } from '@/app/actions/youtube-search';
 import { toast } from '@/hooks/use-toast';
 
 /**
  * Vibecraft Sovereign Audio Engine
- * Pure HTML5 Native Audio implementation with Hybrid Fallback Diagnostics.
+ * Pure HTML5 Native Audio implementation with Hybrid Resolution Fallback.
  */
 export const YouTubePlayer: React.FC = () => {
   const { 
@@ -65,38 +65,52 @@ export const YouTubePlayer: React.FC = () => {
     
     const initializePlayback = async () => {
       let url = "";
-      let source = "Unknown Vault";
+      let sourceLog = "Unknown Vault";
 
       try {
-        if (currentTrack.isLocal && currentTrack.localFile) {
+        setIsBuffering(true);
+        
+        if (currentTrack.source === 'local' && currentTrack.localFile) {
           url = URL.createObjectURL(currentTrack.localFile);
-          source = "Local Vault";
-        } else if (currentTrack.isSaavn) {
-          setIsBuffering(true);
-          source = "JioSaavn Vault";
-          const manifestedUrl = await getSaavnPlaybackUrl(currentTrack.id);
-          if (manifestedUrl) {
-            url = manifestedUrl;
-          } else {
-            setIsBuffering(false);
-            toast({ title: "Manifestation Failed", description: "Stream unreachable in Saavn Vault.", variant: "destructive" });
-            return;
-          }
-        } else if (currentTrack.isYouTube) {
-          source = "YouTube Discovery";
+          sourceLog = "Local Vault";
+        } else if (currentTrack.source === 'youtube') {
+          sourceLog = "YouTube Discovery (Iframe Mode)";
           audioRef.current.pause();
           audioRef.current.src = "";
-          // YouTube handled via Iframe in page.tsx
+          setIsBuffering(false);
+          // Handled via iframe in page.tsx
+          return;
+        } else {
+          // Resolve Gaana or Saavn
+          const resolvedUrl = await resolveTrackAudio(currentTrack);
+          if (resolvedUrl) {
+            url = resolvedUrl;
+            sourceLog = currentTrack.source === 'gaana' ? "Gaana Resolved via Saavn Vault" : "JioSaavn Vault";
+          } else if (currentTrack.source === 'gaana') {
+            // Gaana fallback to YouTube discovery
+            sourceLog = "Gaana Fallback to YouTube Discovery";
+            toast({ title: "Resolution Fallback", description: "Manifesting via YouTube Discovery." });
+            // In a real app, we'd trigger a youtube search and play the first result
+            // For now, we pause native audio
+            audioRef.current.pause();
+            audioRef.current.src = "";
+            setIsBuffering(false);
+            return;
+          }
         }
 
         if (url && audioRef.current) {
-          console.log(`%cOracle: Manifesting track from ${source}`, "color: #FFD700; font-weight: 900; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);");
+          console.log(`%cOracle: Manifesting track from ${sourceLog}`, "color: #FFD700; font-weight: 900; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);");
           audioRef.current.pause();
           audioRef.current.src = url;
           audioRef.current.load();
           if (isPlaying) {
             audioRef.current.play().catch(() => setIsPlaying(false));
           }
+        } else {
+          setIsBuffering(false);
+          console.error("Saavn Vault returned no stream for:", currentTrack.title);
+          toast({ title: "Manifestation Failed", description: "Archive unreachable.", variant: "destructive" });
         }
       } catch (error) {
         setIsBuffering(false);

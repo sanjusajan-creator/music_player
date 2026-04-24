@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
@@ -24,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { query, collection, orderBy, limit, getDocs } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { usePlayerStore, Track } from '@/store/usePlayerStore';
-import { cn } from '@/lib/utils';
+import { cn, getImage } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -201,7 +200,7 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {isLoading ? [...Array(5)].map((_, i) => <div key={`skeleton-${i}`} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
           songs.slice(0, 5).map((track: any, i: number) => (
-            <SearchResult key={`track-${track.id}-${i}`} track={track} />
+            <SearchResult key={`track-${track.id}-${i}`} track={track} results={songs.slice(0, 5)} index={i} />
           ))
         }
       </div>
@@ -228,7 +227,9 @@ function SearchResultsView({ query }: { query: string }) {
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Unified Songs (IN)</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.songs.results.map((t: any, i: number) => <SearchResult key={`unified-${t.id}-${i}`} track={t} />)}
+            {results.songs.results.map((t: any, i: number) => (
+              <SearchResult key={`unified-${t.id}-${i}`} track={t} results={results.songs.results} index={i} />
+            ))}
           </div>
         </section>
       )}
@@ -250,7 +251,9 @@ function SearchResultsView({ query }: { query: string }) {
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">YouTube Discovery (IN)</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.videos.results.map((v: any, i: number) => <SearchResult key={`video-${v.id}-${i}`} track={v} />)}
+            {results.videos.results.map((v: any, i: number) => (
+              <SearchResult key={`video-${v.id}-${i}`} track={v} results={results.videos.results} index={i} />
+            ))}
           </div>
         </section>
       )}
@@ -262,7 +265,7 @@ function CollectionCard({ data, type }: { data: any, type: string }) {
   const router = useRouter();
   return (
     <div onClick={() => router.push(`/?tab=detail&type=${type}&id=${data.id}`)} className="spotify-card flex flex-col gap-4">
-      <img src={data.thumbnail} className="aspect-square rounded-lg object-cover shadow-2xl" alt="cover" />
+      <img src={getImage(data)} className="aspect-square rounded-lg object-cover shadow-2xl" alt="cover" />
       <div className="flex flex-col min-w-0">
         <h4 className="font-black text-sm text-primary truncate uppercase tracking-tighter">{data.title}</h4>
         <p className="text-[10px] text-primary/40 uppercase tracking-widest truncate">{data.artist || "Collection"}</p>
@@ -279,22 +282,24 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
   if (!data) return null;
 
   const songs = data.songs || data.topSongs || [];
+  const normalizedSongs = songs.map((s: any) => ({
+    id: s.id,
+    title: s.title || s.name,
+    artist: s.primaryArtists || s.artists?.primary?.[0]?.name || data.title,
+    thumbnail: getImage(s),
+    album: data.title || data.name,
+    source: 'jiosaavn',
+    isSaavn: true
+  }));
+
   const handlePlayAll = () => {
-    const queue = songs.map((s: any) => ({
-      id: s.id,
-      title: s.title || s.name,
-      artist: s.primaryArtists || s.artists?.primary?.[0]?.name || data.title,
-      thumbnail: s.image?.[2]?.url || data.image?.[2]?.url,
-      album: data.title || data.name,
-      isSaavn: true
-    }));
-    setQueue(queue);
+    setQueue(normalizedSongs, 0);
   };
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
-        <img src={data.image?.[2]?.url} className={cn("w-48 h-48 md:w-64 md:h-64 shadow-2xl object-cover gold-border-glow", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
+        <img src={getImage(data)} className={cn("w-48 h-48 md:w-64 md:h-64 shadow-2xl object-cover gold-border-glow", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
         <div className="space-y-4 flex-1 text-center md:text-left">
           <p className="text-[10px] font-black uppercase tracking-widest text-primary/60">{type.slice(0, -1)}</p>
           <h1 className="text-3xl md:text-6xl font-black text-primary gold-glow tracking-tighter leading-none uppercase">{data.title || data.name}</h1>
@@ -306,30 +311,28 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
       </div>
 
       <div className="space-y-1">
-        {songs.map((s: any, i: number) => (
-          <TrackRow key={`track-row-${s.id}-${i}`} track={{
-            id: s.id,
-            title: s.title || s.name,
-            artist: s.primaryArtists || s.artists?.primary?.[0]?.name || data.title,
-            thumbnail: s.image?.[2]?.url || s.image?.[1]?.url,
-            album: data.title || data.name,
-            isSaavn: true
-          }} index={i + 1} />
+        {normalizedSongs.map((track: any, i: number) => (
+          <TrackRow 
+            key={`track-row-${track.id}-${i}`} 
+            track={track} 
+            index={i + 1} 
+            onClick={() => setQueue(normalizedSongs, i)} 
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function TrackRow({ track, index }: { track: Track, index: number }) {
-  const { setCurrentTrack, currentTrack, isPlaying } = usePlayerStore();
+function TrackRow({ track, index, onClick }: { track: Track, index: number, onClick: () => void }) {
+  const { currentTrack } = usePlayerStore();
   const isActive = currentTrack?.id === track.id;
   
   return (
-    <div onClick={() => setCurrentTrack(track)} className={cn("grid grid-cols-[32px_1fr_48px] items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer border border-transparent", isActive && "bg-primary/10 border-primary/20")}>
+    <div onClick={onClick} className={cn("grid grid-cols-[32px_1fr_48px] items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer border border-transparent", isActive && "bg-primary/10 border-primary/20")}>
       <span className="text-sm font-black text-primary/40 group-hover:text-primary transition-colors text-center">{index}</span>
       <div className="flex items-center gap-3 md:gap-4 min-w-0">
-        <img src={track.thumbnail} className="w-10 h-10 rounded shadow-md object-cover shrink-0" alt="t" />
+        <img src={getImage(track)} className="w-10 h-10 rounded shadow-md object-cover shrink-0" alt="t" />
         <div className="flex flex-col min-w-0">
           <p className={cn("text-sm font-black truncate uppercase tracking-tighter", isActive ? "text-primary gold-glow" : "text-primary/80")}>{track.title}</p>
           <p className="text-[10px] text-primary/40 font-black truncate uppercase tracking-widest">{track.artist}</p>
@@ -350,11 +353,25 @@ const GreetingCard = ({ label, icon }: { label: string, icon: React.ReactNode })
 
 function LikedSongsView({ userId }: { userId: string }) {
   const db = useFirestore();
+  const { setQueue } = usePlayerStore();
   const q = useMemoFirebase(() => {
     if (!userId || !db) return null;
     return query(collection(db, 'users', userId, 'likedSongs'), orderBy('likedAt', 'desc'), limit(50));
   }, [userId, db]);
   const { data: likedDocs } = useCollection(q);
+
+  const likedTracks = useMemo(() => {
+    return (likedDocs || []).map(doc => ({
+      id: doc.id,
+      title: doc.title,
+      artist: doc.artist,
+      thumbnail: doc.thumbnailUrl,
+      album: "Liked Songs",
+      source: 'jiosaavn' as any,
+      isSaavn: true
+    }));
+  }, [likedDocs]);
+
   return (
     <div className="space-y-10">
       <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
@@ -367,15 +384,13 @@ function LikedSongsView({ userId }: { userId: string }) {
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-        {likedDocs?.map((doc: any, i: number) => (
-          <SearchResult key={`liked-${doc.id}-${i}`} track={{
-            id: doc.id,
-            title: doc.title,
-            artist: doc.artist,
-            thumbnail: doc.thumbnailUrl,
-            album: "Liked Songs",
-            isSaavn: true
-          }} />
+        {likedTracks.map((track, i) => (
+          <SearchResult 
+            key={`liked-${track.id}-${i}`} 
+            track={track} 
+            results={likedTracks} 
+            index={i} 
+          />
         ))}
       </div>
     </div>
@@ -383,7 +398,7 @@ function LikedSongsView({ userId }: { userId: string }) {
 }
 
 function LocalArchivesView() {
-  const { localTracks, setLocalTracks } = usePlayerStore();
+  const { localTracks, setLocalTracks, setQueue } = usePlayerStore();
   const handleSummon = async () => {
     if ('showDirectoryPicker' in window) {
       try {
@@ -397,6 +412,7 @@ function LocalArchivesView() {
               title: file.name.replace(/\.[^/.]+$/, ""),
               artist: "Local Archive",
               thumbnail: "https://picsum.photos/seed/local/400/400",
+              source: 'local',
               isLocal: true,
               localFile: file
             });
@@ -414,7 +430,9 @@ function LocalArchivesView() {
         <Button onClick={handleSummon} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all">Summon Folder</Button>
       </header>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-        {localTracks.map((t, i) => <SearchResult key={`local-${t.id}-${i}`} track={t} />)}
+        {localTracks.map((t, i) => (
+          <SearchResult key={`local-${t.id}-${i}`} track={t} results={localTracks} index={i} />
+        ))}
         {localTracks.length === 0 && (
           <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-primary/20 rounded-[2rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-primary/5 group transition-all">
             <FolderPlus className="w-20 h-24 text-primary/20 group-hover:text-primary transition-colors" />

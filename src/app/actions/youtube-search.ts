@@ -1,4 +1,3 @@
-
 'use server';
 
 import { Track } from '@/store/usePlayerStore';
@@ -13,7 +12,6 @@ const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
 /**
  * Sovereign Hybrid Search Oracle - India Optimized
  * Aggregates JioSaavn (Primary), Gaana (Secondary), and YouTube (Fallback)
- * Strictly enforces India (IN) region priority.
  */
 export async function searchAllAction(query: string) {
   try {
@@ -25,7 +23,7 @@ export async function searchAllAction(query: string) {
     // Unified Song List (JioSaavn + Gaana merged)
     const allSongs = [...saavnData.songs, ...(gaanaData.songs || [])];
     
-    // De-duplication Strategy: Compare Title and Artist (Normalize to lowercase)
+    // De-duplication Strategy: Compare Title and Artist
     const seen = new Set<string>();
     const uniqueSongs = allSongs.filter(song => {
       const key = `${song.title.toLowerCase().trim()}-${song.artist.toLowerCase().trim()}`;
@@ -35,27 +33,17 @@ export async function searchAllAction(query: string) {
     });
     
     let ytResults = [];
-    // Only fetch YouTube if specifically needed or as fallback discovery when music archives are empty
-    if (uniqueSongs.length === 0 && (gaanaData.albums?.length || 0) === 0) {
+    // Only fetch YouTube if music archives are dry or for discovery
+    if (uniqueSongs.length < 5) {
       ytResults = await fetchYouTube(query);
     }
 
     return {
-      songs: { 
-        results: uniqueSongs 
-      },
-      albums: { 
-        results: gaanaData.albums || [] 
-      },
-      artists: { 
-        results: gaanaData.artists || [] 
-      },
-      playlists: { 
-        results: gaanaData.playlists || [] 
-      },
-      videos: {
-        results: ytResults
-      }
+      songs: { results: uniqueSongs },
+      albums: { results: gaanaData.albums || [] },
+      artists: { results: gaanaData.artists || [] },
+      playlists: { results: gaanaData.playlists || [] },
+      videos: { results: ytResults }
     };
   } catch (error) {
     console.error("Oracle Unified Search Error:", error);
@@ -63,12 +51,8 @@ export async function searchAllAction(query: string) {
   }
 }
 
-// Exporting as searchMusicAction for background lib compatibility
-export { searchAllAction as searchMusicAction };
-
 async function fetchSaavn(query: string) {
   try {
-    // Saavn API is inherently India-focused
     const res = await fetch(`${SAAVN_API_BASE}/api/search?query=${encodeURIComponent(query)}`, {
       next: { revalidate: 3600 } 
     });
@@ -82,8 +66,8 @@ async function fetchSaavn(query: string) {
       artist: track.primaryArtists || "Unknown Artist",
       thumbnail: track.image?.[2]?.url || track.image?.[1]?.url,
       album: track.album || "Saavn Vault",
-      isSaavn: true,
       source: 'jiosaavn',
+      isSaavn: true,
       isIndiaContent: true
     }));
 
@@ -95,7 +79,6 @@ async function fetchSaavn(query: string) {
 
 async function fetchGaana(query: string) {
   try {
-    // New Gaana API (Vercel) with India-Sovereign filter
     const res = await fetch(`${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}&country=IN`, {
       next: { revalidate: 3600 }
     });
@@ -109,8 +92,8 @@ async function fetchGaana(query: string) {
       artist: track.artist || "Gaana Artist",
       thumbnail: track.image || track.thumbnail,
       album: track.album || "Gaana Archive",
-      isGaana: true,
       source: 'gaana',
+      isGaana: true,
       isIndiaContent: true
     }));
 
@@ -151,7 +134,6 @@ async function fetchGaana(query: string) {
 async function fetchYouTube(query: string): Promise<Track[]> {
   if (!RAPIDAPI_KEY) return [];
   try {
-    // Strictly enforcing regionCode=IN and hl=en-IN for YouTube Data API
     const url = `https://${RAPIDAPI_HOST}/search/?query=${encodeURIComponent(query)}&regionCode=IN&hl=en-IN`;
     const res = await fetch(url, {
       headers: {
@@ -170,9 +152,9 @@ async function fetchYouTube(query: string): Promise<Track[]> {
       artist: item.channelTitle || item.author || "YouTube Discovery",
       thumbnail: item.thumbnail?.url || item.thumbnails?.[0]?.url,
       album: "YouTube Discovery (IN)",
+      source: 'youtube',
       isYouTube: true,
       videoId: item.id || item.videoId,
-      source: 'youtube',
       isIndiaContent: true
     }));
   } catch (e) {
@@ -180,13 +162,35 @@ async function fetchYouTube(query: string): Promise<Track[]> {
   }
 }
 
-export async function getSongDetailsAction(id: string) {
+export async function resolveTrackAudio(track: Track): Promise<string | null> {
+  // If Gaana, try to resolve from Saavn first
+  if (track.source === 'gaana') {
+    const saavnResults = await fetchSaavn(`${track.title} ${track.artist}`);
+    if (saavnResults.songs.length > 0) {
+      // Return highest quality stream from matched Saavn track
+      return getSaavnPlaybackUrl(saavnResults.songs[0].id);
+    }
+    return null; // Fallback to YouTube handled in Player component
+  }
+  
+  if (track.source === 'jiosaavn') {
+    return getSaavnPlaybackUrl(track.id);
+  }
+
+  return null;
+}
+
+export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
   try {
     const res = await fetch(`${SAAVN_API_BASE}/api/songs/${id}`);
     if (!res.ok) return null;
     const data = await res.json();
-    return data.data?.[0] || null;
-  } catch (e) {
+    const song = data.data?.[0];
+    if (!song || !song.downloadUrl) return null;
+    
+    const links = song.downloadUrl;
+    return links[links.length - 1]?.url || links[0]?.url || null;
+  } catch (error) {
     return null;
   }
 }
@@ -195,26 +199,12 @@ export async function getDetailAction(type: 'albums' | 'playlists' | 'artists', 
   try {
     let res = await fetch(`${SAAVN_API_BASE}/api/${type}/${id}`);
     if (!res.ok) {
-        // Fallback to the new Vercel Gaana base
         res = await fetch(`${GAANA_API_BASE}/api/${type}/${id}`);
     }
     if (!res.ok) return null;
     const data = await res.json();
     return data.data || null;
   } catch (e) {
-    return null;
-  }
-}
-
-export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
-  try {
-    const song = await getSongDetailsAction(id);
-    if (!song || !song.downloadUrl) return null;
-    // Strictly finding the highest quality .url
-    const links = song.downloadUrl;
-    const url = links[links.length - 1]?.url || null;
-    return url;
-  } catch (error) {
     return null;
   }
 }
