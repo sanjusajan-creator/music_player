@@ -1,8 +1,9 @@
+
 "use client";
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useYouTubeSearch } from '@/hooks/useYouTube';
+import { useSaavnSearch, useSaavnDetails } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
 import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -11,8 +12,8 @@ import { YouTubePlayer } from '@/components/player/YouTubePlayer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { 
-  TrendingUp, Sparkles, LogIn, Heart, 
-  Loader2, Mail, Lock, UserPlus, History, FolderOpen, Music2, Plus
+  TrendingUp, Sparkles, Heart, 
+  Loader2, UserPlus, History, FolderOpen, Music2, Plus, Play, Disc, User, ListMusic
 } from 'lucide-react';
 import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -22,6 +23,7 @@ import { query, collection, orderBy, limit, getDocs } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { usePlayerStore, Track } from '@/store/usePlayerStore';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,14 +64,8 @@ function HomeContent() {
   
   const currentTab = searchParams.get('tab') || 'home';
   const searchQuery = searchParams.get('q') || '';
-
-  // Greetings logic
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  }, []);
+  const detailType = searchParams.get('type') as any;
+  const detailId = searchParams.get('id');
 
   // Gold Collection Synchronization
   useEffect(() => {
@@ -110,7 +106,7 @@ function HomeContent() {
       <div className="w-full max-w-md space-y-12 animate-in fade-in zoom-in duration-700">
         <header>
           <h1 className="text-6xl font-black text-primary gold-glow tracking-tighter uppercase leading-none">VIBECRAFT</h1>
-          <p className="text-primary/40 uppercase tracking-[0.5em] text-[10px] font-black mt-4">Pure Gold Sanctuary</p>
+          <p className="text-primary/40 uppercase tracking-[0.5em] text-[10px] font-black mt-4">Sovereign Saavn Sanctuary</p>
         </header>
 
         <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-8 rounded-[2rem] space-y-6 backdrop-blur-xl">
@@ -137,59 +133,11 @@ function HomeContent() {
         <div className="flex-1 overflow-y-auto no-scrollbar pb-32">
           <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-10">
             
-            {currentTab === 'home' && (
-              <div className="space-y-10">
-                <section>
-                  <h2 className="text-3xl font-black text-white mb-6 gold-glow">{greeting}</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <GreetingCard label="Gold Hits" icon={<TrendingUp className="text-primary" />} />
-                    <GreetingCard label="Liked Songs" icon={<Heart className="text-pink-500 fill-current" />} />
-                    <GreetingCard label="Magic Mix" icon={<Sparkles className="text-blue-400" />} />
-                    <GreetingCard label="Local Vault" icon={<FolderOpen className="text-orange-400" />} />
-                    <GreetingCard label="History" icon={<History className="text-green-400" />} />
-                  </div>
-                </section>
-
-                <SectionLayout title="Recommended for You" query="Top Billboard 2025" />
-                <SectionLayout title="Manifest Your Vibe" query="Lofi Hip Hop chill" />
-              </div>
-            )}
-
-            {currentTab === 'search' && (
-              <div className="space-y-10">
-                <header>
-                  <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">Search</h2>
-                  <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest">Manifest from the archives</p>
-                </header>
-                {searchQuery ? <SearchResultsView query={searchQuery} /> : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-                    <CategoryCard label="Pop" color="bg-pink-600" />
-                    <CategoryCard label="Hip-Hop" color="bg-orange-600" />
-                    <CategoryCard label="Rock" color="bg-red-600" />
-                    <CategoryCard label="Jazz" color="bg-blue-600" />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {currentTab === 'liked' && (
-              <div className="space-y-10">
-                 <div className="flex items-end gap-6 bg-gradient-to-b from-primary/20 to-transparent p-8 rounded-[2rem]">
-                    <div className="w-48 h-48 bg-gradient-to-br from-indigo-600 to-primary rounded-xl shadow-2xl flex items-center justify-center">
-                      <Heart className="w-24 h-24 text-white fill-current" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-white mb-2">Playlist</p>
-                      <h2 className="text-6xl md:text-8xl font-black text-white gold-glow tracking-tighter">Liked Songs</h2>
-                    </div>
-                 </div>
-                 <LikedSongsList userId={user.uid} />
-              </div>
-            )}
-
-            {currentTab === 'local' && (
-               <div className="space-y-10"><LocalArchivesView /></div>
-            )}
+            {currentTab === 'home' && <HomeView />}
+            {currentTab === 'search' && <SearchResultsView query={searchQuery} />}
+            {currentTab === 'liked' && <LikedSongsView userId={user.uid} />}
+            {currentTab === 'local' && <LocalArchivesView />}
+            {currentTab === 'detail' && detailType && detailId && <DetailView type={detailType} id={detailId} />}
 
           </div>
         </div>
@@ -199,8 +147,37 @@ function HomeContent() {
   );
 }
 
+function HomeView() {
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  }, []);
+
+  return (
+    <div className="space-y-10">
+      <section>
+        <h2 className="text-3xl font-black text-white mb-6 gold-glow">{greeting}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <GreetingCard label="Gold Hits" icon={<TrendingUp className="text-primary" />} />
+          <GreetingCard label="Liked Songs" icon={<Heart className="text-pink-500 fill-current" />} />
+          <GreetingCard label="Magic Mix" icon={<Sparkles className="text-blue-400" />} />
+          <GreetingCard label="Local Vault" icon={<FolderOpen className="text-orange-400" />} />
+          <GreetingCard label="History" icon={<History className="text-green-400" />} />
+        </div>
+      </section>
+
+      <SectionLayout title="New Releases" query="Latest Bollywood" />
+      <SectionLayout title="Trending Today" query="Trending Music India" />
+    </div>
+  );
+}
+
 function SectionLayout({ title, query }: { title: string, query: string }) {
-  const { data } = useYouTubeSearch(query);
+  const { data, isLoading } = useSaavnSearch(query);
+  const songs = data?.songs?.results || [];
+  
   return (
     <section>
       <div className="flex items-center justify-between mb-6">
@@ -208,23 +185,161 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
         <button className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">Show all</button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-        {data?.slice(0, 5).map(track => <SearchResult key={track.id} track={track} />)}
-        {!data && [...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-xl" />)}
+        {isLoading ? [...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
+          songs.slice(0, 5).map((track: any) => (
+            <SearchResult key={track.id} track={{
+              id: track.id,
+              title: track.title,
+              artist: track.primaryArtists,
+              thumbnail: track.image?.[2]?.url || track.image?.[1]?.url,
+              album: track.album,
+              isSaavn: true
+            }} />
+          ))
+        }
       </div>
     </section>
   );
 }
 
 function SearchResultsView({ query }: { query: string }) {
-  const { data: results, isLoading } = useYouTubeSearch(query);
+  const { data: results, isLoading } = useSaavnSearch(query);
+  
   if (isLoading) return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-      {[...Array(10)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-xl" />)}
+    <div className="space-y-12">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="space-y-4">
+          <div className="h-8 w-48 bg-white/5 animate-pulse rounded-md" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+            {[...Array(5)].map((_, j) => <div key={j} className="aspect-square bg-white/5 animate-pulse rounded-xl" />)}
+          </div>
+        </div>
+      ))}
     </div>
   );
+
+  if (!results) return null;
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-      {results?.map(track => <SearchResult key={track.id} track={track} />)}
+    <div className="space-y-12">
+      {results.songs?.results?.length > 0 && (
+        <section>
+          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter">Songs</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+            {results.songs.results.map((t: any) => (
+              <SearchResult key={t.id} track={{
+                id: t.id,
+                title: t.title,
+                artist: t.primaryArtists,
+                thumbnail: t.image?.[2]?.url,
+                album: t.album,
+                isSaavn: true
+              }} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {results.albums?.results?.length > 0 && (
+        <section>
+          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter">Albums</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+            {results.albums.results.map((a: any) => (
+              <CategoryCard key={a.id} label={a.title} image={a.image?.[2]?.url} type="albums" id={a.id} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {results.artists?.results?.length > 0 && (
+        <section>
+          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter">Artists</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+            {results.artists.results.map((ar: any) => (
+              <CategoryCard key={ar.id} label={ar.title} image={ar.image?.[2]?.url} type="artists" id={ar.id} isCircle />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {results.playlists?.results?.length > 0 && (
+        <section>
+          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter">Playlists</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+            {results.playlists.results.map((p: any) => (
+              <CategoryCard key={p.id} label={p.title} image={p.image?.[2]?.url} type="playlists" id={p.id} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id: string }) {
+  const { data, isLoading } = useSaavnDetails(type, id);
+  const { setQueue } = usePlayerStore();
+
+  if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
+  if (!data) return null;
+
+  const songs = data.songs || data.topSongs || [];
+  const handlePlayAll = () => {
+    const queue = songs.map((s: any) => ({
+      id: s.id,
+      title: s.title || s.name,
+      artist: s.primaryArtists || s.artists?.primary?.[0]?.name,
+      thumbnail: s.image?.[2]?.url,
+      album: data.title || data.name,
+      isSaavn: true
+    }));
+    setQueue(queue);
+  };
+
+  return (
+    <div className="space-y-10 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row items-end gap-8 bg-gradient-to-b from-primary/10 to-transparent p-8 rounded-[3rem]">
+        <img src={data.image?.[2]?.url} className={cn("w-64 h-64 shadow-2xl object-cover", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
+        <div className="space-y-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-primary/60">{type.slice(0, -1)}</p>
+          <h1 className="text-5xl md:text-7xl font-black text-white gold-glow tracking-tighter">{data.title || data.name}</h1>
+          <div className="flex items-center gap-4">
+             <Button onClick={handlePlayAll} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-8 h-12 hover:scale-105 transition-all"><Play className="w-5 h-5 fill-current mr-2" /> Play All</Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-black text-white uppercase tracking-widest">Manifestations</h2>
+        <div className="grid grid-cols-1 gap-2">
+          {songs.map((s: any, i: number) => (
+            <TrackRow key={s.id} track={{
+              id: s.id,
+              title: s.title || s.name,
+              artist: s.primaryArtists || s.artists?.primary?.[0]?.name,
+              thumbnail: s.image?.[2]?.url,
+              album: data.title || data.name,
+              isSaavn: true
+            }} index={i + 1} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrackRow({ track, index }: { track: Track, index: number }) {
+  const { setCurrentTrack } = usePlayerStore();
+  return (
+    <div onClick={() => setCurrentTrack(track)} className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer">
+      <span className="w-8 text-sm font-black text-muted-foreground group-hover:text-primary transition-colors text-center">{index}</span>
+      <img src={track.thumbnail} className="w-10 h-10 rounded shadow-md object-cover" alt="t" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-black text-white truncate uppercase tracking-tighter">{track.title}</p>
+        <p className="text-[10px] text-muted-foreground font-black truncate uppercase tracking-widest">{track.artist}</p>
+      </div>
+      <p className="text-[10px] text-muted-foreground font-black hidden md:block uppercase tracking-widest w-40 truncate">{track.album}</p>
+      <button className="opacity-0 group-hover:opacity-100 transition-all text-primary"><Play className="w-5 h-5 fill-current" /></button>
     </div>
   );
 }
@@ -237,14 +352,28 @@ const GreetingCard = ({ label, icon }: { label: string, icon: React.ReactNode })
   </div>
 );
 
-const CategoryCard = ({ label, color }: { label: string, color: string }) => (
-  <div className={cn(color, "aspect-square rounded-xl p-4 relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all")}>
-    <span className="text-2xl font-black text-white tracking-tighter uppercase">{label}</span>
-    <div className="absolute -bottom-2 -right-4 w-24 h-24 bg-white/20 rotate-12 blur-2xl" />
-  </div>
-);
+const CategoryCard = ({ label, image, color = "bg-white/5", type, id, isCircle }: { label: string, image?: string, color?: string, type: string, id: string, isCircle?: boolean }) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  return (
+    <div 
+      onClick={() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('tab', 'detail');
+        params.set('type', type);
+        params.set('id', id);
+        router.push(`/?${params.toString()}`);
+      }}
+      className={cn(color, "aspect-square rounded-xl p-4 relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all group border border-white/5")}
+    >
+      <img src={image} className={cn("absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all", isCircle ? "rounded-full p-4" : "")} alt="c" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+      <span className="absolute bottom-4 left-4 right-4 text-lg font-black text-white tracking-tighter uppercase leading-tight">{label}</span>
+    </div>
+  );
+};
 
-function LikedSongsList({ userId }: { userId: string }) {
+function LikedSongsView({ userId }: { userId: string }) {
   const db = useFirestore();
   const q = useMemoFirebase(() => {
     if (!userId || !db) return null;
@@ -252,16 +381,28 @@ function LikedSongsList({ userId }: { userId: string }) {
   }, [userId, db]);
   const { data: likedDocs } = useCollection(q);
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
-      {likedDocs?.map((doc: any) => (
-        <SearchResult key={doc.id} track={{
-          id: doc.id,
-          title: doc.title,
-          artist: doc.artist,
-          thumbnail: doc.thumbnailUrl,
-          duration: doc.durationSeconds
-        }} />
-      ))}
+    <div className="space-y-10">
+      <div className="flex items-end gap-6 bg-gradient-to-b from-primary/20 to-transparent p-8 rounded-[2rem]">
+        <div className="w-48 h-48 bg-gradient-to-br from-indigo-600 to-primary rounded-xl shadow-2xl flex items-center justify-center">
+          <Heart className="w-24 h-24 text-white fill-current" />
+        </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-white mb-2">Playlist</p>
+          <h2 className="text-6xl md:text-8xl font-black text-white gold-glow tracking-tighter">Liked Songs</h2>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+        {likedDocs?.map((doc: any) => (
+          <SearchResult key={doc.id} track={{
+            id: doc.id,
+            title: doc.title,
+            artist: doc.artist,
+            thumbnail: doc.thumbnailUrl,
+            duration: doc.durationSeconds,
+            album: "Liked Songs"
+          }} />
+        ))}
+      </div>
     </div>
   );
 }

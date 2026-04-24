@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -6,11 +7,12 @@ export interface Track {
   title: string;
   artist: string;
   thumbnail: string;
+  album?: string;
   duration?: number;
   isLocal?: boolean;
   localFile?: File;
-  previewUrl?: string; 
   isSaavn?: boolean;
+  language?: string;
 }
 
 type RepeatMode = 'none' | 'one' | 'all';
@@ -91,7 +93,14 @@ export const usePlayerStore = create<PlayerState>()(
         originalQueue: [...state.originalQueue, track]
       })),
 
-      setQueue: (tracks) => set({ queue: tracks, originalQueue: tracks }),
+      setQueue: (tracks) => set({ 
+        currentTrack: tracks[0] || null,
+        queue: tracks.slice(1), 
+        originalQueue: tracks,
+        isPlaying: !!tracks[0],
+        progress: 0,
+        seekRequest: null
+      }),
 
       setLocalTracks: (tracks) => set({ localTracks: tracks }),
 
@@ -125,7 +134,7 @@ export const usePlayerStore = create<PlayerState>()(
           const shuffled = [...state.queue].sort(() => Math.random() - 0.5);
           return { isShuffle, queue: shuffled };
         } else {
-          return { isShuffle, queue: state.originalQueue };
+          return { isShuffle, queue: state.originalQueue.filter(t => t.id !== state.currentTrack?.id) };
         }
       }),
 
@@ -162,7 +171,7 @@ export const usePlayerStore = create<PlayerState>()(
       },
     }),
     {
-      name: 'vibecraft-saavn-v1',
+      name: 'vibecraft-saavn-v2',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 

@@ -1,8 +1,9 @@
+
 "use client";
 
 import React, { memo } from 'react';
 import { Track, usePlayerStore } from '@/store/usePlayerStore';
-import { Play, Heart } from 'lucide-react';
+import { Play, Heart, Music2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -46,14 +47,16 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="spotify-card group relative"
+      className="spotify-card group relative h-full flex flex-col"
       onClick={() => setCurrentTrack(track)}
     >
-      <div className="relative aspect-square mb-4 shadow-2xl rounded-lg overflow-hidden">
-        <img src={track.thumbnail} className="w-full h-full object-cover" alt={track.title} loading="lazy" />
+      <div className="relative aspect-square mb-4 shadow-2xl rounded-lg overflow-hidden shrink-0">
+        {track.thumbnail ? (
+          <img src={track.thumbnail} className="w-full h-full object-cover" alt={track.title} loading="lazy" />
+        ) : (
+          <div className="w-full h-full bg-white/5 flex items-center justify-center"><Music2 className="w-12 h-12 text-muted-foreground/20" /></div>
+        )}
         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-        
-        {/* Play Button Overlay (Spotify Style) */}
         <button 
           className="absolute bottom-2 right-2 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-2xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300"
           onClick={(e) => { e.stopPropagation(); setCurrentTrack(track); }}
@@ -62,9 +65,9 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
         </button>
       </div>
       
-      <div className="space-y-1 min-w-0">
+      <div className="space-y-1 min-w-0 flex-1 flex flex-col">
         <h4 className="font-black text-sm text-white truncate uppercase tracking-tighter leading-none">{track.title}</h4>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 mt-auto pt-1">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate font-black flex-1">{track.artist}</p>
           <button onClick={handleLike} className="shrink-0">
             <Heart className={cn("w-4 h-4 transition-all", isLiked ? "fill-primary text-primary" : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-white")} />

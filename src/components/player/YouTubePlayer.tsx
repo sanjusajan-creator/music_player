@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -54,20 +55,15 @@ export const YouTubePlayer: React.FC = () => {
       });
       
       audio.addEventListener('pause', () => {
-        // Only set isPlaying false if the current track is still the same
         if (loadingId.current === currentTrack?.id) {
            setIsPlaying(false);
         }
       });
 
       audio.addEventListener('error', (e) => {
-        // Prevent toast on initial empty src or reset
         if (!audio.src || audio.src === window.location.href || audio.src === "") return;
-        
         console.warn("Sovereign Stream Interruption:", audio.error?.message);
         setIsBuffering(false);
-        
-        // Auto-skip if the stream is unrecoverable
         if (audio.error?.code === 4) {
           toast({ title: "Stream Unavailable", description: "Skipping to next archive...", variant: "destructive" });
           setTimeout(() => nextTrack(), 2000);
@@ -100,7 +96,6 @@ export const YouTubePlayer: React.FC = () => {
           url = URL.createObjectURL(currentTrack.localFile);
         } else if (currentTrack.isSaavn) {
           setIsBuffering(true);
-          // Fetch the high-fidelity URL from the server action
           const manifestedUrl = await getSaavnPlaybackUrl(currentTrack.id);
           if (manifestedUrl) {
             url = manifestedUrl;
@@ -116,8 +111,6 @@ export const YouTubePlayer: React.FC = () => {
           audioRef.current.pause();
           audioRef.current.src = url;
           audioRef.current.load();
-          
-          // Respect global isPlaying state after loading
           if (isPlaying) {
             audioRef.current.play().catch(error => {
               console.warn("Playback blocked by browser policy. Interaction required.", error);
