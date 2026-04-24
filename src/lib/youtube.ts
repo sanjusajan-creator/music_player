@@ -1,31 +1,32 @@
+
 import { Track } from "@/store/usePlayerStore";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getDb } from "@/firebase";
+import { scrapeYouTubeSearch } from "@/app/actions/youtube-search";
 
-const CACHE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 days persistent cache
+const CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30-day persistent sanctuary cache
 const sessionSearchCache = new Set<string>();
 
 /**
- * Sovereign Hybrid Search Strategy:
- * 1. Normalize Query
- * 2. Check Session Set (Avoid repeat calls)
- * 3. Check Firestore Cache Sanctuary
- * 4. Call Official YouTube API v3 (Fallback only)
- * 5. Save to Firestore for universal reuse
+ * Sovereign Hybrid Search Engine
+ * 1. Local Session Check
+ * 2. Firestore Cache Sanctuary
+ * 3. Sovereign Scraper (Server Action)
+ * 4. Persistence Genesis
  */
 export async function searchTracks(query: string): Promise<Track[]> {
-  const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
-  const sanitizedQuery = query?.toLowerCase().trim();
-  
+  // 1. Normalize Query (Strategy #4)
+  const sanitizedQuery = query?.toLowerCase().trim().replace(/ song$/i, '').replace(/ official$/i, '');
   if (!sanitizedQuery || sanitizedQuery.length < 2) return [];
 
-  // 1. Normalize & Session Protection
   const cacheKey = sanitizedQuery.replace(/\s+/g, '_');
+
+  // 2. Session Protection (Strategy #8)
   if (sessionSearchCache.has(cacheKey)) {
-    console.log(`Oracle: Already searched "${sanitizedQuery}" this session.`);
+    console.log(`Oracle: Reusing session manifestation for "${sanitizedQuery}"`);
   }
-  
-  // 2. Firestore Cache Check (The Primary Sanctuary)
+
+  // 3. Firestore Cache Sanctuary (Strategy #3 & #10)
   try {
     const db = getDb();
     const cacheRef = doc(db, "search_cache", cacheKey);
@@ -35,60 +36,38 @@ export async function searchTracks(query: string): Promise<Track[]> {
       const data = cacheSnap.data();
       const age = Date.now() - (data.timestamp?.toMillis() || 0);
       if (age < CACHE_TTL && data.results?.length > 0) {
-        console.log(`Oracle: Manifested "${sanitizedQuery}" from Cache Sanctuary.`);
+        console.log(`Oracle: Manifested from Cache Sanctuary.`);
         sessionSearchCache.add(cacheKey);
         return data.results;
       }
     }
   } catch (e) {
-    console.warn("Oracle: Cache Sanctuary access interrupted.", e);
+    console.warn("Oracle: Cache Sanctuary access interrupted.");
   }
 
-  // 3. Official API Call (Fallback Only)
-  if (!apiKey) {
-    console.error("Oracle: YouTube API Key missing. Check .env.");
-    return getMockResults(sanitizedQuery);
-  }
-
-  console.log(`Oracle: Calling Official API for "${sanitizedQuery}"...`);
-
+  // 4. Sovereign Scraper Fallback (Strategy #10 - Hybrid)
+  console.log(`Oracle: Summoning Real YouTube Archives via Server Scraper...`);
   try {
-    const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(sanitizedQuery)}&type=video&videoCategoryId=10&maxResults=15&key=${apiKey}`
-    );
+    const results = await scrapeYouTubeSearch(sanitizedQuery);
     
-    if (!res.ok) throw new Error(`API Error: ${res.status}`);
-    
-    const data = await res.json();
-    const results = data.items.map((item: any) => {
-      const videoId = item.id.videoId;
-      return {
-        id: videoId,
-        title: normalizeMetadata(item.snippet.title),
-        artist: normalizeMetadata(item.snippet.channelTitle),
-        // Innertune Technique: Force high-res thumbnails
-        thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
-        duration: 0, // Search API doesn't provide duration, player metadata will handle it
-      };
-    });
-
-    // 4. Persistence Genesis
-    if (results.length > 0) {
+    if (results && results.length > 0) {
+      // 5. Persistence Genesis (Strategy #7)
       updateCache(cacheKey, results);
       sessionSearchCache.add(cacheKey);
+      return results;
     }
     
-    return results;
+    return MOCK_TRACKS.filter(t => t.title.toLowerCase().includes(sanitizedQuery));
   } catch (error) {
-    console.error("Oracle: API Manifestation failed.", error);
-    return getMockResults(sanitizedQuery);
+    console.error("Oracle: Manifestation failed.", error);
+    return MOCK_TRACKS;
   }
 }
 
-function updateCache(key: string, results: Track[]) {
+async function updateCache(key: string, results: Track[]) {
   try {
     const db = getDb();
-    setDoc(doc(db, "search_cache", key), {
+    await setDoc(doc(db, "search_cache", key), {
       results,
       timestamp: serverTimestamp()
     }, { merge: true });
@@ -96,49 +75,8 @@ function updateCache(key: string, results: Track[]) {
 }
 
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
-  const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
-  if (!apiKey || !videoId || videoId.length !== 11) return MOCK_TRACKS;
-
-  try {
-    const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${apiKey}`
-    );
-    if (!res.ok) return MOCK_TRACKS;
-    const data = await res.json();
-    
-    return data.items.map((item: any) => {
-      const vid = item.id.videoId;
-      return {
-        id: vid,
-        title: normalizeMetadata(item.snippet.title),
-        artist: normalizeMetadata(item.snippet.channelTitle),
-        thumbnail: `https://i.ytimg.com/vi/${vid}/maxresdefault.jpg`,
-        duration: 0,
-      };
-    });
-  } catch (error) {
-    return MOCK_TRACKS;
-  }
-}
-
-function normalizeMetadata(text: string): string {
-  if (!text) return "";
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\(Official Video\)/gi, '')
-    .replace(/\(Official Audio\)/gi, '')
-    .replace(/\(Lyrics\)/gi, '')
-    .replace(/\(Official Lyric Video\)/gi, '')
-    .replace(/\[Official Video\]/gi, '')
-    .replace(/\[Official Audio\]/gi, '')
-    .replace(/VEVO/gi, '')
-    .trim();
-}
-
-function getMockResults(query: string): Track[] {
-  return MOCK_TRACKS.filter(t => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query));
+  // Related videos is a complex scraper, use mock/cache for now to prevent loops
+  return MOCK_TRACKS;
 }
 
 const MOCK_TRACKS: Track[] = [

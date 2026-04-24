@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Compass, Heart, History, X, ArrowRight, LogOut, FolderOpen } from "lucide-react";
@@ -61,7 +62,7 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* DESKTOP SEARCH */}
+      {/* DESKTOP SEARCH (Strategy #2: Only on Enter) */}
       <div className="hidden md:flex flex-1 max-w-xl px-4 lg:px-12">
         <div className="relative w-full group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-all duration-300" />
@@ -77,7 +78,6 @@ export const Navbar: React.FC = () => {
 
       {/* RIGHT SECTION */}
       <div className="flex items-center gap-2 sm:gap-4 md:gap-8 shrink-0">
-        {/* MOBILE SEARCH TRIGGER */}
         <Button 
           variant="ghost" 
           size="icon" 
@@ -87,7 +87,6 @@ export const Navbar: React.FC = () => {
           <Search className="w-5 h-5" />
         </Button>
 
-        {/* DESKTOP NAV */}
         <div className="hidden md:flex items-center gap-8">
           <NavItem
             icon={<Compass className="w-5 h-5" />}
@@ -115,7 +114,6 @@ export const Navbar: React.FC = () => {
           />
         </div>
 
-        {/* USER MENU */}
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -142,48 +140,31 @@ export const Navbar: React.FC = () => {
               <DropdownMenuLabel className="font-black text-sm tracking-widest px-3 py-2 uppercase">
                 My Sanctuary
               </DropdownMenuLabel>
-
               <DropdownMenuSeparator className="bg-primary/10" />
-
               <DropdownMenuItem onClick={() => navigateToTab("local")} className="font-bold uppercase text-[10px] tracking-widest">
                 <FolderOpen className="w-4 h-4 mr-2" /> Local Archives
               </DropdownMenuItem>
-
               <DropdownMenuItem onClick={() => navigateToTab("history")} className="font-bold uppercase text-[10px] tracking-widest">
                 <History className="w-4 h-4 mr-2" /> History Archive
               </DropdownMenuItem>
-
               <DropdownMenuItem onClick={() => navigateToTab("liked")} className="font-bold uppercase text-[10px] tracking-widest">
                 <Heart className="w-4 h-4 mr-2" /> Liked Tracks
               </DropdownMenuItem>
-
               <DropdownMenuSeparator className="bg-primary/10" />
-
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="text-destructive font-bold uppercase text-[10px] tracking-widest"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Exit Sanctuary
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive font-bold uppercase text-[10px] tracking-widest">
+                <LogOut className="w-4 h-4 mr-2" /> Exit Sanctuary
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
       </div>
 
-      {/* MOBILE SEARCH OVERLAY */}
       {isMobileSearchOpen && (
         <div className="fixed inset-0 bg-black z-[100] p-6 flex flex-col animate-in fade-in slide-in-from-top duration-300">
           <div className="flex items-center gap-4 mb-10">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-primary"
-              onClick={() => setIsMobileSearchOpen(false)}
-            >
+            <Button variant="ghost" size="icon" className="text-primary" onClick={() => setIsMobileSearchOpen(false)}>
               <X className="w-8 h-8" />
             </Button>
-
             <div className="flex-1 flex items-center gap-2 relative">
               <Input
                 autoFocus
@@ -193,11 +174,7 @@ export const Navbar: React.FC = () => {
                 onChange={(e) => setSearchValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
-              <Button 
-                size="icon"
-                onClick={handleSearch}
-                className="bg-primary text-black rounded-xl h-14 w-14 shrink-0"
-              >
+              <Button size="icon" onClick={handleSearch} className="bg-primary text-black rounded-xl h-14 w-14 shrink-0">
                 <ArrowRight className="w-6 h-6" />
               </Button>
             </div>
@@ -208,26 +185,9 @@ export const Navbar: React.FC = () => {
   );
 };
 
-const NavItem = ({
-  icon,
-  label,
-  active = false,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}) => (
-  <button 
-    onClick={onClick}
-    className={`flex items-center gap-3 transition-all duration-300 group ${active ? 'text-primary' : 'text-primary/40 hover:text-primary'}`}
-  >
-    <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>
-      {icon}
-    </div>
-    <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-      {label}
-    </span>
+const NavItem = ({ icon, label, active = false, onClick }: { icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void; }) => (
+  <button onClick={onClick} className={`flex items-center gap-3 transition-all duration-300 group ${active ? 'text-primary' : 'text-primary/40 hover:text-primary'}`}>
+    <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</div>
+    <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>{label}</span>
   </button>
 );
