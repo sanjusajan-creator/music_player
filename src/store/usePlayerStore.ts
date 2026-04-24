@@ -126,11 +126,13 @@ export const usePlayerStore = create<PlayerState>()(
       
       clearQueue: () => set({ queue: [], originalQueue: [] }),
 
-      setLikedTracks: (ids) => set({ likedTrackIds: ids }),
+      setLikedTracks: (ids) => set({ likedTrackIds: Array.isArray(ids) ? ids : [] }),
+      
       toggleLike: (trackId) => set((state) => {
-        const next = state.likedTrackIds.includes(trackId)
-          ? state.likedTrackIds.filter(id => id !== trackId)
-          : [...state.likedTrackIds, trackId];
+        const currentLiked = Array.isArray(state.likedTrackIds) ? state.likedTrackIds : [];
+        const next = currentLiked.includes(trackId)
+          ? currentLiked.filter(id => id !== trackId)
+          : [...currentLiked, trackId];
         return { likedTrackIds: next };
       }),
 
