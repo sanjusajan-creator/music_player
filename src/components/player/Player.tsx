@@ -77,17 +77,14 @@ export const Player: React.FC = () => {
     if (!currentTrack) return;
     openSheet('lyrics');
     
-    // Efficiency: Don't refetch if already manifesting current track lyrics
     if (lyrics && lyrics.includes(currentTrack.title)) return;
     
     setIsLoadingLyrics(true);
     try {
-      // Step 1: Try Sovereign API Archives (Double-Tier Fetch: ID + Link)
       const apiLyrics = await getLyricsAction(currentTrack.id, currentTrack.url);
       if (apiLyrics) {
         setLyrics(apiLyrics);
       } else {
-        // Step 2: AI Manifestation Fallback
         const result = await generateLyrics({ title: currentTrack.title, artist: currentTrack.artist });
         setLyrics(result.lyrics);
       }
@@ -196,7 +193,6 @@ export const Player: React.FC = () => {
       </AnimatePresence>
 
       <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-[60] h-20 md:h-24 bg-[#000000] backdrop-blur-xl border-t border-primary/20 flex items-center px-4 md:px-6 gap-4 shadow-2xl pointer-events-auto">
-        {/* Track Info (Left) */}
         <div className="flex-1 flex items-center gap-3 min-w-0">
           <div className="relative group shrink-0" onClick={() => router.push(`/?view=full&${searchParams.toString()}`)}>
             <motion.img 
@@ -221,7 +217,6 @@ export const Player: React.FC = () => {
           </button>
         </div>
 
-        {/* Controls (Center) - Only for Audio */}
         {!currentTrack.isYouTube ? (
           <div className="flex-[2] max-w-2xl flex flex-col items-center gap-1">
             <div className="flex items-center gap-4 md:gap-6">
@@ -243,7 +238,8 @@ export const Player: React.FC = () => {
                 <Repeat className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex items-center gap-3 w-full px-2">
+            {/* PROGRESS BAR: Hidden on mobile mini-player for High-Fidelity Sovereignty */}
+            <div className="flex items-center gap-3 w-full px-2 hidden md:flex">
               <span className="text-[9px] font-black text-muted-foreground w-8 text-right">{formatTime(progress)}</span>
               <Slider 
                 value={[progress]} 
@@ -262,7 +258,6 @@ export const Player: React.FC = () => {
           </div>
         )}
 
-        {/* Utilities (Right) */}
         <div className="flex-1 flex items-center justify-end gap-3 md:gap-5">
           {!currentTrack.isYouTube && (
             <button onClick={fetchLyrics} className={cn("transition-all", isLyricsSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
