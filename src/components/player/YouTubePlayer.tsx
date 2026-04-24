@@ -25,7 +25,7 @@ export const YouTubePlayer: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
 
-  // Cleanup for local audio
+  // Cleanup for local/preview audio
   useEffect(() => {
     return () => {
       if (audioRef.current) {
@@ -35,9 +35,12 @@ export const YouTubePlayer: React.FC = () => {
     };
   }, []);
 
-  // Handle local track playback
+  // Handle local track OR public API preview playback
   useEffect(() => {
-    if (currentTrack?.isLocal && currentTrack.localFile) {
+    const isPublicPreview = currentTrack?.previewUrl && !currentTrack.isLocal;
+    const isLocalTrack = currentTrack?.isLocal && currentTrack.localFile;
+
+    if (isLocalTrack || isPublicPreview) {
       if (!audioRef.current) {
         audioRef.current = new Audio();
         audioRef.current.addEventListener('timeupdate', () => {
@@ -51,12 +54,18 @@ export const YouTubePlayer: React.FC = () => {
         });
       }
 
-      const url = URL.createObjectURL(currentTrack.localFile);
+      let url = "";
+      if (isLocalTrack) {
+        url = URL.createObjectURL(currentTrack.localFile!);
+      } else if (isPublicPreview) {
+        url = currentTrack.previewUrl!;
+      }
+
       audioRef.current.src = url;
       if (isPlaying) audioRef.current.play();
 
       return () => {
-        URL.revokeObjectURL(url);
+        if (isLocalTrack) URL.revokeObjectURL(url);
       };
     } else if (audioRef.current) {
       audioRef.current.pause();
@@ -64,39 +73,44 @@ export const YouTubePlayer: React.FC = () => {
     }
   }, [currentTrack, nextTrack, setProgress, setDuration]);
 
-  // Handle local audio control
+  // Handle Audio Control (Play/Pause)
   useEffect(() => {
-    if (!audioRef.current || !currentTrack?.isLocal) return;
-    if (isPlaying) audioRef.current.play();
+    if (!audioRef.current) return;
+    const isAudioActive = currentTrack?.isLocal || currentTrack?.previewUrl;
+    if (!isAudioActive) return;
+
+    if (isPlaying) audioRef.current.play().catch(() => {});
     else audioRef.current.pause();
   }, [isPlaying, currentTrack]);
 
+  // Handle Volume
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume / 100;
-  }, [volume]);
+    if (playerRef.current && !currentTrack?.isLocal && !currentTrack?.previewUrl) {
+      playerRef.current.setVolume(volume);
+    }
+  }, [volume, currentTrack]);
 
+  // Handle Seek
   useEffect(() => {
-    if (audioRef.current && seekRequest !== null && currentTrack?.isLocal) {
-      audioRef.current.currentTime = seekRequest;
+    if (seekRequest !== null) {
+      if (audioRef.current && (currentTrack?.isLocal || currentTrack?.previewUrl)) {
+        audioRef.current.currentTime = seekRequest;
+      } else if (playerRef.current && !currentTrack?.isLocal && !currentTrack?.previewUrl) {
+        playerRef.current.seekTo(seekRequest, true);
+      }
     }
   }, [seekRequest, currentTrack]);
 
-  // Handle YouTube playback
+  // Handle YouTube Playback
   useEffect(() => {
-    if (!playerRef.current || currentTrack?.isLocal) return;
+    if (!playerRef.current) return;
+    const isYouTubeTrack = currentTrack && !currentTrack.isLocal && !currentTrack.previewUrl;
+    if (!isYouTubeTrack) return;
+
     if (isPlaying) playerRef.current.playVideo();
     else playerRef.current.pauseVideo();
   }, [isPlaying, currentTrack]);
-
-  useEffect(() => {
-    if (playerRef.current && !currentTrack?.isLocal) playerRef.current.setVolume(volume);
-  }, [volume, currentTrack]);
-
-  useEffect(() => {
-    if (playerRef.current && seekRequest !== null && !currentTrack?.isLocal) {
-      playerRef.current.seekTo(seekRequest, true);
-    }
-  }, [seekRequest, currentTrack]);
 
   // Fetch recommendations for cloud tracks
   useEffect(() => {
@@ -108,19 +122,22 @@ export const YouTubePlayer: React.FC = () => {
   // Update progress for YouTube
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!playerRef.current || !isPlaying || !currentTrack || currentTrack.isLocal) return;
+      const isYouTubeTrack = currentTrack && !currentTrack.isLocal && !currentTrack.previewUrl;
+      if (!playerRef.current || !isPlaying || !isYouTubeTrack) return;
 
-      const currentTime = playerRef.current.getCurrentTime();
-      const totalTime = playerRef.current.getDuration();
-      
-      setProgress(currentTime);
-      setDuration(totalTime);
+      try {
+        const currentTime = playerRef.current.getCurrentTime();
+        const totalTime = playerRef.current.getDuration();
+        
+        setProgress(currentTime);
+        setDuration(totalTime);
 
-      if (currentTrack.duration && totalTime > 0) {
-        const diff = Math.abs(totalTime - currentTrack.duration);
-        const isAd = diff > 5; 
-        setIsAdPlaying(isAd);
-      }
+        if (currentTrack.duration && totalTime > 0) {
+          const diff = Math.abs(totalTime - currentTrack.duration);
+          const isAd = diff > 5; 
+          setIsAdPlaying(isAd);
+        }
+      } catch (e) {}
     }, 1000);
 
     return () => clearInterval(interval);
@@ -153,9 +170,12 @@ export const YouTubePlayer: React.FC = () => {
 
   if (!currentTrack) return null;
 
+  // Render YouTube component ONLY if it's a valid YouTube ID and not a preview/local track
+  const isYouTubeTrack = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
+
   return (
     <div className="yt-player-hidden">
-      {!currentTrack.isLocal && (
+      {isYouTubeTrack ? (
         <YouTube
           videoId={currentTrack.id}
           opts={{
@@ -165,6 +185,8 @@ export const YouTubePlayer: React.FC = () => {
           onReady={onReady}
           onStateChange={onStateChange}
         />
+      ) : (
+        <div id="no-yt-active" />
       )}
     </div>
   );

@@ -9,6 +9,7 @@ export interface Track {
   duration?: number;
   isLocal?: boolean;
   localFile?: File;
+  previewUrl?: string; // High-fidelity preview for public APIs
 }
 
 export interface Playlist {

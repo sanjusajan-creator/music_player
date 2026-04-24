@@ -49,7 +49,8 @@ export async function searchTracks(query: string): Promise<Track[]> {
         title: item.trackName,
         artist: item.artistName,
         thumbnail: item.artworkUrl100.replace('100x100', '600x600'),
-        duration: Math.floor(item.trackTimeMillis / 1000)
+        duration: Math.floor(item.trackTimeMillis / 1000),
+        previewUrl: item.previewUrl // Critical for playback when YT is dead
       }));
       updateCache(cacheKey, results);
       return results;
@@ -70,7 +71,8 @@ export async function searchTracks(query: string): Promise<Track[]> {
         title: item.title,
         artist: item.user.name,
         thumbnail: item.artwork?.['1000x1000'] || item.artwork?.['480x480'] || 'https://picsum.photos/seed/audius/400/400',
-        duration: Math.floor(item.duration)
+        duration: Math.floor(item.duration),
+        previewUrl: `https://creatornode.audius.co/v1/tracks/${item.id}/stream?app_name=VIBECRAFT`
       }));
       updateCache(cacheKey, results);
       return results;
@@ -93,7 +95,8 @@ export async function searchTracks(query: string): Promise<Track[]> {
         title: item.title,
         artist: item.artist.name,
         thumbnail: item.album.cover_xl || item.album.cover_big,
-        duration: item.duration
+        duration: item.duration,
+        previewUrl: item.preview
       }));
       updateCache(cacheKey, results);
       return results;
@@ -114,7 +117,8 @@ export async function searchTracks(query: string): Promise<Track[]> {
         title: item.name,
         artist: item.user.username,
         thumbnail: item.pictures.extra_large || item.pictures.large || 'https://picsum.photos/seed/mixcloud/400/400',
-        duration: item.audio_length
+        duration: item.audio_length,
+        // Mixcloud doesn't provide easy direct streams without keys, so we keep metadata
       }));
       updateCache(cacheKey, results);
       return results;
@@ -135,7 +139,8 @@ export async function searchTracks(query: string): Promise<Track[]> {
         title: item.title || "Unknown Archive",
         artist: item.creator?.[0] || item.creator || "Unknown Artist",
         thumbnail: `https://archive.org/services/img/${item.identifier}`,
-        duration: 0
+        duration: 0,
+        previewUrl: `https://archive.org/download/${item.identifier}` // Attempt generic download
       }));
       updateCache(cacheKey, results);
       return results;
@@ -189,8 +194,14 @@ function updateCache(key: string, results: Track[]) {
 }
 
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
-  if (!videoId || videoId.startsWith('local-')) return [];
+  // If not a standard YouTube ID (11 chars, no prefix), return mock results to avoid 403s
+  if (!videoId || videoId.length !== 11 || videoId.includes('-')) {
+    console.log("Oracle: Public Archive track detected. Summoning related mocks.");
+    return MOCK_TRACKS.slice(0, 5);
+  }
+  
   if (!YOUTUBE_API_KEY) return MOCK_TRACKS.slice(0, 5);
+  
   try {
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
     const searchRes = await fetch(searchUrl);
