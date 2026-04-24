@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -129,6 +130,7 @@ export const usePlayerStore = create<PlayerState>()(
       setLikedTracks: (ids) => set({ likedTrackIds: Array.isArray(ids) ? ids : [] }),
       
       toggleLike: (trackId) => set((state) => {
+        // Gold Collection Consistency Fix: Use array methods strictly
         const currentLiked = Array.isArray(state.likedTrackIds) ? state.likedTrackIds : [];
         const next = currentLiked.includes(trackId)
           ? currentLiked.filter(id => id !== trackId)
@@ -207,7 +209,7 @@ export const usePlayerStore = create<PlayerState>()(
       },
     }),
     {
-      name: 'vibecraft-spotify-v4',
+      name: 'vibecraft-vault-v6',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 
@@ -222,9 +224,8 @@ export const usePlayerStore = create<PlayerState>()(
         return (rehydratedState) => {
           if (rehydratedState) {
             rehydratedState.hasHydrated = true;
-            // Sovereign Shield: Migration logic to heal legacy corrupted storage models
+            // Sovereign Storage Healing Shield
             if (!rehydratedState.likedTrackIds || !Array.isArray(rehydratedState.likedTrackIds)) {
-              console.log("Oracle: Healing Gold Collection storage model.");
               rehydratedState.likedTrackIds = [];
             }
           }

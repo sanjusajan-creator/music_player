@@ -24,7 +24,7 @@ export const YouTubePlayer: React.FC = () => {
   const currentBlobUrl = useRef<string | null>(null);
   const [origin, setOrigin] = useState('');
 
-  // Handle Hydration Origin
+  // Handle Hydration Origin for origin-matching security
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
@@ -48,8 +48,10 @@ export const YouTubePlayer: React.FC = () => {
 
       audio.addEventListener('error', () => {
         const err = audio.error;
-        // Sovereign Shield: Silence errors when src is invalid or resetting
+        // Sovereign Shield: Silence errors when src is invalid (Code 4) or resetting
+        // This prevents the console noise during track transitions
         if (!audio.src || audio.src === window.location.href || audio.src === "" || audio.src.includes('null')) return;
+        if (err?.code === 4) return; 
         
         console.error("Vibecraft Audio Engine Error:", 
           err?.code || 'Unknown Code',
@@ -73,7 +75,7 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (!currentTrack) return;
 
-    // YouTube IDs are 11 chars and can contain -, _, A-Z, a-z, 0-9
+    // YouTube IDs are 11 chars
     const isYouTube = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11;
     const isNative = currentTrack.isLocal || !!currentTrack.previewUrl;
 
@@ -91,7 +93,7 @@ export const YouTubePlayer: React.FC = () => {
         url = currentTrack.previewUrl;
       }
 
-      // Sovereign Shield: Validate URL
+      // Sovereign Shield: Validate URL and reset YT player
       if (url && url.length > 5 && audioRef.current.src !== url) {
         audioRef.current.src = url;
         audioRef.current.load();
@@ -104,7 +106,9 @@ export const YouTubePlayer: React.FC = () => {
       }
     } else if (isYouTube && audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.src = "";
+      // Silence Error 4 by properly clearing instead of setting to window.location
+      audioRef.current.removeAttribute('src'); 
+      audioRef.current.load();
     }
   }, [currentTrack, isPlaying]);
 
