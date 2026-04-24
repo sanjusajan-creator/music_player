@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -26,7 +25,9 @@ export const YouTubePlayer: React.FC = () => {
 
   // Handle Hydration Origin for origin-matching security
   useEffect(() => {
-    setOrigin(window.location.origin);
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin);
+    }
   }, []);
 
   // Initialize Native Audio Engine
@@ -49,7 +50,6 @@ export const YouTubePlayer: React.FC = () => {
       audio.addEventListener('error', () => {
         const err = audio.error;
         // Sovereign Shield: Silence errors when src is invalid (Code 4) or resetting
-        // This prevents the console noise during track transitions
         if (!audio.src || audio.src === window.location.href || audio.src === "" || audio.src.includes('null')) return;
         if (err?.code === 4) return; 
         
@@ -75,7 +75,7 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (!currentTrack) return;
 
-    // YouTube IDs are 11 chars
+    // YouTube IDs are typically 11 chars
     const isYouTube = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11;
     const isNative = currentTrack.isLocal || !!currentTrack.previewUrl;
 
@@ -106,7 +106,6 @@ export const YouTubePlayer: React.FC = () => {
       }
     } else if (isYouTube && audioRef.current) {
       audioRef.current.pause();
-      // Silence Error 4 by properly clearing instead of setting to window.location
       audioRef.current.removeAttribute('src'); 
       audioRef.current.load();
     }

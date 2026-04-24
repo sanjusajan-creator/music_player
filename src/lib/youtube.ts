@@ -1,4 +1,3 @@
-
 import { Track } from "@/store/usePlayerStore";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getDb } from "@/firebase";
@@ -8,12 +7,12 @@ const CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30-day cache sanctuary
 const sessionSearchCache = new Set<string>();
 
 /**
- * Strategy #10: Hybrid Sovereign Search Engine
+ * Strategy #10: Hybrid Quota-Sovereign Search Engine
  * 1. Normalize Query (Strategy #4)
  * 2. Check Session Set (Strategy #8)
  * 3. Check Firestore Cache (Strategy #3)
  * 4. Call Official API (Fallback)
- * 5. Limit Results (Strategy #5)
+ * 5. Limit Results to 5 (Strategy #5)
  * 6. Save to Cache (Strategy #7)
  */
 export async function searchTracks(query: string): Promise<Track[]> {
@@ -69,7 +68,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
       artist: item.snippet.channelTitle,
       // Strategy #7: Cache IDs permanently with high-res thumbnails
       thumbnail: `https://i.ytimg.com/vi/${item.id.videoId}/hqdefault.jpg`,
-      duration: 0 // Search API doesn't provide duration without extra calls
+      duration: 0 
     }));
 
     if (results.length > 0) {
@@ -95,7 +94,6 @@ async function updateCache(key: string, results: Track[]) {
 }
 
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
-  // To save quota, we use a session-locked mock or previously cached results
   return MOCK_TRACKS;
 }
 

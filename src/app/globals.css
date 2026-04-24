@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 0%;
+  --background: 0 0% 0%; /* Pure AMOLED Black */
   --foreground: 0 0% 100%;
   --card: 0 0% 3%;
   --card-foreground: 0 0% 100%;
@@ -11,18 +11,18 @@
   --popover-foreground: 0 0% 100%;
   --primary: 43 100% 50%; /* AMOLED Gold */
   --primary-foreground: 0 0% 0%;
-  --secondary: 0 0% 5%;
+  --secondary: 0 0% 7%;
   --secondary-foreground: 43 100% 70%;
   --muted: 0 0% 10%;
-  --muted-foreground: 43 20% 60%;
+  --muted-foreground: 43 10% 60%;
   --accent: 43 100% 50%;
   --accent-foreground: 0 0% 0%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
+  --border: 0 0% 12%;
+  --input: 0 0% 12%;
   --ring: 43 100% 50%;
-  --radius: 1rem;
+  --radius: 0.5rem;
 }
 
 @layer base {
@@ -39,59 +39,47 @@
     margin: 0;
     padding: 0;
     overflow: hidden !important;
-    /* Prevent pull-to-refresh and elastic bounce - NUCLEAR FIX */
     overscroll-behavior-y: none !important;
     touch-action: manipulation;
   }
   
-  /* Strictly Bold Typography for the Sanctuary Aesthetic */
   h1, h2, h3, h4, h5, h6, span, p, button, input, div, a, label {
     font-weight: 900 !important;
   }
-
-  /* Disable all italics for high-impact authoritative feel */
-  i, em, .italic {
-    font-style: normal !important;
-    font-weight: 900 !important;
-  }
 }
 
-main {
-  height: 100dvh;
-  width: 100vw;
-  overflow: hidden !important;
-  position: relative;
+.spotify-sidebar-item {
+  @apply flex items-center gap-4 px-4 py-3 text-muted-foreground hover:text-primary transition-all rounded-lg cursor-pointer;
 }
 
-/* Optimized for Mobile Performance: Moderate blur for stability */
-.glass-morphism {
-  @apply bg-black/80 backdrop-blur-xl border border-white/5;
+.spotify-sidebar-item.active {
+  @apply text-primary bg-white/5;
+}
+
+.spotify-card {
+  @apply bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300 cursor-pointer border border-transparent hover:border-primary/20;
 }
 
 .gold-glow {
-  text-shadow: 0 0 15px hsla(43, 100% , 50%, 0.4);
+  text-shadow: 0 0 15px hsla(43, 100% , 50%, 0.3);
 }
 
-.gradient-bg {
-  background: radial-gradient(circle at bottom left, #1a1500, #000000 80%);
+.glass-header {
+  @apply bg-black/60 backdrop-blur-xl border-b border-primary/10;
 }
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 3px;
+  width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   @apply bg-transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
+  @apply bg-white/10 rounded-full hover:bg-primary/20;
 }
 
 .yt-player-hidden {
@@ -110,15 +98,4 @@ main {
 
 .animate-pulse-gold {
   animation: pulse-gold 3s infinite ease-in-out;
-}
-
-.sanctuary-title {
-  @apply font-black uppercase tracking-tighter text-primary gold-glow;
-  font-weight: 900 !important;
-}
-
-/* Specific class to prevent internal pull-to-refresh */
-.no-overscroll {
-  overscroll-behavior-y: none !important;
-  -webkit-overflow-scrolling: touch;
 }

@@ -1,7 +1,8 @@
+"use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Compass, Heart, History, X, ArrowRight, LogOut, FolderOpen } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, User, LogOut } from "lucide-react";
 import { getAuth, signOut } from "firebase/auth";
 import { useUser } from "@/firebase";
 import { Input } from "@/components/ui/input";
@@ -11,8 +12,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -22,11 +21,8 @@ export const Navbar: React.FC = () => {
   const { user } = useUser();
   const auth = getAuth();
 
-  const initialQuery = searchParams.get("q") || "";
-  const currentTab = searchParams.get("tab") || "trending";
-
-  const [searchValue, setSearchValue] = useState(initialQuery);
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const currentTab = searchParams.get("tab") || "home";
+  const [searchValue, setSearchValue] = useState(searchParams.get("q") || "");
 
   useEffect(() => {
     setSearchValue(searchParams.get("q") || "");
@@ -35,159 +31,67 @@ export const Navbar: React.FC = () => {
   const handleSearch = () => {
     const trimmed = searchValue.trim();
     if (trimmed) {
-      router.push(`/?q=${encodeURIComponent(trimmed)}`);
+      router.push(`/?tab=search&q=${encodeURIComponent(trimmed)}`);
     } else {
-      router.push("/");
+      router.push("/?tab=search");
     }
-    setIsMobileSearchOpen(false);
   };
 
   const handleLogout = () => signOut(auth);
 
-  const navigateToTab = (tab: string) => {
-    setSearchValue("");
-    router.push(`/?tab=${tab}`);
-  };
-
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[60] bg-black/95 backdrop-blur-3xl h-16 md:h-24 px-4 md:px-12 border-b border-primary/20 flex items-center justify-between">
-      
-      {/* LOGO */}
-      <div className="flex items-center gap-4 shrink-0">
-        <div 
-          className="text-xl sm:text-2xl md:text-3xl font-black text-primary gold-glow cursor-pointer tracking-tighter uppercase leading-none shrink-0"
-          onClick={() => navigateToTab('trending')}
-        >
-          VIBECRAFT
+    <nav className="sticky top-0 z-50 h-16 px-6 flex items-center justify-between bg-black/40 backdrop-blur-md">
+      <div className="flex items-center gap-4">
+        <div className="flex gap-2">
+          <NavArrow icon={<ChevronLeft />} onClick={() => router.back()} />
+          <NavArrow icon={<ChevronRight />} onClick={() => router.forward()} />
         </div>
+
+        {currentTab === 'search' && (
+          <div className="relative group ml-4 w-full max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-white transition-all" />
+            <Input
+              className="pl-12 bg-white/10 border-none focus-visible:ring-2 focus-visible:ring-white/20 transition-all rounded-full h-10 text-sm placeholder:text-muted-foreground/60 font-black"
+              placeholder="What do you want to play?"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            />
+          </div>
+        )}
       </div>
 
-      {/* DESKTOP SEARCH (Strategy #2: Only on Enter) */}
-      <div className="hidden md:flex flex-1 max-w-xl px-4 lg:px-12">
-        <div className="relative w-full group">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-all duration-300" />
-          <Input
-            className="pl-14 bg-white/5 border-primary/20 focus-visible:ring-primary focus-visible:bg-white/10 transition-all rounded-full h-12 text-sm placeholder:text-muted-foreground/40 font-black tracking-wide"
-            placeholder="Search the archives"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          />
-        </div>
-      </div>
-
-      {/* RIGHT SECTION */}
-      <div className="flex items-center gap-2 sm:gap-4 md:gap-8 shrink-0">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="md:hidden text-primary h-10 w-10 p-0" 
-          onClick={() => setIsMobileSearchOpen(true)}
-        >
-          <Search className="w-5 h-5" />
-        </Button>
-
-        <div className="hidden md:flex items-center gap-8">
-          <NavItem
-            icon={<Compass className="w-5 h-5" />}
-            label="Explore"
-            active={currentTab === "trending" && !initialQuery}
-            onClick={() => navigateToTab("trending")}
-          />
-          <NavItem
-            icon={<FolderOpen className="w-5 h-5" />}
-            label="Local"
-            active={currentTab === "local"}
-            onClick={() => navigateToTab("local")}
-          />
-          <NavItem
-            icon={<Heart className="w-5 h-5" />}
-            label="Liked"
-            active={currentTab === "liked"}
-            onClick={() => navigateToTab("liked")}
-          />
-          <NavItem
-            icon={<History className="w-5 h-5" />}
-            label="History"
-            active={currentTab === "history"}
-            onClick={() => navigateToTab("history")}
-          />
-        </div>
-
+      <div className="flex items-center gap-4">
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all p-0 w-8 h-8 md:w-10 md:h-10 shrink-0"
-              >
-                <Avatar className="h-full w-full">
-                  <AvatarImage
-                    src={`https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`}
-                  />
-                  <AvatarFallback className="bg-primary text-black font-black">
-                    U
-                  </AvatarFallback>
+              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 bg-black/40 border border-white/10 hover:scale-105 transition-all p-0">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={`https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`} />
+                  <AvatarFallback className="bg-primary text-black">U</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-
-            <DropdownMenuContent
-              className="bg-black border-primary/20 text-primary w-64 p-3 rounded-[1.5rem] shadow-2xl"
-              align="end"
-            >
-              <DropdownMenuLabel className="font-black text-sm tracking-widest px-3 py-2 uppercase">
-                My Sanctuary
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-primary/10" />
-              <DropdownMenuItem onClick={() => navigateToTab("local")} className="font-bold uppercase text-[10px] tracking-widest">
-                <FolderOpen className="w-4 h-4 mr-2" /> Local Archives
+            <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white w-48 p-1">
+              <DropdownMenuItem className="focus:bg-white/10 p-2 cursor-pointer rounded-sm flex items-center gap-3">
+                <User className="w-4 h-4" /> Profile
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigateToTab("history")} className="font-bold uppercase text-[10px] tracking-widest">
-                <History className="w-4 h-4 mr-2" /> History Archive
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigateToTab("liked")} className="font-bold uppercase text-[10px] tracking-widest">
-                <Heart className="w-4 h-4 mr-2" /> Liked Tracks
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-primary/10" />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive font-bold uppercase text-[10px] tracking-widest">
-                <LogOut className="w-4 h-4 mr-2" /> Exit Sanctuary
+              <DropdownMenuItem onClick={handleLogout} className="focus:bg-white/10 p-2 cursor-pointer rounded-sm flex items-center gap-3 text-red-400">
+                <LogOut className="w-4 h-4" /> Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
       </div>
-
-      {isMobileSearchOpen && (
-        <div className="fixed inset-0 bg-black z-[100] p-6 flex flex-col animate-in fade-in slide-in-from-top duration-300">
-          <div className="flex items-center gap-4 mb-10">
-            <Button variant="ghost" size="icon" className="text-primary" onClick={() => setIsMobileSearchOpen(false)}>
-              <X className="w-8 h-8" />
-            </Button>
-            <div className="flex-1 flex items-center gap-2 relative">
-              <Input
-                autoFocus
-                className="flex-1 bg-white/5 border-primary/20 h-14 rounded-2xl font-black text-primary placeholder:text-primary/20"
-                placeholder="Search archives..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              />
-              <Button size="icon" onClick={handleSearch} className="bg-primary text-black rounded-xl h-14 w-14 shrink-0">
-                <ArrowRight className="w-6 h-6" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </nav>
   );
 };
 
-const NavItem = ({ icon, label, active = false, onClick }: { icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void; }) => (
-  <button onClick={onClick} className={`flex items-center gap-3 transition-all duration-300 group ${active ? 'text-primary' : 'text-primary/40 hover:text-primary'}`}>
-    <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</div>
-    <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>{label}</span>
+const NavArrow = ({ icon, onClick }: { icon: React.ReactNode, onClick: () => void }) => (
+  <button 
+    onClick={onClick}
+    className="h-8 w-8 bg-black/60 rounded-full flex items-center justify-center text-white/60 hover:text-white transition-all"
+  >
+    {React.cloneElement(icon as React.ReactElement, { className: 'w-5 h-5' })}
   </button>
 );
