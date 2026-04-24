@@ -7,10 +7,11 @@ const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
  * Multi-Provider Search Strategy (Sovereignty Architecture):
- * 1. iTunes API (Public, No Key needed, CORS-friendly)
- * 2. Deezer API (Via Proxy, deep international archive)
- * 3. YouTube (Fallback/Quota-aware)
- * 4. Cosmic Archive (Mock fallback for Error 403)
+ * 1. iTunes API (Public, No Key needed)
+ * 2. Audius API (Public, Decentralized, No Key needed)
+ * 3. Deezer API (Via Proxy, No Key needed)
+ * 4. YouTube (Fallback/Quota-aware)
+ * 5. Cosmic Archive (Mock fallback)
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -31,7 +32,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // 2. Try iTunes Search API (High reliability, No Key needed)
+  // 2. Try iTunes Search API
   try {
     const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`;
     const itunesRes = await fetch(itunesUrl);
@@ -47,11 +48,26 @@ export async function searchTracks(query: string): Promise<Track[]> {
       updateCache(cacheKey, results);
       return results;
     }
-  } catch (e) {
-    console.warn("iTunes Sanctuary unavailable, proceeding to Deezer...");
-  }
+  } catch (e) {}
 
-  // 3. Try Deezer Search API (Via allorigins proxy to avoid CORS constraints)
+  // 3. Try Audius API (Decentralized, No Key)
+  try {
+    const audiusRes = await fetch(`https://api.audius.co/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=VIBECRAFT`);
+    const audiusData = await audiusRes.json();
+    if (audiusData.data && audiusData.data.length > 0) {
+      const results = audiusData.data.map((item: any) => ({
+        id: `audius-${item.id}`,
+        title: item.title,
+        artist: item.user.name,
+        thumbnail: item.artwork?.['1000x1000'] || item.artwork?.['480x480'] || 'https://picsum.photos/seed/audius/400/400',
+        duration: Math.floor(item.duration)
+      }));
+      updateCache(cacheKey, results);
+      return results;
+    }
+  } catch (e) {}
+
+  // 4. Try Deezer Search API (Via allorigins proxy)
   try {
     const deezerUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.deezer.com/search?q=${query}&limit=15`)}`;
     const deezerRes = await fetch(deezerUrl);
@@ -68,19 +84,15 @@ export async function searchTracks(query: string): Promise<Track[]> {
       updateCache(cacheKey, results);
       return results;
     }
-  } catch (e) {
-    console.warn("Deezer Sanctuary unavailable, proceeding to YouTube...");
-  }
+  } catch (e) {}
 
-  // 4. YouTube API (With explicit Quota 403 handling)
+  // 5. YouTube API (Quota-aware fallback)
   if (YOUTUBE_API_KEY) {
     try {
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music')}&type=video&maxResults=15&key=${YOUTUBE_API_KEY}`;
       const searchRes = await fetch(searchUrl);
       
-      if (searchRes.status === 403 || searchRes.status === 429) {
-          throw new Error("QUOTA_EXCEEDED");
-      }
+      if (searchRes.status === 403) throw new Error("QUOTA_EXCEEDED");
 
       const searchData = await searchRes.json();
       const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
@@ -99,12 +111,10 @@ export async function searchTracks(query: string): Promise<Track[]> {
         updateCache(cacheKey, results);
         return results;
       }
-    } catch (error) {
-        console.warn("YouTube Sanctuary quota exceeded or unavailable. Manifesting Cosmic Archive.");
-    }
+    } catch (error) {}
   }
 
-  // 5. Final Fallback: Cosmic Archive (Ensures the Oracle is NEVER silent)
+  // 6. Final Fallback: Cosmic Archive
   return getMockResults(sanitizedQuery);
 }
 
