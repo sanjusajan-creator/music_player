@@ -15,8 +15,7 @@ export const YouTubePlayer: React.FC = () => {
     setProgress,
     setDuration,
     nextTrack,
-    seekRequest,
-    setCurrentTrack
+    seekRequest
   } = usePlayerStore();
 
   const playerRef = useRef<YTPlayer | null>(null);
@@ -42,12 +41,12 @@ export const YouTubePlayer: React.FC = () => {
 
       audio.addEventListener('error', () => {
         const err = audio.error;
-        // Fix for Error logging: Extract actual data from the non-enumerable error object
-        console.error("Vibecraft Audio Engine Error:", {
-          code: err?.code || 'Unknown',
-          message: err?.message || 'Source unreachable or CORS restricted',
-          src: audio.src
-        });
+        // Fix for Error logging: Log properties individually for high-fidelity Oracle debugging
+        console.error("Vibecraft Audio Engine Error:", 
+          err?.code || 'Unknown Code',
+          err?.message || 'Media source error or CORS restriction',
+          audio.src
+        );
       });
 
       audioRef.current = audio;
@@ -69,6 +68,7 @@ export const YouTubePlayer: React.FC = () => {
     const isNative = currentTrack.isLocal || !!currentTrack.previewUrl;
 
     if (isNative && audioRef.current) {
+      // Deactivate YouTube Engine
       if (playerRef.current) {
         try { playerRef.current.pauseVideo(); } catch (e) {}
       }
@@ -85,11 +85,17 @@ export const YouTubePlayer: React.FC = () => {
       if (url && audioRef.current.src !== url) {
         audioRef.current.src = url;
         audioRef.current.load();
-        if (isPlaying) {
-          audioRef.current.play().catch(err => {
-            console.warn("Vibecraft: Autoplay blocked.", err);
-          });
-        }
+        
+        // Use high-fidelity wait for metadata before playing
+        const handleCanPlay = () => {
+          if (isPlaying) {
+            audioRef.current?.play().catch(err => {
+              console.warn("Vibecraft: Autoplay block or interruption.", err);
+            });
+          }
+          audioRef.current?.removeEventListener('canplay', handleCanPlay);
+        };
+        audioRef.current.addEventListener('canplay', handleCanPlay);
       }
     } else if (isYouTube && audioRef.current) {
       audioRef.current.pause();

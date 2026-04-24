@@ -47,6 +47,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
         duration: Math.floor(item.duration),
         previewUrl: `https://api.audius.co/v1/tracks/${item.id}/stream?app_name=VIBECRAFT`
       }));
+      console.log(`Oracle: Manifested ${results.length} tracks from Audius.`);
       updateCache(cacheKey, results);
       return results;
     }
@@ -67,6 +68,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
         duration: item.runtime ? parseInt(item.runtime) * 60 : 180,
         previewUrl: `https://archive.org/download/${item.identifier}/${item.identifier}.mp3`
       }));
+      console.log(`Oracle: Manifested ${results.length} tracks from Archive.org.`);
       updateCache(cacheKey, results);
       return results;
     }
@@ -87,6 +89,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
         duration: item.duration,
         previewUrl: item.audio
       }));
+      console.log(`Oracle: Manifested ${results.length} tracks from Jamendo.`);
       updateCache(cacheKey, results);
       return results;
     }
@@ -112,6 +115,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
           thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
           duration: parseISO8601Duration(item.contentDetails.duration),
         }));
+        console.log(`Oracle: Manifested ${results.length} tracks from YouTube.`);
         updateCache(cacheKey, results);
         return results;
       }
@@ -134,8 +138,9 @@ function updateCache(key: string, results: Track[]) {
 }
 
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
-  // Intercept non-YouTube IDs to prevent 403 Forbidden errors
+  // STRICT SHIELD: Intercept non-YouTube IDs to prevent 403 Forbidden quota errors
   if (!videoId || videoId.length !== 11 || videoId.includes('-')) {
+    console.log("Oracle: Shielding related-videos request for non-YouTube ID.");
     return MOCK_TRACKS.slice(0, 5);
   }
   

@@ -102,7 +102,7 @@ export const Player: React.FC = () => {
 
   const handleShare = () => {
     if (!currentTrack) return;
-    const url = `https://music.youtube.com/watch?v=${currentTrack.id}`;
+    const url = currentTrack.previewUrl || `https://music.youtube.com/watch?v=${currentTrack.id}`;
     navigator.clipboard.writeText(url);
     toast({ title: "Shared!", description: "Track link copied to clipboard." });
   };
@@ -163,7 +163,7 @@ export const Player: React.FC = () => {
 
   if (!currentTrack || !hasHydrated) return null;
 
-  // FIX: likedTrackIds is an Array now to support JSON serialization. Use .includes()
+  // Use .includes() for array-based high-fidelity consistency
   const isLiked = Array.isArray(likedTrackIds) && likedTrackIds.includes(currentTrack.id);
 
   const handleLike = (e: React.MouseEvent) => {
