@@ -199,9 +199,9 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
         <h3 className="text-xl md:text-2xl font-black text-primary hover:text-white cursor-pointer transition-all uppercase tracking-tighter gold-glow">{title}</h3>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-        {isLoading ? [...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
-          songs.slice(0, 5).map((track: any) => (
-            <SearchResult key={track.id} track={track} />
+        {isLoading ? [...Array(5)].map((_, i) => <div key={`skeleton-${i}`} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
+          songs.slice(0, 5).map((track: any, i: number) => (
+            <SearchResult key={`track-${track.id}-${i}`} track={track} />
           ))
         }
       </div>
@@ -228,7 +228,7 @@ function SearchResultsView({ query }: { query: string }) {
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Unified Songs</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.songs.results.map((t: any) => <SearchResult key={t.id} track={t} />)}
+            {results.songs.results.map((t: any, i: number) => <SearchResult key={`unified-${t.id}-${i}`} track={t} />)}
           </div>
         </section>
       )}
@@ -238,8 +238,8 @@ function SearchResultsView({ query }: { query: string }) {
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Artifact Albums</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.albums.results.map((a: any) => (
-              <CollectionCard key={a.id} data={a} type="albums" />
+            {results.albums.results.map((a: any, i: number) => (
+              <CollectionCard key={`album-${a.id}-${i}`} data={a} type="albums" />
             ))}
           </div>
         </section>
@@ -250,8 +250,8 @@ function SearchResultsView({ query }: { query: string }) {
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Sovereign Playlists</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.playlists.results.map((p: any) => (
-              <CollectionCard key={p.id} data={p} type="playlists" />
+            {results.playlists.results.map((p: any, i: number) => (
+              <CollectionCard key={`playlist-${p.id}-${i}`} data={p} type="playlists" />
             ))}
           </div>
         </section>
@@ -262,8 +262,8 @@ function SearchResultsView({ query }: { query: string }) {
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Oracle Artists</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.artists.results.map((ar: any) => (
-              <CollectionCard key={ar.id} data={ar} type="artists" />
+            {results.artists.results.map((ar: any, i: number) => (
+              <CollectionCard key={`artist-${ar.id}-${i}`} data={ar} type="artists" />
             ))}
           </div>
         </section>
@@ -274,7 +274,7 @@ function SearchResultsView({ query }: { query: string }) {
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">YouTube Discovery</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.videos.results.map((v: any) => <SearchResult key={v.id} track={v} />)}
+            {results.videos.results.map((v: any, i: number) => <SearchResult key={`video-${v.id}-${i}`} track={v} />)}
           </div>
         </section>
       )}
@@ -331,7 +331,7 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
 
       <div className="space-y-1">
         {songs.map((s: any, i: number) => (
-          <TrackRow key={s.id} track={{
+          <TrackRow key={`track-row-${s.id}-${i}`} track={{
             id: s.id,
             title: s.title || s.name,
             artist: s.primaryArtists || s.artists?.primary?.[0]?.name || data.title,
@@ -391,8 +391,8 @@ function LikedSongsView({ userId }: { userId: string }) {
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-        {likedDocs?.map((doc: any) => (
-          <SearchResult key={doc.id} track={{
+        {likedDocs?.map((doc: any, i: number) => (
+          <SearchResult key={`liked-${doc.id}-${i}`} track={{
             id: doc.id,
             title: doc.title,
             artist: doc.artist,
@@ -438,7 +438,7 @@ function LocalArchivesView() {
         <Button onClick={handleSummon} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all">Summon Folder</Button>
       </header>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-        {localTracks.map(t => <SearchResult key={t.id} track={t} />)}
+        {localTracks.map((t, i) => <SearchResult key={`local-${t.id}-${i}`} track={t} />)}
         {localTracks.length === 0 && (
           <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-primary/20 rounded-[2rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-primary/5 group transition-all">
             <FolderPlus className="w-20 h-24 text-primary/20 group-hover:text-primary transition-colors" />
