@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { useState } from 'react';
-import { Home, Search, Library, Heart, Plus, ListMusic, Sparkles, FolderOpen, Music2, Trash2 } from 'lucide-react';
+import { Home, Search, Library, Heart, Plus, ListMusic, Sparkles, FolderOpen, Music2, Trash2, Settings } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
@@ -61,6 +62,12 @@ export const Sidebar = () => {
           label="Search" 
           active={currentTab === 'search'} 
           onClick={() => navigate('search')} 
+        />
+        <SidebarItem 
+          icon={<Settings />} 
+          label="Settings" 
+          active={currentTab === 'settings'} 
+          onClick={() => navigate('settings')} 
         />
       </div>
 

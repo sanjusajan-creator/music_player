@@ -15,6 +15,7 @@ export const YouTubePlayer: React.FC = () => {
     currentTrack, 
     isPlaying, 
     volume, 
+    settings,
     setIsPlaying, 
     setIsBuffering,
     setProgress,
@@ -85,8 +86,8 @@ export const YouTubePlayer: React.FC = () => {
   // Handle Manifestation Switching
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
-    if (loadingId.current === currentTrack.id) return;
     
+    // We re-load if quality setting changes for Saavn tracks
     const initializePlayback = async () => {
       loadingId.current = currentTrack.id;
       let url = "";
@@ -96,7 +97,8 @@ export const YouTubePlayer: React.FC = () => {
           url = URL.createObjectURL(currentTrack.localFile);
         } else if (currentTrack.isSaavn) {
           setIsBuffering(true);
-          const manifestedUrl = await getSaavnPlaybackUrl(currentTrack.id);
+          const quality = settings.dataSaver ? 'low' : settings.audioQuality;
+          const manifestedUrl = await getSaavnPlaybackUrl(currentTrack.id, quality);
           if (manifestedUrl) {
             url = manifestedUrl;
           } else {
@@ -105,13 +107,23 @@ export const YouTubePlayer: React.FC = () => {
             toast({ title: "Stream Unavailable", description: "This archive could not be manifested.", variant: "destructive" });
             return;
           }
+        } else if (currentTrack.isYouTube) {
+          // If the engine falls back to YouTube, we'd normally use an Iframe,
+          // but for unified native audio, we'd need a third party scraper or proxy.
+          // For now, we simulate Saavn native only.
+          toast({ title: "YouTube discovery", description: "Native audio fallback coming soon." });
+          return;
         }
 
         if (url && audioRef.current) {
+          const currentTime = audioRef.current.currentTime;
+          const wasPlaying = !audioRef.current.paused;
+          
           audioRef.current.pause();
           audioRef.current.src = url;
           audioRef.current.load();
-          if (isPlaying) {
+          
+          if (wasPlaying || isPlaying) {
             audioRef.current.play().catch(error => {
               console.warn("Playback blocked by browser policy. Interaction required.", error);
               setIsPlaying(false);
@@ -125,7 +137,7 @@ export const YouTubePlayer: React.FC = () => {
     };
 
     initializePlayback();
-  }, [currentTrack?.id]);
+  }, [currentTrack?.id, settings.audioQuality, settings.dataSaver]);
 
   // Sync Global Play/Pause
   useEffect(() => {

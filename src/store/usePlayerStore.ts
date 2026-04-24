@@ -12,10 +12,24 @@ export interface Track {
   isLocal?: boolean;
   localFile?: File;
   isSaavn?: boolean;
+  isYouTube?: boolean;
   language?: string;
+  hasLyrics?: boolean;
+  bitrates?: string[];
 }
 
-type RepeatMode = 'none' | 'one' | 'all';
+export type AudioQuality = 'low' | 'medium' | 'high' | 'auto';
+export type StreamingMode = 'stream' | 'download' | 'offline';
+export type RepeatMode = 'none' | 'one' | 'all';
+
+interface SettingsState {
+  audioQuality: AudioQuality;
+  streamingMode: StreamingMode;
+  showLyrics: boolean;
+  autoScrollLyrics: boolean;
+  autoplaySimilar: boolean;
+  dataSaver: boolean;
+}
 
 interface PlayerState {
   currentTrack: Track | null;
@@ -33,6 +47,7 @@ interface PlayerState {
   repeatMode: RepeatMode;
   isShuffle: boolean;
   hasHydrated: boolean;
+  settings: SettingsState;
   
   setHasHydrated: (state: boolean) => void;
   setCurrentTrack: (track: Track | null) => void;
@@ -54,6 +69,7 @@ interface PlayerState {
   nextTrack: () => void;
   previousTrack: () => void;
   clearQueue: () => void;
+  updateSettings: (settings: Partial<SettingsState>) => void;
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -74,6 +90,14 @@ export const usePlayerStore = create<PlayerState>()(
       repeatMode: 'none',
       isShuffle: false,
       hasHydrated: false,
+      settings: {
+        audioQuality: 'auto',
+        streamingMode: 'stream',
+        showLyrics: true,
+        autoScrollLyrics: true,
+        autoplaySimilar: true,
+        dataSaver: false,
+      },
 
       setHasHydrated: (state) => set({ hasHydrated: state }),
 
@@ -169,9 +193,13 @@ export const usePlayerStore = create<PlayerState>()(
           });
         }
       },
+
+      updateSettings: (newSettings) => set((state) => ({
+        settings: { ...state.settings, ...newSettings }
+      })),
     }),
     {
-      name: 'vibecraft-saavn-v2',
+      name: 'vibecraft-sovereign-v3',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 
@@ -179,7 +207,8 @@ export const usePlayerStore = create<PlayerState>()(
         likedTrackIds: state.likedTrackIds,
         repeatMode: state.repeatMode,
         isShuffle: state.isShuffle,
-        queue: state.queue
+        queue: state.queue,
+        settings: state.settings
       }),
       onRehydrateStorage: () => (rehydratedState) => {
         if (rehydratedState) {

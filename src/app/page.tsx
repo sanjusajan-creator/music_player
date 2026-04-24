@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
@@ -8,11 +9,12 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Player } from '@/components/player/Player';
 import { YouTubePlayer } from '@/components/player/YouTubePlayer';
+import { SettingsView } from '@/components/settings/SettingsView';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { 
   TrendingUp, Sparkles, Heart, 
-  Loader2, FolderOpen, History, Music2, Plus, Play, Disc, User, ListMusic, Home, Search, Library
+  Loader2, FolderOpen, History, Music2, Plus, Play, Disc, User, ListMusic, Home, Search, Library, Settings as SettingsIcon
 } from 'lucide-react';
 import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -145,6 +147,7 @@ function HomeContent() {
                 {currentTab === 'liked' && <LikedSongsView userId={user.uid} />}
                 {currentTab === 'local' && <LocalArchivesView />}
                 {currentTab === 'detail' && detailType && detailId && <DetailView type={detailType} id={detailId} />}
+                {currentTab === 'settings' && <SettingsView />}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -155,6 +158,7 @@ function HomeContent() {
           <MobileNavItem icon={<Home />} label="Home" active={currentTab === 'home'} onClick={() => router.push('/?tab=home')} />
           <MobileNavItem icon={<Search />} label="Search" active={currentTab === 'search'} onClick={() => router.push('/?tab=search')} />
           <MobileNavItem icon={<Library />} label="Library" active={currentTab === 'liked'} onClick={() => router.push('/?tab=liked')} />
+          <MobileNavItem icon={<SettingsIcon />} label="Settings" active={currentTab === 'settings'} onClick={() => router.push('/?tab=settings')} />
         </nav>
 
         <Player />
@@ -214,10 +218,11 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
             <SearchResult key={track.id} track={{
               id: track.id,
               title: track.title,
-              artist: track.primaryArtists,
-              thumbnail: track.image?.[2]?.url || track.image?.[1]?.url,
+              artist: track.primaryArtists || track.artist,
+              thumbnail: track.image?.[2]?.url || track.image?.[1]?.url || track.thumbnail,
               album: track.album,
-              isSaavn: true
+              isSaavn: track.isSaavn !== undefined ? track.isSaavn : true,
+              isYouTube: !!track.isYouTube
             }} />
           ))
         }
@@ -259,10 +264,11 @@ function SearchResultsView({ query }: { query: string }) {
               <SearchResult key={t.id} track={{
                 id: t.id,
                 title: t.title,
-                artist: t.primaryArtists,
-                thumbnail: t.image?.[2]?.url,
+                artist: t.primaryArtists || t.artist,
+                thumbnail: (t.image && t.image[2]?.url) || t.thumbnail,
                 album: t.album,
-                isSaavn: true
+                isSaavn: t.isSaavn !== undefined ? t.isSaavn : true,
+                isYouTube: !!t.isYouTube
               }} />
             ))}
           </div>
@@ -375,7 +381,7 @@ function TrackRow({ track, index }: { track: Track, index: number }) {
         </div>
       </div>
       <p className="text-[10px] text-muted-foreground font-black hidden md:block uppercase tracking-widest truncate">{track.album}</p>
-      <button className="opacity-0 group-hover:opacity-100 transition-all text-primary flex justify-center"><Play className="w-5 h-5 fill-current" /></button>
+      <button className="opacity-0 group-hover:opacity-100 text-primary flex justify-center"><Play className="w-5 h-5 fill-current" /></button>
     </div>
   );
 }
