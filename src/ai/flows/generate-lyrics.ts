@@ -19,7 +19,16 @@ const LyricsOutputSchema = z.object({
 });
 
 export async function generateLyrics(input: z.infer<typeof LyricsInputSchema>) {
-  return generateLyricsFlow(input);
+  try {
+    return await generateLyricsFlow(input);
+  } catch (error: any) {
+    console.error("Oracle Lyrics Error:", error);
+    // Return a graceful manifestation to prevent 500 error
+    return {
+      lyrics: "Scanning the archives... The connection to the Oracle is unstable. Try again soon.",
+      isInstrumental: false
+    };
+  }
 }
 
 const lyricsPrompt = ai.definePrompt({
@@ -44,6 +53,7 @@ const generateLyricsFlow = ai.defineFlow(
   },
   async (input) => {
     const {output} = await lyricsPrompt(input);
-    return output!;
+    if (!output) throw new Error("Oracle returned no lyrics manifestation.");
+    return output;
   }
 );

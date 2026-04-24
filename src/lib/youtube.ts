@@ -7,7 +7,7 @@ const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
  * Sovereign Multi-Provider Search Strategy (FULL SONGS):
- * Tier 1: YouTube Vault (Prioritized for mainstream accuracy)
+ * Tier 1: YouTube Music Vault (Prioritized for mainstream accuracy and HD thumbnails)
  * Tier 2: Audius API (Decentralized Full Tracks)
  * Tier 3: Jamendo API (Open Music Full Audio)
  * Tier 4: Archive.org (Historical Full Audio)
@@ -33,11 +33,12 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // Tier 1: YouTube Vault (Master Accuracy)
+  // Tier 1: YouTube Vault (Official Music Priority)
   if (YOUTUBE_API_KEY) {
     try {
       console.log("Oracle: Summoning from YouTube Vault...");
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music official')}&type=video&maxResults=15&videoCategoryId=10&key=${YOUTUBE_API_KEY}`;
+      // Add 'official audio' to force high-fidelity music results
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' official audio')}&type=video&maxResults=15&videoCategoryId=10&key=${YOUTUBE_API_KEY}`;
       const searchRes = await fetch(searchUrl);
       if (searchRes.status === 403) throw new Error("QUOTA_EXCEEDED");
       
@@ -53,7 +54,8 @@ export async function searchTracks(query: string): Promise<Track[]> {
           id: item.id,
           title: normalizeMetadata(item.snippet.title),
           artist: normalizeMetadata(item.snippet.channelTitle),
-          thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
+          // PRIORITY: Use maxres or standard if available for crystal clear UI
+          thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.standard?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
           duration: parseISO8601Duration(item.contentDetails.duration),
         }));
         
@@ -119,6 +121,7 @@ function updateCache(key: string, results: Track[]) {
 }
 
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
+  // SOVEREIGN SHIELD: Don't call YouTube API for non-YouTube IDs (it causes 403s)
   if (!videoId || videoId.length !== 11 || videoId.includes('-')) {
     return MOCK_TRACKS.slice(0, 5);
   }
@@ -164,6 +167,7 @@ function normalizeMetadata(text: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\(Official Video\)/gi, '')
     .replace(/\(Official Audio\)/gi, '')
+    .replace(/\(Lyrics\)/gi, '')
     .replace(/\[Official Video\]/gi, '')
     .replace(/VEVO/gi, '')
     .trim();
