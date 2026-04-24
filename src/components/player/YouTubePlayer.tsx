@@ -41,7 +41,7 @@ export const YouTubePlayer: React.FC = () => {
 
       audio.addEventListener('error', () => {
         const err = audio.error;
-        // SOVEREIGN SHIELD: Don't log error if src is empty or just the page URL
+        // SOVEREIGN SHIELD: Don't log error if src is empty or just the page URL (browser reset behavior)
         if (!audio.src || audio.src === window.location.href) return;
         
         console.error("Vibecraft Audio Engine Error:", 
@@ -66,6 +66,7 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (!currentTrack) return;
 
+    // Detect Source Type
     const isYouTube = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
     const isNative = currentTrack.isLocal || !!currentTrack.previewUrl;
 
@@ -75,6 +76,7 @@ export const YouTubePlayer: React.FC = () => {
         try { playerRef.current.pauseVideo(); } catch (e) {}
       }
 
+      // Initialize Native Stream
       let url = "";
       if (currentTrack.isLocal && currentTrack.localFile) {
         if (currentBlobUrl.current) URL.revokeObjectURL(currentBlobUrl.current);
@@ -84,15 +86,16 @@ export const YouTubePlayer: React.FC = () => {
         url = currentTrack.previewUrl;
       }
 
-      // SOVEREIGN SHIELD: Only set src if URL is a valid stream
+      // SOVEREIGN SHIELD: Only set src if URL is a valid stream to prevent "Empty src" console errors
       if (url && url.length > 5 && audioRef.current.src !== url) {
         audioRef.current.src = url;
         audioRef.current.load();
         
+        // Wait for potential playback activation
         const handleCanPlay = () => {
           if (isPlaying) {
             audioRef.current?.play().catch(err => {
-              console.warn("Vibecraft: Autoplay block.", err);
+              console.warn("Vibecraft: Autoplay block or stream issue.", err);
             });
           }
           audioRef.current?.removeEventListener('canplay', handleCanPlay);
@@ -100,6 +103,7 @@ export const YouTubePlayer: React.FC = () => {
         audioRef.current.addEventListener('canplay', handleCanPlay);
       }
     } else if (isYouTube && audioRef.current) {
+      // Deactivate Native Engine
       audioRef.current.pause();
       audioRef.current.src = "";
       if (currentBlobUrl.current) {
@@ -160,6 +164,7 @@ export const YouTubePlayer: React.FC = () => {
         if (currentTime > 0) setProgress(currentTime);
         if (totalTime > 0) setDuration(totalTime);
 
+        // Basic Ad Detection via duration mismatch
         if (currentTrack?.duration && totalTime > 0) {
           const diff = Math.abs(totalTime - currentTrack.duration);
           setIsAdPlaying(diff > 5);
@@ -200,7 +205,13 @@ export const YouTubePlayer: React.FC = () => {
           videoId={currentTrack.id}
           opts={{
             height: '1', width: '1',
-            playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, origin: typeof window !== 'undefined' ? window.location.origin : '' },
+            playerVars: { 
+              autoplay: 1, 
+              controls: 0, 
+              rel: 0, 
+              modestbranding: 1, 
+              origin: typeof window !== 'undefined' ? window.location.origin : '' 
+            },
           }}
           onReady={onReady}
           onStateChange={onStateChange}

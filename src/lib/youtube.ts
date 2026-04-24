@@ -2,13 +2,11 @@ import { Track } from "@/store/usePlayerStore";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getDb } from "@/firebase";
 
-const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
  * Sovereign Search Strategy (Innertune-inspired):
- * 1. Direct YouTube Scraping via Piped Proxy (Accurate, Real results, No Key)
- * 2. Audius Grid (High-Fidelity Full Tracks fallback)
+ * Uses high-fidelity Piped instances to fetch REAL YouTube results without an API key.
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -31,9 +29,10 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // Tier 1: Real YouTube Results via Piped (Free, High-Fidelity, Accurate)
+  // 2. Innertune Technique: Real YouTube Results via Piped API
   try {
     console.log("Oracle: Summoning Real YouTube Archives...");
+    // Attempt multiple stable instances for high-fidelity uptime
     const pipedInstances = [
       'https://pipedapi.kavin.rocks',
       'https://api.piped.video',
@@ -48,6 +47,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
         
         if (data.items?.length > 0) {
           const results = data.items.slice(0, 15).map((item: any) => {
+            // Extract video ID from URL
             const videoId = item.url.split('v=')[1];
             return {
               id: videoId,
@@ -63,29 +63,15 @@ export async function searchTracks(query: string): Promise<Track[]> {
           console.log(`Oracle: Manifested ${results.length} real YouTube tracks.`);
           return results;
         }
-      } catch (e) { continue; }
+      } catch (e) {
+        continue;
+      }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("Oracle: High-Fidelity Proxy unreachable.", e);
+  }
 
-  // Tier 2: Audius Grid (Fallback)
-  try {
-    console.log("Oracle: YouTube Proxy restricted. Summoning from Audius...");
-    const res = await fetch(`https://api.audius.co/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=VIBECRAFT`);
-    const data = await res.json();
-    if (data.data?.length > 0) {
-      const results = data.data.map((item: any) => ({
-        id: `audius-${item.id}`,
-        title: item.title,
-        artist: item.user.name,
-        thumbnail: item.artwork?.['1000x1000'] || item.artwork?.['480x480'] || 'https://picsum.photos/seed/audius/400/400',
-        duration: Math.floor(item.duration),
-        previewUrl: `https://api.audius.co/v1/tracks/${item.id}/stream?app_name=VIBECRAFT`
-      }));
-      updateCache(cacheKey, results);
-      return results;
-    }
-  } catch (e) {}
-
+  // 3. Last Resort Fallback (Mock data)
   return getMockResults(sanitizedQuery);
 }
 

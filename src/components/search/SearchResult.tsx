@@ -26,7 +26,7 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
   const { user } = useUser();
   const db = useFirestore();
   
-  // Use .includes() for array-based persistence
+  // Use .includes() for array-based persistence synchronization
   const isLiked = Array.isArray(likedTrackIds) && likedTrackIds.includes(track.id);
 
   const handleAddToQueue = (e: React.MouseEvent) => {
@@ -50,6 +50,7 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
     const likeRef = doc(db, 'users', user.uid, 'likedSongs', track.id);
     toggleLike(track.id);
     
+    // Manifest changes to Firestore instantly
     if (isLiked) {
       deleteDocumentNonBlocking(likeRef);
     } else {
