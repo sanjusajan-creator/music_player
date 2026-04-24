@@ -190,6 +190,7 @@ async function fetchYouTube(query: string) {
     });
     if (!res.ok) return [];
     const data = await res.json();
+    console.log("Oracle: YouTube response received", !!data);
     
     // Robust normalization for diverse RapidAPI response structures
     let items = [];
@@ -197,6 +198,7 @@ async function fetchYouTube(query: string) {
     else if (data.results && Array.isArray(data.results)) items = data.results;
     else if (data.contents && Array.isArray(data.contents)) items = data.contents;
     else if (data.data && Array.isArray(data.data)) items = data.data;
+    else if (data.videos && Array.isArray(data.videos)) items = data.videos;
 
     return items.map((v: any) => ({
       id: v.videoId || v.id || v.id?.videoId,
@@ -210,6 +212,7 @@ async function fetchYouTube(query: string) {
       isIndiaContent: true
     }));
   } catch (e) {
+    console.error("Oracle: YT fetch error", e);
     return [];
   }
 }
@@ -244,6 +247,7 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
 
 export async function getLyricsAction(songId: string, songUrl?: string) {
   try {
+    console.log(`Oracle: Summoning lyrics manifestation for ID: ${songId}`);
     // Tier 1: Summon via ID
     let res = await fetch(`${SAAVN_API_BASE}/api/songs/${songId}`);
     if (res.ok) {
@@ -254,6 +258,7 @@ export async function getLyricsAction(songId: string, songUrl?: string) {
 
     // Tier 2: Fallback via Link
     if (songUrl) {
+      console.log(`Oracle: Retrying lyrics manifestation via Link: ${songUrl}`);
       res = await fetch(`${SAAVN_API_BASE}/api/songs?link=${encodeURIComponent(songUrl)}`);
       if (res.ok) {
         let data = await res.json();
