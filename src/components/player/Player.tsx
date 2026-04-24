@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -17,7 +17,7 @@ import { doc } from 'firebase/firestore';
 import { generateLyrics } from '@/ai/flows/generate-lyrics';
 import { getLyricsAction } from '@/app/actions/youtube-search';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 export const Player: React.FC = () => {
   const router = useRouter();
@@ -359,4 +359,3 @@ const QueueItem = ({ track, isActive, onRemove }: { track: Track, isActive?: boo
     )}
   </div>
 );
-

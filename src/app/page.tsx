@@ -13,14 +13,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { 
   TrendingUp, Sparkles, Heart, 
-  Loader2, FolderOpen, Music2, FolderPlus, Play, 
-  Disc, User, ListMusic, Home, Search, Library, Settings as SettingsIcon, Clock, X, Youtube
+  Loader2, FolderOpen, Search, Library, Settings as SettingsIcon, X, Youtube, Play
 } from 'lucide-react';
-import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
+import { useUser, useAuth, useMemoFirebase, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { query, collection, orderBy, limit, getDocs } from 'firebase/firestore';
+import { query, collection, limit, getDocs, orderBy } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { usePlayerStore, Track } from '@/store/usePlayerStore';
 import { cn, getImage } from '@/lib/utils';

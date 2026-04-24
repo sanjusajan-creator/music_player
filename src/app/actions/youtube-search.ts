@@ -14,9 +14,10 @@ const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
  * Strips modifiers and returns logic flags
  */
 function parseQuery(query: string) {
+  const lowerQuery = query.toLowerCase();
   return {
-    ytMode: query.toLowerCase().includes(":yt"),
-    lyricMode: query.toLowerCase().includes(":lyrics"),
+    ytMode: lowerQuery.includes(":yt"),
+    lyricMode: lowerQuery.includes(":lyrics"),
     cleanQuery: query
       .replace(/:yt/gi, "")
       .replace(/:lyrics/gi, "")
@@ -27,30 +28,27 @@ function parseQuery(query: string) {
 /**
  * Sovereign Hybrid Search Oracle - India Optimized
  * Aggregates JioSaavn (Primary), Gaana (Secondary), and YouTube (Explicit Fallback via :yt)
+ * Hardened with Fault-Tolerance: One API failure will not kill the manifestation.
  */
 export async function searchAllAction(query: string) {
   try {
-    const { ytMode, cleanQuery } = parseQuery(query);
+    const { ytMode, lyricMode, cleanQuery } = parseQuery(query);
 
     if (!cleanQuery) return null;
 
-    // Parallel Summoning for High Performance
-    const searchPromises: Promise<any>[] = [
-      fetchSaavn(cleanQuery),
-      fetchGaana(cleanQuery)
-    ];
+    // Parallel Summoning with Sovereign Fault-Tolerance
+    const saavnPromise = fetchSaavn(cleanQuery).catch(() => ({ songs: [] }));
+    const gaanaPromise = fetchGaana(cleanQuery).catch(() => ({ songs: [], albums: [], artists: [], playlists: [] }));
+    const youtubePromise = ytMode ? fetchYouTube(cleanQuery).catch(() => []) : Promise.resolve([]);
 
-    if (ytMode) {
-      searchPromises.push(fetchYouTube(cleanQuery));
-    }
-
-    const results = await Promise.all(searchPromises);
-    const saavnData = results[0];
-    const gaanaData = results[1];
-    const ytResults = ytMode ? results[2] : [];
+    const [saavnData, gaanaData, ytResults] = await Promise.all([
+      saavnPromise,
+      gaanaPromise,
+      youtubePromise
+    ]);
 
     // Unified Song List (JioSaavn + Gaana merged)
-    const allSongs = [...saavnData.songs, ...(gaanaData.songs || [])];
+    const allSongs = [...(saavnData.songs || []), ...(gaanaData.songs || [])];
     
     // De-duplication Strategy: Compare Title and Artist
     const seen = new Set<string>();
@@ -61,13 +59,19 @@ export async function searchAllAction(query: string) {
       return true;
     });
 
+    // If :lyrics is used, prioritize tracks from JioSaavn as they have high-fidelity lyrics
+    if (lyricMode) {
+      uniqueSongs.sort((a, b) => (a.source === 'jiosaavn' ? -1 : 1));
+    }
+
     return {
       songs: { results: uniqueSongs },
       albums: { results: gaanaData.albums || [] },
       artists: { results: gaanaData.artists || [] },
       playlists: { results: gaanaData.playlists || [] },
       videos: { results: ytResults || [] },
-      ytMode
+      ytMode,
+      lyricMode
     };
   } catch (error) {
     console.error("Oracle Unified Search Error:", error);
@@ -92,7 +96,8 @@ async function fetchSaavn(query: string) {
       album: track.album || "Saavn Vault",
       source: 'jiosaavn' as const,
       isSaavn: true,
-      isIndiaContent: true
+      isIndiaContent: true,
+      hasLyrics: !!track.hasLyrics
     }));
 
     return { songs };
@@ -165,9 +170,13 @@ async function fetchGaana(query: string) {
 }
 
 async function fetchYouTube(query: string) {
-  if (!RAPIDAPI_KEY) return [];
+  if (!RAPIDAPI_KEY) {
+    console.warn("Oracle: YouTube RapidAPI Key missing. Fallback Discovery disabled.");
+    return [];
+  }
   try {
-    const res = await fetch(`https://${RAPIDAPI_HOST}/search/?query=${encodeURIComponent(query)}&regionCode=IN&hl=en-IN`, {
+    // Robust search: removing trailing slash for API compatibility
+    const res = await fetch(`https://${RAPIDAPI_HOST}/search?query=${encodeURIComponent(query)}&regionCode=IN&hl=en-IN`, {
       headers: {
         'x-rapidapi-key': RAPIDAPI_KEY,
         'x-rapidapi-host': RAPIDAPI_HOST
@@ -218,6 +227,7 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
     if (!song || !song.downloadUrl) return null;
     
     const links = song.downloadUrl;
+    // Respect the highest fidelity link available
     return links[links.length - 1]?.url || links[0]?.url || null;
   } catch (error) {
     return null;
