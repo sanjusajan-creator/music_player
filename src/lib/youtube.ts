@@ -29,46 +29,47 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // 2. Innertune Technique: Real YouTube Results via Piped API
-  try {
-    console.log("Oracle: Summoning Real YouTube Archives...");
-    // Attempt multiple stable instances for high-fidelity uptime
-    const pipedInstances = [
-      'https://pipedapi.kavin.rocks',
-      'https://api.piped.video',
-      'https://pipedapi.leptons.xyz'
-    ];
-    
-    for (const instance of pipedInstances) {
-      try {
-        const res = await fetch(`${instance}/search?q=${encodeURIComponent(query)}&filter=music_videos`);
-        if (!res.ok) continue;
-        const data = await res.json();
+  // 2. Innertune Technique: Real YouTube Results via Piped API (Multi-Instance Failover)
+  const pipedInstances = [
+    'https://pipedapi.kavin.rocks',
+    'https://api.piped.video',
+    'https://pipedapi.leptons.xyz',
+    'https://piped-api.lunar.icu'
+  ];
+
+  console.log("Oracle: Summoning Real YouTube Archives...");
+
+  for (const instance of pipedInstances) {
+    try {
+      const res = await fetch(`${instance}/search?q=${encodeURIComponent(query)}&filter=music_videos`, {
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (!res.ok) continue;
+      
+      const data = await res.json();
+      if (data.items?.length > 0) {
+        const results = data.items.slice(0, 15).map((item: any) => {
+          const videoId = item.url.split('v=')[1];
+          return {
+            id: videoId,
+            title: normalizeMetadata(item.title),
+            artist: normalizeMetadata(item.uploaderName),
+            // Innertune Technique: Force maxres for premium visuals
+            thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+            duration: item.duration || 0,
+          };
+        });
         
-        if (data.items?.length > 0) {
-          const results = data.items.slice(0, 15).map((item: any) => {
-            // Extract video ID from URL
-            const videoId = item.url.split('v=')[1];
-            return {
-              id: videoId,
-              title: normalizeMetadata(item.title),
-              artist: normalizeMetadata(item.uploaderName),
-              // Innertune Technique: Force maxres for premium visuals
-              thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
-              duration: item.duration || 0,
-            };
-          });
-          
-          updateCache(cacheKey, results);
-          console.log(`Oracle: Manifested ${results.length} real YouTube tracks.`);
-          return results;
-        }
-      } catch (e) {
-        continue;
+        updateCache(cacheKey, results);
+        console.log(`Oracle: Manifested ${results.length} real YouTube tracks from ${instance}.`);
+        return results;
       }
+    } catch (e) {
+      console.warn(`Oracle: Instance ${instance} unreachable. Retrying...`);
+      continue;
     }
-  } catch (e) {
-    console.error("Oracle: High-Fidelity Proxy unreachable.", e);
   }
 
   // 3. Last Resort Fallback (Mock data)
