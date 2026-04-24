@@ -1,12 +1,10 @@
-"use client";
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, 
   Heart, Maximize2, Music, Loader2, Shuffle, Repeat, 
-  VolumeX, ListMusic, X, Share2, Youtube
+  VolumeX, ListMusic, X, Share2, Youtube, Moon, Clock
 } from 'lucide-react';
 import { usePlayerStore, Track } from '@/store/usePlayerStore';
 import { Slider } from '@/components/ui/slider';
@@ -18,6 +16,12 @@ import { generateLyrics } from '@/ai/flows/generate-lyrics';
 import { getLyricsAction } from '@/app/actions/youtube-search';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 
 export const Player: React.FC = () => {
   const router = useRouter();
@@ -26,7 +30,7 @@ export const Player: React.FC = () => {
     currentTrack, isPlaying, setIsPlaying, nextTrack, previousTrack, 
     progress, duration, volume, setVolume, likedTrackIds, toggleLike, seekTo,
     isShuffle, toggleShuffle, repeatMode, setRepeatMode, hasHydrated,
-    queue, clearQueue
+    queue, sleepTimer, setSleepTimer
   } = usePlayerStore();
   
   const { user } = useUser();
@@ -115,6 +119,12 @@ export const Player: React.FC = () => {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
+  const formatSleepTimer = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
+
   if (!currentTrack || !hasHydrated) return null;
 
   return (
@@ -129,13 +139,17 @@ export const Player: React.FC = () => {
             className="fixed inset-0 z-[100] bg-black flex flex-col"
           >
             <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-black pointer-events-none" />
+            
             <div className="p-8 flex items-center justify-between z-10">
               <button onClick={closeOverlays} className="text-white/60 hover:text-white transition-all"><ChevronDown className="w-10 h-10" /></button>
               <div className="flex flex-col items-center">
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Now Manifesting</span>
                 <span className="text-xs font-black uppercase tracking-widest text-primary truncate max-w-[200px]">{currentTrack.album || "Sovereign Track"}</span>
               </div>
-              <button className="text-white/60 hover:text-white transition-all"><Share2 className="w-6 h-6" /></button>
+              <div className="flex items-center gap-4">
+                <button onClick={() => openSheet('queue')} className="text-white/60 hover:text-white"><ListMusic className="w-6 h-6" /></button>
+                <button className="text-white/60 hover:text-white"><Share2 className="w-6 h-6" /></button>
+              </div>
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 md:gap-12 z-10">
@@ -145,8 +159,8 @@ export const Player: React.FC = () => {
                 className="w-full max-w-[300px] md:max-w-md aspect-square rounded-[2rem] shadow-[0_0_80px_rgba(255,215,0,0.1)] gold-border-glow object-cover" 
                 alt="art" 
               />
-              <div className="w-full max-w-xl space-y-2 text-center">
-                <h1 className="text-3xl md:text-6xl font-black text-white gold-glow tracking-tighter uppercase leading-none">{currentTrack.title}</h1>
+              <div className="w-full max-w-xl space-y-2 text-center px-4">
+                <h1 className="text-2xl md:text-6xl font-black text-white gold-glow tracking-tighter uppercase leading-none">{currentTrack.title}</h1>
                 <p className="text-sm md:text-lg font-black text-primary/60 uppercase tracking-[0.2em]">{currentTrack.artist}</p>
                 {currentTrack.isYouTube && <span className="inline-flex items-center gap-2 text-[10px] font-black text-primary uppercase tracking-[0.4em] mt-4"><Youtube className="w-4 h-4" /> YouTube Discovery</span>}
               </div>
@@ -163,7 +177,12 @@ export const Player: React.FC = () => {
                   />
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/40">
                     <span>{formatTime(progress)}</span>
-                    <span>{formatTime(duration)}</span>
+                    <div className="flex items-center gap-2">
+                       {sleepTimer !== null && (
+                         <span className="text-primary flex items-center gap-1"><Moon className="w-3 h-3" /> {formatSleepTimer(sleepTimer)}</span>
+                       )}
+                       <span>{formatTime(duration)}</span>
+                    </div>
                   </div>
                 </div>
                 
@@ -179,12 +198,7 @@ export const Player: React.FC = () => {
                     </button>
                     <button onClick={nextTrack} className="text-white hover:text-primary transition-all"><SkipForward className="w-8 h-8 md:w-10 md:h-10 fill-current" /></button>
                   </div>
-                  <button 
-                    onClick={() => setRepeatMode(repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none')}
-                    className={cn("transition-all relative", repeatMode !== 'none' ? "text-primary" : "text-white/40")}
-                  >
-                    <Repeat className="w-6 h-6" />
-                  </button>
+                  <SleepTimerButton />
                 </div>
               </div>
             )}
@@ -231,14 +245,11 @@ export const Player: React.FC = () => {
                 {isPlaying ? <Pause className="fill-black text-black w-4 h-4 md:w-5 md:h-5" /> : <Play className="fill-black text-black w-4 h-4 md:w-5 md:h-5 ml-0.5" />}
               </button>
               <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all"><SkipForward className="fill-current w-5 h-5 md:w-6 md:h-6" /></button>
-              <button 
-                onClick={() => setRepeatMode(repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none')}
-                className={cn("transition-all relative hidden md:block", repeatMode !== 'none' ? "text-primary" : "text-muted-foreground hover:text-white")}
-              >
-                <Repeat className="w-4 h-4" />
-              </button>
+              <div className="hidden md:block">
+                <SleepTimerButton />
+              </div>
             </div>
-            {/* PROGRESS BAR: Hidden on mobile mini-player for High-Fidelity Sovereignty */}
+            {/* PROGRESS BAR: Hidden on mobile mini-player */}
             <div className="flex items-center gap-3 w-full px-2 hidden md:flex">
               <span className="text-[9px] font-black text-muted-foreground w-8 text-right">{formatTime(progress)}</span>
               <Slider 
@@ -253,7 +264,7 @@ export const Player: React.FC = () => {
         ) : (
           <div className="flex-[2] flex items-center justify-center">
              <button onClick={() => window.open(`https://www.youtube.com/watch?v=${currentTrack.videoId}`, '_blank')} className="text-[10px] font-black uppercase tracking-[0.3em] text-primary hover:gold-glow flex items-center gap-2">
-               <Youtube className="w-4 h-4" /> Open In Sanctuary Video
+               <Youtube className="w-4 h-4" /> Video Mode
              </button>
           </div>
         )}
@@ -264,7 +275,7 @@ export const Player: React.FC = () => {
               <Music className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           )}
-          <button onClick={() => openSheet('queue')} className={cn("transition-all hidden md:block", isQueueSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
+          <button onClick={() => openSheet('queue')} className={cn("transition-all", isQueueSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
             <ListMusic className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 w-24 md:w-32 ml-2 hidden sm:flex">
@@ -282,9 +293,32 @@ export const Player: React.FC = () => {
   );
 };
 
+const SleepTimerButton = () => {
+  const { sleepTimer, setSleepTimer } = usePlayerStore();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className={cn("transition-all relative", sleepTimer !== null ? "text-primary" : "text-white/40")}>
+          <Moon className="w-6 h-6" />
+          {sleepTimer !== null && <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="bg-neutral-900 border-primary/20 text-white font-black uppercase text-[10px]">
+        <DropdownMenuItem onClick={() => setSleepTimer(15)} className="focus:bg-primary/10">15 Minutes</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSleepTimer(30)} className="focus:bg-primary/10">30 Minutes</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSleepTimer(45)} className="focus:bg-primary/10">45 Minutes</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSleepTimer(60)} className="focus:bg-primary/10">60 Minutes</DropdownMenuItem>
+        {sleepTimer !== null && (
+          <DropdownMenuItem onClick={() => setSleepTimer(null)} className="text-red-500 focus:bg-red-500/10">Stop Timer</DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 const LyricsSheet = ({ isOpen, lyrics, isLoading, onOpenChange }: { isOpen: boolean, lyrics: string | null, isLoading: boolean, onOpenChange: (open: boolean) => void }) => (
   <Sheet open={isOpen} onOpenChange={onOpenChange}>
-    <SheetContent side="right" className="bg-black border-l border-white/10 text-white p-0 w-full sm:max-w-md">
+    <SheetContent side="right" className="bg-black border-l border-white/10 text-white p-0 w-full sm:max-w-md z-[110]">
       <div className="h-full flex flex-col p-6 relative">
         <SheetHeader className="mb-10 text-center">
           <SheetTitle className="text-primary font-black uppercase tracking-[0.4em] text-2xl gold-glow">The Scroll</SheetTitle>
@@ -305,7 +339,7 @@ const QueueSheet = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (
   const { queue, currentTrack, removeFromQueue, clearQueue } = usePlayerStore();
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="bg-black border-l border-white/10 text-white p-0 w-full sm:max-w-md">
+      <SheetContent side="right" className="bg-black border-l border-white/10 text-white p-0 w-full sm:max-w-md z-[110]">
         <div className="h-full flex flex-col p-6 relative">
           <SheetHeader className="mb-8 flex flex-row items-center justify-between">
             <SheetTitle className="text-primary font-black uppercase tracking-[0.4em] text-2xl gold-glow">The Queue</SheetTitle>
@@ -337,20 +371,23 @@ const QueueSheet = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (
   );
 };
 
-const QueueItem = ({ track, isActive, onRemove }: { track: Track, isActive?: boolean, onRemove?: () => void }) => (
-  <div className={cn("flex items-center gap-4 group p-2 rounded-xl transition-all", isActive ? "bg-white/10 border border-primary/20" : "hover:bg-white/5 border border-transparent")}>
-    <img src={track.thumbnail} className="w-10 h-10 rounded shadow-md object-cover" alt="track" />
-    <div className="flex-1 min-w-0">
-      <p className={cn("text-xs font-black truncate uppercase tracking-tighter", isActive ? "text-primary" : "text-white")}>{track.title}</p>
-      <div className="flex items-center gap-2">
-        <p className="text-[9px] font-black text-muted-foreground uppercase truncate tracking-widest">{track.artist}</p>
-        {track.isYouTube && <Youtube className="w-3 h-3 text-primary" />}
+const QueueItem = ({ track, isActive, onRemove }: { track: Track, isActive?: boolean, onRemove?: () => void }) => {
+  const { setCurrentTrack } = usePlayerStore();
+  return (
+    <div onClick={() => setCurrentTrack(track)} className={cn("flex items-center gap-4 group p-2 rounded-xl transition-all cursor-pointer", isActive ? "bg-white/10 border border-primary/20" : "hover:bg-white/5 border border-transparent")}>
+      <img src={track.thumbnail} className="w-10 h-10 rounded shadow-md object-cover" alt="track" />
+      <div className="flex-1 min-w-0">
+        <p className={cn("text-xs font-black truncate uppercase tracking-tighter", isActive ? "text-primary" : "text-white")}>{track.title}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[9px] font-black text-muted-foreground uppercase truncate tracking-widest">{track.artist}</p>
+          {track.isYouTube && <Youtube className="w-3 h-3 text-primary" />}
+        </div>
       </div>
+      {!isActive && onRemove && (
+        <button onClick={(e) => { e.stopPropagation(); onRemove(); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
+          <X className="w-4 h-4" />
+        </button>
+      )}
     </div>
-    {!isActive && onRemove && (
-      <button onClick={(e) => { e.stopPropagation(); onRemove(); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
-        <X className="w-4 h-4" />
-      </button>
-    )}
-  </div>
-);
+  );
+};

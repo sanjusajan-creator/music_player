@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { resolveTrackAudio } from '@/app/actions/youtube-search';
@@ -8,7 +6,7 @@ import { toast } from '@/hooks/use-toast';
 /**
  * Vibecraft Sovereign Audio Engine
  * Pure HTML5 Native Audio implementation with Hybrid Resolution Fallback.
- * Hardened to prevent overlap and ghost playback.
+ * Hardened to prevent overlap and ghost playback by aggressively clearing state.
  */
 export const YouTubePlayer: React.FC = () => {
   const { 
@@ -20,10 +18,19 @@ export const YouTubePlayer: React.FC = () => {
     setProgress,
     setDuration,
     nextTrack,
-    seekRequest
+    seekRequest,
+    tickSleepTimer
   } = usePlayerStore();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Sleep Timer Tick
+  useEffect(() => {
+    const timer = setInterval(() => {
+      tickSleepTimer();
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [tickSleepTimer]);
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -42,7 +49,10 @@ export const YouTubePlayer: React.FC = () => {
         }
       });
       
-      audio.addEventListener('ended', () => nextTrack());
+      audio.addEventListener('ended', () => {
+        nextTrack();
+      });
+      
       audio.addEventListener('waiting', () => setIsBuffering(true));
       audio.addEventListener('playing', () => {
         setIsBuffering(false);
@@ -65,9 +75,10 @@ export const YouTubePlayer: React.FC = () => {
     if (!audioRef.current) return;
     
     const initializePlayback = async () => {
-      // MANDATORY: Immediately stop and clear any existing buffer to prevent overlap
+      // MANDATORY: Immediately stop, clear source, and load nothing to preventSnip playback of previous tracks
       audioRef.current!.pause();
       audioRef.current!.src = "";
+      audioRef.current!.load();
       
       if (!currentTrack) return;
 
@@ -82,11 +93,9 @@ export const YouTubePlayer: React.FC = () => {
           sourceLog = "Local Vault";
         } else if (currentTrack.source === 'youtube') {
           sourceLog = "YouTube Discovery (Iframe Mode)";
-          // YouTube handled via iframe in page.tsx
           setIsBuffering(false);
           return;
         } else {
-          // Resolve Gaana or Saavn
           const resolvedUrl = await resolveTrackAudio(currentTrack);
           if (resolvedUrl) {
             url = resolvedUrl;
@@ -122,7 +131,7 @@ export const YouTubePlayer: React.FC = () => {
     };
 
     initializePlayback();
-  }, [currentTrack?.id, setIsBuffering, setIsPlaying, isPlaying]);
+  }, [currentTrack?.id]); // Only trigger on track change
 
   useEffect(() => {
     if (!audioRef.current || !audioRef.current.src || currentTrack?.isYouTube) return;

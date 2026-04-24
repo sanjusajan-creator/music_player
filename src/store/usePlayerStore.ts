@@ -53,6 +53,7 @@ interface PlayerState {
   isShuffle: boolean;
   hasHydrated: boolean;
   settings: SettingsState;
+  sleepTimer: number | null; // in seconds
   
   setHasHydrated: (state: boolean) => void;
   setCurrentTrack: (track: Track | null) => void;
@@ -75,6 +76,8 @@ interface PlayerState {
   previousTrack: () => void;
   clearQueue: () => void;
   updateSettings: (settings: Partial<SettingsState>) => void;
+  setSleepTimer: (minutes: number | null) => void;
+  tickSleepTimer: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -95,6 +98,7 @@ export const usePlayerStore = create<PlayerState>()(
       repeatMode: 'none',
       isShuffle: false,
       hasHydrated: false,
+      sleepTimer: null,
       settings: {
         audioQuality: 'auto',
         streamingMode: 'stream',
@@ -112,8 +116,7 @@ export const usePlayerStore = create<PlayerState>()(
           const newHistory = [currentTrack, ...history.filter(t => t.id !== currentTrack.id)].slice(0, 50);
           set({ history: newHistory });
         }
-        // Force immediate progress reset on new track selection
-        set({ currentTrack: track, progress: 0, isPlaying: true, seekRequest: null });
+        set({ currentTrack: track, progress: 0, isPlaying: true, seekRequest: 0 });
       },
 
       playNextFromQueue: (track) => set((state) => ({ queue: [track, ...state.queue] })),
@@ -137,7 +140,7 @@ export const usePlayerStore = create<PlayerState>()(
           history: nextHistory,
           isPlaying: true,
           progress: 0,
-          seekRequest: null
+          seekRequest: 0
         });
       },
 
@@ -194,7 +197,7 @@ export const usePlayerStore = create<PlayerState>()(
             queue: queue.slice(1), 
             history: nextHistory,
             progress: 0, 
-            seekRequest: null, 
+            seekRequest: 0, 
             isPlaying: true 
           });
         } else if (repeatMode === 'all' && originalQueue.length > 0) {
@@ -203,7 +206,7 @@ export const usePlayerStore = create<PlayerState>()(
             queue: originalQueue.slice(1), 
             history: nextHistory,
             progress: 0, 
-            seekRequest: null, 
+            seekRequest: 0, 
             isPlaying: true 
           });
         } else {
@@ -220,7 +223,7 @@ export const usePlayerStore = create<PlayerState>()(
             history: history.slice(1), 
             queue: currentTrack ? [currentTrack, ...queue] : queue, 
             progress: 0, 
-            seekRequest: null,
+            seekRequest: 0,
             isPlaying: true
           });
         }
@@ -229,9 +232,20 @@ export const usePlayerStore = create<PlayerState>()(
       updateSettings: (newSettings) => set((state) => ({
         settings: { ...state.settings, ...newSettings }
       })),
+
+      setSleepTimer: (minutes) => set({ sleepTimer: minutes ? minutes * 60 : null }),
+      tickSleepTimer: () => {
+        const { sleepTimer, isPlaying } = get();
+        if (sleepTimer === null) return;
+        if (sleepTimer <= 0) {
+          set({ sleepTimer: null, isPlaying: false });
+          return;
+        }
+        set({ sleepTimer: sleepTimer - 1 });
+      }
     }),
     {
-      name: 'vibecraft-sovereign-v6',
+      name: 'vibecraft-sovereign-v7',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 

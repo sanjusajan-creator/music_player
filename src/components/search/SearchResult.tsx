@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import { Track, usePlayerStore } from '@/store/usePlayerStore';
-import { Play, Heart, Music2, Youtube, Disc, Plus, Headphones } from 'lucide-react';
+import { Play, Heart, Music2, Youtube, Disc, Plus, Headphones, ListMusic } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn, getImage } from '@/lib/utils';
 import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -94,10 +94,11 @@ export const SearchResult = memo(({ track, results = [], index = 0 }: SearchResu
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
         <div className="absolute bottom-2 right-2 flex gap-2 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
           <button 
+            title="Add to Queue"
             className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 hover:scale-110 transition-all"
             onClick={handleAddToQueue}
           >
-            <Plus className="text-white w-5 h-5" />
+            <ListMusic className="text-white w-5 h-5" />
           </button>
           <button 
             className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-all active:scale-90"
