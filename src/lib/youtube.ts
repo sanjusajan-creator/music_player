@@ -21,6 +21,9 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   // 1. Normalize & Session Protection
   const cacheKey = sanitizedQuery.replace(/\s+/g, '_');
+  if (sessionSearchCache.has(cacheKey)) {
+    console.log(`Oracle: Already searched "${sanitizedQuery}" this session.`);
+  }
   
   // 2. Firestore Cache Check (The Primary Sanctuary)
   try {
@@ -33,6 +36,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
       const age = Date.now() - (data.timestamp?.toMillis() || 0);
       if (age < CACHE_TTL && data.results?.length > 0) {
         console.log(`Oracle: Manifested "${sanitizedQuery}" from Cache Sanctuary.`);
+        sessionSearchCache.add(cacheKey);
         return data.results;
       }
     }
@@ -71,6 +75,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     // 4. Persistence Genesis
     if (results.length > 0) {
       updateCache(cacheKey, results);
+      sessionSearchCache.add(cacheKey);
     }
     
     return results;
