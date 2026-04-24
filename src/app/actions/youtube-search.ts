@@ -6,7 +6,7 @@ const SAAVN_API_BASE = 'https://my-jiosaavn-api.onrender.com';
 
 /**
  * Sovereign Saavn Search
- * Fetches real results from self-hosted JioSaavn API.
+ * Fetches real results from the Saavn API vault.
  */
 export async function searchMusicAction(query: string): Promise<Track[]> {
   try {
@@ -17,6 +17,7 @@ export async function searchMusicAction(query: string): Promise<Track[]> {
     if (!response.ok) throw new Error("Saavn Vault unreachable.");
 
     const data = await response.json();
+    // Requirement: ONLY use data.data.songs.results
     const songs = data.data?.songs?.results || [];
 
     const results: Track[] = songs.map((song: any) => ({
@@ -28,7 +29,7 @@ export async function searchMusicAction(query: string): Promise<Track[]> {
       isSaavn: true
     }));
 
-    return results.slice(0, 15);
+    return results;
   } catch (error) {
     console.error("Saavn Search Error:", error);
     return [];
@@ -37,7 +38,7 @@ export async function searchMusicAction(query: string): Promise<Track[]> {
 
 /**
  * Sovereign Saavn Playback Fetcher
- * Dynamic high-quality stream extraction from the Saavn Vault.
+ * Extracts the highest quality URL from the downloadUrl vault.
  */
 export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
   try {
@@ -46,15 +47,13 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
 
     const data = await response.json();
     const songData = data.data?.[0];
-    if (!songData) return null;
+    if (!songData || !songData.downloadUrl) return null;
 
+    // Requirement: Use .url (NOT .link) from the highest quality index
     const links = songData.downloadUrl;
-    if (!Array.isArray(links) || links.length === 0) return null;
-
-    // High Fidelity Strategy: Find the highest quality link available (usually 320kbps at the end)
-    const bestLink = links[links.length - 1]?.link || links[0]?.link;
+    const bestUrl = links[links.length - 1]?.url;
     
-    return bestLink || null;
+    return bestUrl || null;
   } catch (error) {
     console.error("Saavn Playback Error:", error);
     return null;

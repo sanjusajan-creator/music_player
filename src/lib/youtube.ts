@@ -1,4 +1,3 @@
-
 import { Track } from "@/store/usePlayerStore";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getDb } from "@/firebase";
@@ -9,7 +8,7 @@ const sessionSearchCache = new Set<string>();
 
 /**
  * Strategy #10: Hybrid Quota-Sovereign Search Engine (JioSaavn)
- * Exclusively uses Saavn API with robust caching and normalization.
+ * Exclusively uses Saavn API with robust Firestore caching.
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   // Strategy #4: Normalize Query
@@ -33,7 +32,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
       const data = cacheSnap.data();
       const age = Date.now() - (data.timestamp?.toMillis() || 0);
       if (age < CACHE_TTL && data.results?.length > 0) {
-        console.log(`Oracle: Manifested from Cache Sanctuary. Quota Saved.`);
+        console.log(`Oracle: Manifested from Cache Sanctuary. API Units Saved.`);
         sessionSearchCache.add(cacheKey);
         return data.results;
       }
@@ -44,6 +43,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   console.log(`Oracle: Summoning Saavn Archives for "${sanitizedQuery}"...`);
   try {
+    // Strategy #10: Call the Sovereign Server Action
     const results = await searchMusicAction(sanitizedQuery);
 
     if (results.length > 0) {

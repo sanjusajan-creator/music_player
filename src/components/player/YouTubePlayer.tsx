@@ -7,7 +7,7 @@ import { toast } from '@/hooks/use-toast';
 
 /**
  * Vibecraft Sovereign Audio Engine
- * Pure HTML5 Native Audio implementation for Saavn and Local Archives.
+ * Pure HTML5 Native Audio implementation for Saavn High-Fidelity streams.
  */
 export const YouTubePlayer: React.FC = () => {
   const { 
@@ -25,7 +25,7 @@ export const YouTubePlayer: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const loadingId = useRef<string | null>(null);
 
-  // Initialize Native Audio Engine
+  // Initialize Persistent Native Audio Engine
   useEffect(() => {
     if (!audioRef.current) {
       const audio = new Audio();
@@ -54,15 +54,24 @@ export const YouTubePlayer: React.FC = () => {
       });
       
       audio.addEventListener('pause', () => {
+        // Only set isPlaying false if the current track is still the same
         if (loadingId.current === currentTrack?.id) {
            setIsPlaying(false);
         }
       });
 
       audio.addEventListener('error', (e) => {
+        // Prevent toast on initial empty src or reset
         if (!audio.src || audio.src === window.location.href || audio.src === "") return;
-        console.warn("Sovereign Stream Interruption Detected:", audio.error?.message);
+        
+        console.warn("Sovereign Stream Interruption:", audio.error?.message);
         setIsBuffering(false);
+        
+        // Auto-skip if the stream is unrecoverable
+        if (audio.error?.code === 4) {
+          toast({ title: "Stream Unavailable", description: "Skipping to next archive...", variant: "destructive" });
+          setTimeout(() => nextTrack(), 2000);
+        }
       });
 
       audioRef.current = audio;
@@ -75,9 +84,9 @@ export const YouTubePlayer: React.FC = () => {
         audioRef.current = null;
       }
     };
-  }, []);
+  }, [nextTrack, setDuration, setIsBuffering, setIsPlaying, setProgress]);
 
-  // Handle Track Source Switching (Saavn + Local)
+  // Handle Manifestation Switching
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
     if (loadingId.current === currentTrack.id) return;
@@ -91,6 +100,7 @@ export const YouTubePlayer: React.FC = () => {
           url = URL.createObjectURL(currentTrack.localFile);
         } else if (currentTrack.isSaavn) {
           setIsBuffering(true);
+          // Fetch the high-fidelity URL from the server action
           const manifestedUrl = await getSaavnPlaybackUrl(currentTrack.id);
           if (manifestedUrl) {
             url = manifestedUrl;
@@ -107,9 +117,11 @@ export const YouTubePlayer: React.FC = () => {
           audioRef.current.src = url;
           audioRef.current.load();
           
+          // Respect global isPlaying state after loading
           if (isPlaying) {
             audioRef.current.play().catch(error => {
-              console.warn("Playback blocked by browser policy.", error);
+              console.warn("Playback blocked by browser policy. Interaction required.", error);
+              setIsPlaying(false);
             });
           }
         }
@@ -122,17 +134,22 @@ export const YouTubePlayer: React.FC = () => {
     initializePlayback();
   }, [currentTrack?.id]);
 
-  // Global Sync Listeners
+  // Sync Global Play/Pause
   useEffect(() => {
     if (!audioRef.current || !audioRef.current.src || audioRef.current.src === window.location.href) return;
-    if (isPlaying) audioRef.current.paused && audioRef.current.play().catch(() => {});
-    else !audioRef.current.paused && audioRef.current.pause();
+    if (isPlaying) {
+      if (audioRef.current.paused) audioRef.current.play().catch(() => {});
+    } else {
+      if (!audioRef.current.paused) audioRef.current.pause();
+    }
   }, [isPlaying]);
 
+  // Sync Global Volume
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume / 100;
   }, [volume]);
 
+  // Sync Global Seek Requests
   useEffect(() => {
     if (seekRequest !== null && audioRef.current && audioRef.current.src) {
       audioRef.current.currentTime = seekRequest;
