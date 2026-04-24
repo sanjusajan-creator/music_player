@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -38,7 +39,6 @@
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6, span, p, button, input, div, a, label {
@@ -77,4 +77,22 @@
 
 .animate-pulse-gold {
   animation: pulse-gold 3s infinite ease-in-out;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FFD700;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C9A227;
 }

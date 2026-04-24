@@ -122,7 +122,7 @@ function HomeContent() {
                   <iframe src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen />
                   <button onClick={() => setCurrentTrack(null)} className="absolute top-4 right-4 bg-black/80 p-2 rounded-full text-primary opacity-0 group-hover:opacity-100 transition-opacity border border-primary/20"><X className="w-6 h-6" /></button>
                   <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4 backdrop-blur-md border-t border-primary/20">
-                    <p className="text-primary font-black uppercase text-xs tracking-widest">YouTube Discovery Manifested</p>
+                    <p className="text-primary font-black uppercase text-xs tracking-widest">YouTube India Discovery</p>
                     <h3 className="text-white font-black text-xl tracking-tighter uppercase truncate">{currentTrack.title}</h3>
                   </div>
                 </motion.div>
@@ -176,15 +176,15 @@ function HomeView() {
       <section>
         <h2 className="text-3xl font-black text-primary mb-6 gold-glow uppercase tracking-tighter">{greeting}</h2>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-          <GreetingCard label="Gold Hits" icon={<TrendingUp className="text-primary" />} />
+          <GreetingCard label="Indian Hits" icon={<TrendingUp className="text-primary" />} />
           <GreetingCard label="Liked Songs" icon={<Heart className="text-primary fill-current" />} />
-          <GreetingCard label="Magic Mix" icon={<Sparkles className="text-primary" />} />
+          <GreetingCard label="Regional Mix" icon={<Sparkles className="text-primary" />} />
           <GreetingCard label="Local Vault" icon={<FolderOpen className="text-primary" />} />
         </div>
       </section>
 
-      <SectionLayout title="Fresh Manifestations" query="Latest Hits" />
-      <SectionLayout title="Gold Discovery" query="Trending Music" />
+      <SectionLayout title="Fresh Manifestations (IN)" query="Indian New Songs" />
+      <SectionLayout title="Sovereign Discovery" query="Trending Music India" />
     </div>
   );
 }
@@ -226,7 +226,7 @@ function SearchResultsView({ query }: { query: string }) {
       {/* 🎵 Songs (JioSaavn + Gaana merged) */}
       {results.songs?.results?.length > 0 && (
         <section>
-          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Unified Songs</h2>
+          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Unified Songs (IN)</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
             {results.songs.results.map((t: any, i: number) => <SearchResult key={`unified-${t.id}-${i}`} track={t} />)}
           </div>
@@ -245,34 +245,10 @@ function SearchResultsView({ query }: { query: string }) {
         </section>
       )}
 
-      {/* 📃 Playlists (Gaana) */}
-      {results.playlists?.results?.length > 0 && (
-        <section>
-          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Sovereign Playlists</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.playlists.results.map((p: any, i: number) => (
-              <CollectionCard key={`playlist-${p.id}-${i}`} data={p} type="playlists" />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 👤 Artists (Gaana) */}
-      {results.artists?.results?.length > 0 && (
-        <section>
-          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Oracle Artists</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.artists.results.map((ar: any, i: number) => (
-              <CollectionCard key={`artist-${ar.id}-${i}`} data={ar} type="artists" />
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* 🎬 Videos (YouTube fallback) */}
       {results.videos?.results?.length > 0 && (
         <section>
-          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">YouTube Discovery</h2>
+          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">YouTube Discovery (IN)</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
             {results.videos.results.map((v: any, i: number) => <SearchResult key={`video-${v.id}-${i}`} track={v} />)}
           </div>

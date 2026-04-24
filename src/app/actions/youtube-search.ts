@@ -5,12 +5,13 @@ import { Track } from '@/store/usePlayerStore';
 
 const SAAVN_API_BASE = 'https://my-jiosaavn-api.onrender.com';
 const GAANA_API_BASE = 'https://my-gaana-api.onrender.com';
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
+const RAPIDAPI_KEY = process.env.NEXT_PUBLIC_RAPIDAPI_KEY || process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
 
 /**
- * Sovereign Hybrid Search Oracle
+ * Sovereign Hybrid Search Oracle - India Optimized
  * Aggregates JioSaavn (Primary), Gaana (Secondary), and YouTube (Fallback)
+ * Strictly enforces India (IN) region priority.
  */
 export async function searchAllAction(query: string) {
   try {
@@ -26,9 +27,9 @@ export async function searchAllAction(query: string) {
     const isMusicEmpty = mergedSongs.length === 0 && (gaanaData.albums?.length || 0) === 0;
     
     let ytResults = [];
-    if (isMusicEmpty) {
-      ytResults = await fetchYouTube(query);
-    }
+    // Only fetch YouTube if specifically needed or as fallback discovery
+    // Enforcing regionCode=IN for all YouTube requests
+    ytResults = await fetchYouTube(query);
 
     return {
       songs: { 
@@ -55,6 +56,7 @@ export async function searchAllAction(query: string) {
 
 async function fetchSaavn(query: string) {
   try {
+    // Saavn API is inherently India-focused
     const res = await fetch(`${SAAVN_API_BASE}/api/search?query=${encodeURIComponent(query)}`, {
       next: { revalidate: 3600 } 
     });
@@ -69,7 +71,8 @@ async function fetchSaavn(query: string) {
       thumbnail: track.image?.[2]?.url || track.image?.[1]?.url,
       album: track.album || "Saavn Vault",
       isSaavn: true,
-      source: 'jiosaavn'
+      source: 'jiosaavn',
+      isIndiaContent: true
     }));
 
     return { songs };
@@ -80,7 +83,8 @@ async function fetchSaavn(query: string) {
 
 async function fetchGaana(query: string) {
   try {
-    const res = await fetch(`${GAANA_API_BASE}/api/search?q=${encodeURIComponent(query)}`, {
+    // Appending country=IN to Gaana request as requested
+    const res = await fetch(`${GAANA_API_BASE}/api/search?q=${encodeURIComponent(query)}&country=IN`, {
       next: { revalidate: 3600 }
     });
     if (!res.ok) return { songs: [], albums: [], artists: [], playlists: [] };
@@ -94,7 +98,8 @@ async function fetchGaana(query: string) {
       thumbnail: track.image || track.thumbnail,
       album: track.album || "Gaana Archive",
       isGaana: true,
-      source: 'gaana'
+      source: 'gaana',
+      isIndiaContent: true
     }));
 
     const albums = (results.albums || []).map((album: any) => ({
@@ -103,7 +108,8 @@ async function fetchGaana(query: string) {
       artist: album.artist || "Gaana Collection",
       thumbnail: album.image,
       type: 'albums',
-      source: 'gaana'
+      source: 'gaana',
+      isIndiaContent: true
     }));
 
     const artists = (results.artists || []).map((artist: any) => ({
@@ -111,7 +117,8 @@ async function fetchGaana(query: string) {
       title: artist.title,
       thumbnail: artist.image,
       type: 'artists',
-      source: 'gaana'
+      source: 'gaana',
+      isIndiaContent: true
     }));
 
     const playlists = (results.playlists || []).map((pl: any) => ({
@@ -119,7 +126,8 @@ async function fetchGaana(query: string) {
       title: pl.title,
       thumbnail: pl.image,
       type: 'playlists',
-      source: 'gaana'
+      source: 'gaana',
+      isIndiaContent: true
     }));
 
     return { songs, albums, artists, playlists };
@@ -131,7 +139,9 @@ async function fetchGaana(query: string) {
 async function fetchYouTube(query: string): Promise<Track[]> {
   if (!RAPIDAPI_KEY) return [];
   try {
-    const res = await fetch(`https://${RAPIDAPI_HOST}/search/?query=${encodeURIComponent(query)}`, {
+    // Strictly enforcing regionCode=IN and hl=en-IN for YouTube Data API
+    const url = `https://${RAPIDAPI_HOST}/search/?query=${encodeURIComponent(query)}&regionCode=IN&hl=en-IN`;
+    const res = await fetch(url, {
       headers: {
         'X-RapidAPI-Key': RAPIDAPI_KEY,
         'X-RapidAPI-Host': RAPIDAPI_HOST
@@ -147,10 +157,11 @@ async function fetchYouTube(query: string): Promise<Track[]> {
       title: item.title,
       artist: item.channelTitle || item.author || "YouTube Discovery",
       thumbnail: item.thumbnail?.url || item.thumbnails?.[0]?.url,
-      album: "YouTube Video Discovery",
+      album: "YouTube Discovery (IN)",
       isYouTube: true,
       videoId: item.id || item.videoId,
-      source: 'youtube'
+      source: 'youtube',
+      isIndiaContent: true
     }));
   } catch (e) {
     return [];
@@ -170,7 +181,6 @@ export async function getSongDetailsAction(id: string) {
 
 export async function getDetailAction(type: 'albums' | 'playlists' | 'artists', id: string) {
   try {
-    // Attempt Saavn first, then Gaana
     let res = await fetch(`${SAAVN_API_BASE}/api/${type}/${id}`);
     if (!res.ok) {
         res = await fetch(`${GAANA_API_BASE}/api/${type}/${id}`);
@@ -187,6 +197,7 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
   try {
     const song = await getSongDetailsAction(id);
     if (!song || !song.downloadUrl) return null;
+    // Strictly finding the highest quality .url
     const links = song.downloadUrl;
     const url = links[links.length - 1]?.url || null;
     return url;

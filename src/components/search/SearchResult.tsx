@@ -8,7 +8,6 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { Badge } from '@/components/ui/badge';
 
 interface SearchResultProps {
   track: Track;
@@ -76,6 +75,10 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
                <Disc className="w-4 h-4 text-primary" />
              </div>
           )}
+          {/* Sovereign India Badge */}
+          <div className="bg-black/80 px-2 py-0.5 rounded-full border border-primary/40 flex items-center gap-1">
+            <span className="text-[7px] font-black text-primary uppercase tracking-widest">🇮🇳 INDIA</span>
+          </div>
         </div>
 
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
