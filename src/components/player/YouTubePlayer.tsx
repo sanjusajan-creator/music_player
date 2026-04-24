@@ -27,7 +27,6 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (!audioRef.current) {
       const audio = new Audio();
-      // CRITICAL: Remove crossOrigin to support a wider range of public CDNs without strict CORS
       
       audio.addEventListener('timeupdate', () => {
         if (audioRef.current) setProgress(audioRef.current.currentTime);
@@ -43,6 +42,7 @@ export const YouTubePlayer: React.FC = () => {
 
       audio.addEventListener('error', () => {
         const err = audio.error;
+        // Fix for Error logging: Extract actual data from the non-enumerable error object
         console.error("Vibecraft Audio Engine Error:", {
           code: err?.code,
           message: err?.message,
