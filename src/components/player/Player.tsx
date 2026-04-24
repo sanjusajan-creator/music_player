@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { generateLyrics } from '@/ai/flows/generate-lyrics';
+import { getLyricsAction } from '@/app/actions/youtube-search';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 
@@ -75,11 +76,21 @@ export const Player: React.FC = () => {
     e.stopPropagation();
     if (!currentTrack) return;
     openSheet('lyrics');
+    
+    // Efficiency: Don't refetch if already manifesting current track lyrics
     if (lyrics && lyrics.includes(currentTrack.title)) return;
+    
     setIsLoadingLyrics(true);
     try {
-      const result = await generateLyrics({ title: currentTrack.title, artist: currentTrack.artist });
-      setLyrics(result.lyrics);
+      // Step 1: Try Sovereign API Archives
+      const apiLyrics = await getLyricsAction(currentTrack.id);
+      if (apiLyrics) {
+        setLyrics(apiLyrics);
+      } else {
+        // Step 2: AI Manifestation Fallback
+        const result = await generateLyrics({ title: currentTrack.title, artist: currentTrack.artist });
+        setLyrics(result.lyrics);
+      }
     } catch (e) {
       setLyrics("Oracle silent. Try again later.");
     } finally {
@@ -280,7 +291,6 @@ const LyricsSheet = ({ isOpen, lyrics, isLoading, onOpenChange }: { isOpen: bool
   <Sheet open={isOpen} onOpenChange={onOpenChange}>
     <SheetContent side="right" className="bg-black border-l border-white/10 text-white p-0 w-full sm:max-w-md">
       <div className="h-full flex flex-col p-6 relative">
-        <SheetClose className="absolute top-6 right-6 text-muted-foreground hover:text-white"><X className="w-8 h-8" /></SheetClose>
         <SheetHeader className="mb-10 text-center">
           <SheetTitle className="text-primary font-black uppercase tracking-[0.4em] text-2xl gold-glow">The Scroll</SheetTitle>
         </SheetHeader>
@@ -302,7 +312,6 @@ const QueueSheet = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="bg-black border-l border-white/10 text-white p-0 w-full sm:max-w-md">
         <div className="h-full flex flex-col p-6 relative">
-          <SheetClose className="absolute top-6 right-6 text-muted-foreground hover:text-white"><X className="w-8 h-8" /></SheetClose>
           <SheetHeader className="mb-8 flex flex-row items-center justify-between">
             <SheetTitle className="text-primary font-black uppercase tracking-[0.4em] text-2xl gold-glow">The Queue</SheetTitle>
             <Button variant="ghost" size="sm" onClick={clearQueue} className="text-destructive font-black text-[10px] uppercase">Clear</Button>
@@ -350,3 +359,4 @@ const QueueItem = ({ track, isActive, onRemove }: { track: Track, isActive?: boo
     )}
   </div>
 );
+

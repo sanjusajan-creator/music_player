@@ -10,13 +10,27 @@ const RAPIDAPI_KEY = process.env.NEXT_PUBLIC_RAPIDAPI_KEY || process.env.RAPIDAP
 const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
 
 /**
+ * Sovereign Query Parser
+ * Strips modifiers and returns logic flags
+ */
+function parseQuery(query: string) {
+  return {
+    ytMode: query.toLowerCase().includes(":yt"),
+    lyricMode: query.toLowerCase().includes(":lyrics"),
+    cleanQuery: query
+      .replace(/:yt/gi, "")
+      .replace(/:lyrics/gi, "")
+      .trim()
+  };
+}
+
+/**
  * Sovereign Hybrid Search Oracle - India Optimized
  * Aggregates JioSaavn (Primary), Gaana (Secondary), and YouTube (Explicit Fallback via :yt)
  */
 export async function searchAllAction(query: string) {
   try {
-    const ytMode = query.toLowerCase().includes(":yt");
-    const cleanQuery = query.replace(/:yt/gi, "").trim();
+    const { ytMode, cleanQuery } = parseQuery(query);
 
     if (!cleanQuery) return null;
 
@@ -206,6 +220,36 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
     const links = song.downloadUrl;
     return links[links.length - 1]?.url || links[0]?.url || null;
   } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Sovereign Lyrics Oracle
+ * Fetches archived lyrics from JioSaavn or returns null for AI fallback
+ */
+export async function getLyricsAction(songId: string) {
+  try {
+    const res = await fetch(`${SAAVN_API_BASE}/api/songs/${songId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const song = data?.data?.[0];
+
+    // Priority 1: Direct Lyrics
+    if (song?.lyrics) return song.lyrics;
+
+    // Priority 2: Lyrics ID Fallback
+    if (song?.lyricsId) {
+      const lyricRes = await fetch(`${SAAVN_API_BASE}/api/lyrics/${song.lyricsId}`);
+      if (lyricRes.ok) {
+        const lyricData = await lyricRes.json();
+        return lyricData?.data?.lyrics || null;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Oracle Lyrics Fetch Error:", error);
     return null;
   }
 }
