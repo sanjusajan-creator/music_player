@@ -13,10 +13,14 @@ interface SearchResultProps {
 }
 
 /**
- * Optimized SearchResult with memoization to prevent lag during playback progress updates.
+ * Optimized SearchResult with memoization and reactive heart icon.
  */
 export const SearchResult = memo(({ track }: SearchResultProps) => {
-  const { setCurrentTrack, addToQueue, likedTrackIds, toggleLike } = usePlayerStore();
+  const setCurrentTrack = usePlayerStore(s => s.setCurrentTrack);
+  const addToQueue = usePlayerStore(s => s.addToQueue);
+  const likedTrackIds = usePlayerStore(s => s.likedTrackIds);
+  const toggleLike = usePlayerStore(s => s.toggleLike);
+  
   const isLiked = likedTrackIds.includes(track.id);
 
   const handleAddToQueue = (e: React.MouseEvent) => {

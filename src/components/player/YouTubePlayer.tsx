@@ -27,7 +27,7 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (!audioRef.current) {
       const audio = new Audio();
-      // Remove anonymous cross-origin to prevent errors with public CDNs like iTunes/Deezer
+      // CRITICAL: Remove crossOrigin to support a wider range of public CDNs without strict CORS
       
       audio.addEventListener('timeupdate', () => {
         if (audioRef.current) setProgress(audioRef.current.currentTime);
@@ -43,7 +43,6 @@ export const YouTubePlayer: React.FC = () => {
 
       audio.addEventListener('error', () => {
         const err = audio.error;
-        // Descriptive logging for the Oracle
         console.error("Vibecraft Audio Engine Error:", {
           code: err?.code,
           message: err?.message,
@@ -66,19 +65,16 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (!currentTrack) return;
 
-    // Detection logic for sovereignty
     const isYouTube = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
     const isNative = currentTrack.isLocal || !!currentTrack.previewUrl;
 
     if (isNative && audioRef.current) {
-      // Pause YouTube if switching to native
       if (playerRef.current) {
         try { playerRef.current.pauseVideo(); } catch (e) {}
       }
 
       let url = "";
       if (currentTrack.isLocal && currentTrack.localFile) {
-        // Manage blob URLs carefully
         if (currentBlobUrl.current) URL.revokeObjectURL(currentBlobUrl.current);
         url = URL.createObjectURL(currentTrack.localFile);
         currentBlobUrl.current = url;
@@ -91,12 +87,11 @@ export const YouTubePlayer: React.FC = () => {
         audioRef.current.load();
         if (isPlaying) {
           audioRef.current.play().catch(err => {
-            console.warn("Vibecraft: Autoplay blocked for native source.", err);
+            console.warn("Vibecraft: Autoplay blocked.", err);
           });
         }
       }
     } else if (isYouTube && audioRef.current) {
-      // Stop native audio if we are manifesting a YouTube track
       audioRef.current.pause();
       audioRef.current.src = "";
       if (currentBlobUrl.current) {
@@ -106,15 +101,13 @@ export const YouTubePlayer: React.FC = () => {
     }
   }, [currentTrack, isPlaying]);
 
-  // Handle Play/Pause Control (Global)
+  // Handle Global Play/Pause
   useEffect(() => {
     const isNative = currentTrack?.isLocal || !!currentTrack?.previewUrl;
     
     if (isNative && audioRef.current) {
       if (isPlaying) {
-        audioRef.current.play().catch(() => {
-          // If interaction was required, we handle it gracefully
-        });
+        audioRef.current.play().catch(() => {});
       } else {
         audioRef.current.pause();
       }
@@ -141,12 +134,12 @@ export const YouTubePlayer: React.FC = () => {
       if (isNative && audioRef.current) {
         audioRef.current.currentTime = seekRequest;
       } else if (playerRef.current) {
-        try { playerRef.current.seekTo(seekRequest, true); } catch(e) {}
+        try { playerRef.current.seekTo(seekRequest, true); } catch (e) {}
       }
     }
   }, [seekRequest, currentTrack]);
 
-  // Update YouTube Progress & Ad Detection
+  // Progress & Ad Detection (YouTube only)
   useEffect(() => {
     const interval = setInterval(() => {
       const isYouTube = currentTrack && !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
@@ -159,7 +152,6 @@ export const YouTubePlayer: React.FC = () => {
         if (currentTime > 0) setProgress(currentTime);
         if (totalTime > 0) setDuration(totalTime);
 
-        // Ad Detection: Duration mismatch anomaly
         if (currentTrack?.duration && totalTime > 0) {
           const diff = Math.abs(totalTime - currentTrack.duration);
           setIsAdPlaying(diff > 5);

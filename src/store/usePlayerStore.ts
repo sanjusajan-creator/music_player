@@ -9,7 +9,7 @@ export interface Track {
   duration?: number;
   isLocal?: boolean;
   localFile?: File;
-  previewUrl?: string; // High-fidelity preview for public APIs
+  previewUrl?: string; 
 }
 
 export interface Playlist {
@@ -29,7 +29,7 @@ interface PlayerState {
   originalQueue: Track[]; 
   history: Track[];
   localTracks: Track[];
-  likedTrackIds: string[]; // Changed to string array for robust persistence
+  likedTrackIds: string[]; 
   isPlaying: boolean;
   isBuffering: boolean;
   isAdPlaying: boolean;
@@ -40,10 +40,9 @@ interface PlayerState {
   repeatMode: RepeatMode;
   isShuffle: boolean;
   isAutoplay: boolean;
-  sleepTimer: number | null; // minutes remaining
+  sleepTimer: number | null; 
   hasHydrated: boolean;
   
-  // Actions
   setHasHydrated: (state: boolean) => void;
   setCurrentTrack: (track: Track | null) => void;
   playNextFromQueue: (track: Track) => void;
@@ -218,7 +217,7 @@ export const usePlayerStore = create<PlayerState>()(
         queue: state.queue
       }),
       onRehydrateStorage: (state) => {
-        return (rehydratedState, error) => {
+        return (rehydratedState) => {
           if (rehydratedState) {
             rehydratedState.hasHydrated = true;
           }

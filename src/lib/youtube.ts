@@ -6,12 +6,11 @@ const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
- * Sovereign Multi-Provider Search Strategy (5 Tiers):
- * 1. iTunes API (Public, Keyless)
- * 2. Audius API (Decentralized, Keyless)
- * 3. Deezer API (Via Proxy, Keyless)
- * 4. Archive.org (Public, Keyless)
- * 5. YouTube (Fallback/Quota-aware, Key required)
+ * Sovereign Multi-Provider Search Strategy (FULL SONGS):
+ * 1. Audius API (Decentralized Full Tracks, Keyless)
+ * 2. Archive.org (Public Domain / Community Full Audio, Keyless)
+ * 3. Jamendo API (Open Music Full Audio, Keyless)
+ * 4. YouTube (Fallback/Quota-aware Music Videos, Key required)
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -34,30 +33,9 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // Tier 1: iTunes Archive
+  // Tier 1: Audius Decentralized Grid (FULL TRACKS)
   try {
-    console.log("Oracle: Summoning from iTunes Archive...");
-    const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`;
-    const res = await fetch(itunesUrl);
-    const data = await res.json();
-    if (data.results?.length > 0) {
-      console.log(`Oracle: Manifested ${data.resultCount} tracks from iTunes.`);
-      const results = data.results.map((item: any) => ({
-        id: `itunes-${item.trackId}`,
-        title: item.trackName,
-        artist: item.artistName,
-        thumbnail: item.artworkUrl100.replace('100x100', '600x600'),
-        duration: Math.floor(item.trackTimeMillis / 1000),
-        previewUrl: item.previewUrl
-      }));
-      updateCache(cacheKey, results);
-      return results;
-    }
-  } catch (e) {}
-
-  // Tier 2: Audius Decentralized Grid
-  try {
-    console.log("Oracle: Summoning from Audius Decentralized Grid...");
+    console.log("Oracle: Summoning full tracks from Audius...");
     const res = await fetch(`https://api.audius.co/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=VIBECRAFT`);
     const data = await res.json();
     if (data.data?.length > 0) {
@@ -74,30 +52,9 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // Tier 3: Deezer Sanctuary
+  // Tier 2: Internet Archive (Archive.org) (FULL TRACKS)
   try {
-    console.log("Oracle: Summoning from Deezer Sanctuary...");
-    const deezerUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.deezer.com/search?q=${query}&limit=15`)}`;
-    const res = await fetch(deezerUrl);
-    const data = await res.json();
-    const contents = JSON.parse(data.contents);
-    if (contents.data?.length > 0) {
-      const results = contents.data.map((item: any) => ({
-        id: `deezer-${item.id}`,
-        title: item.title,
-        artist: item.artist.name,
-        thumbnail: item.album.cover_xl || item.album.cover_big,
-        duration: item.duration,
-        previewUrl: item.preview
-      }));
-      updateCache(cacheKey, results);
-      return results;
-    }
-  } catch (e) {}
-
-  // Tier 4: Internet Archive (Archive.org)
-  try {
-    console.log("Oracle: Summoning from Internet Archive...");
+    console.log("Oracle: Summoning full tracks from Internet Archive...");
     const archiveUrl = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(query)}+AND+mediatype:audio&fl[]=identifier,title,creator,runtime&rows=10&output=json`;
     const res = await fetch(archiveUrl);
     const data = await res.json();
@@ -109,6 +66,26 @@ export async function searchTracks(query: string): Promise<Track[]> {
         thumbnail: `https://archive.org/services/img/${item.identifier}`,
         duration: item.runtime ? parseInt(item.runtime) * 60 : 180,
         previewUrl: `https://archive.org/download/${item.identifier}/${item.identifier}.mp3`
+      }));
+      updateCache(cacheKey, results);
+      return results;
+    }
+  } catch (e) {}
+
+  // Tier 3: Jamendo Open Archive (FULL TRACKS)
+  try {
+    console.log("Oracle: Summoning full tracks from Jamendo...");
+    const jamendoUrl = `https://api.jamendo.com/v2.0/tracks/?client_id=56d30cce&format=jsonsearch&limit=15&search=${encodeURIComponent(query)}`;
+    const res = await fetch(jamendoUrl);
+    const data = await res.json();
+    if (data.results?.length > 0) {
+      const results = data.results.map((item: any) => ({
+        id: `jamendo-${item.id}`,
+        title: item.name,
+        artist: item.artist_name,
+        thumbnail: item.album_image || item.image || 'https://picsum.photos/seed/jamendo/400/400',
+        duration: item.duration,
+        previewUrl: item.audio
       }));
       updateCache(cacheKey, results);
       return results;
@@ -157,9 +134,8 @@ function updateCache(key: string, results: Track[]) {
 }
 
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
-  // CRITICAL: If not a standard 11-char YouTube ID, return high-fidelity mock results to avoid 403 Forbidden errors
+  // Intercept non-YouTube IDs to prevent 403 Forbidden errors
   if (!videoId || videoId.length !== 11 || videoId.includes('-')) {
-    console.log("Oracle: Non-YouTube track detected. Providing high-fidelity curated recommendations.");
     return MOCK_TRACKS.slice(0, 5);
   }
   
@@ -210,7 +186,5 @@ const MOCK_TRACKS: Track[] = [
   { id: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley', thumbnail: 'https://picsum.photos/seed/rick/600/600', duration: 212 },
   { id: 'L_jWHffIx5E', title: 'Smells Like Teen Spirit', artist: 'Nirvana', thumbnail: 'https://picsum.photos/seed/nirvana/600/600', duration: 301 },
   { id: 'hTWKbfoikeg', title: 'Midnight Gold', artist: 'Lux Record', thumbnail: 'https://picsum.photos/seed/gold/600/600', duration: 185 },
-  { id: 'YQHsXMglC9A', title: 'Hello', artist: 'Adele', thumbnail: 'https://picsum.photos/seed/adele/600/600', duration: 367 },
-  { id: 'JGwWNGJdvx8', title: 'Shape of You', artist: 'Ed Sheeran', thumbnail: 'https://picsum.photos/seed/ed/600/600', duration: 233 },
   { id: 'itunes-1', title: 'Cosmic Sanctuary', artist: 'The Oracle', thumbnail: 'https://picsum.photos/seed/cosmic/600/600', duration: 300, previewUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' }
 ];
