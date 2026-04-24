@@ -6,7 +6,7 @@ const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
- * Sovereign Multi-Provider Search Strategy:
+ * Sovereign Multi-Provider Search Strategy with Detailed Logging:
  * 1. iTunes API (Public)
  * 2. Audius API (Decentralized Public)
  * 3. Deezer API (Via Proxy)
@@ -29,16 +29,21 @@ export async function searchTracks(query: string): Promise<Track[]> {
     if (cacheSnap.exists()) {
       const data = cacheSnap.data();
       const age = Date.now() - (data.timestamp?.toMillis() || 0);
-      if (age < CACHE_TTL) return data.results;
+      if (age < CACHE_TTL) {
+        console.log("Oracle: Summoned from Cache Sanctuary.");
+        return data.results;
+      }
     }
   } catch (e) {}
 
   // tier 1: iTunes Search API
   try {
+    console.log("Oracle: Summoning from iTunes Archive...");
     const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`;
     const res = await fetch(itunesUrl);
     const data = await res.json();
     if (data.results?.length > 0) {
+      console.log(`Oracle: Manifested ${data.resultCount} tracks from iTunes.`);
       const results = data.results.map((item: any) => ({
         id: `itunes-${item.trackId}`,
         title: item.trackName,
@@ -49,13 +54,17 @@ export async function searchTracks(query: string): Promise<Track[]> {
       updateCache(cacheKey, results);
       return results;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Oracle: iTunes Archive silent.");
+  }
 
   // tier 2: Audius API (Decentralized)
   try {
+    console.log("Oracle: Summoning from Audius Decentralized Grid...");
     const res = await fetch(`https://api.audius.co/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=VIBECRAFT`);
     const data = await res.json();
     if (data.data?.length > 0) {
+      console.log(`Oracle: Manifested ${data.data.length} tracks from Audius.`);
       const results = data.data.map((item: any) => ({
         id: `audius-${item.id}`,
         title: item.title,
@@ -66,15 +75,19 @@ export async function searchTracks(query: string): Promise<Track[]> {
       updateCache(cacheKey, results);
       return results;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Oracle: Audius Grid silent.");
+  }
 
   // tier 3: Deezer API
   try {
+    console.log("Oracle: Summoning from Deezer Sanctuary...");
     const deezerUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.deezer.com/search?q=${query}&limit=15`)}`;
     const res = await fetch(deezerUrl);
     const data = await res.json();
     const contents = JSON.parse(data.contents);
     if (contents.data?.length > 0) {
+      console.log(`Oracle: Manifested ${contents.data.length} tracks from Deezer.`);
       const results = contents.data.map((item: any) => ({
         id: `deezer-${item.id}`,
         title: item.title,
@@ -85,13 +98,17 @@ export async function searchTracks(query: string): Promise<Track[]> {
       updateCache(cacheKey, results);
       return results;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Oracle: Deezer Sanctuary silent.");
+  }
 
   // tier 4: Mixcloud API
   try {
+    console.log("Oracle: Summoning from Mixcloud Vault...");
     const res = await fetch(`https://api.mixcloud.com/search/?q=${encodeURIComponent(query)}&type=cloudcast`);
     const data = await res.json();
     if (data.data?.length > 0) {
+      console.log(`Oracle: Manifested ${data.data.length} tracks from Mixcloud.`);
       const results = data.data.map((item: any) => ({
         id: `mixcloud-${item.key.replace(/\//g, '-')}`,
         title: item.name,
@@ -102,13 +119,17 @@ export async function searchTracks(query: string): Promise<Track[]> {
       updateCache(cacheKey, results);
       return results;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Oracle: Mixcloud Vault silent.");
+  }
 
   // tier 5: Archive.org API
   try {
+    console.log("Oracle: Summoning from The Internet Archive...");
     const res = await fetch(`https://archive.org/advancedsearch.php?q=${encodeURIComponent(query)}+AND+mediatype:audio&output=json&rows=15`);
     const data = await res.json();
     if (data.response.docs?.length > 0) {
+      console.log(`Oracle: Manifested ${data.response.docs.length} tracks from Archive.org.`);
       const results = data.response.docs.map((item: any) => ({
         id: `archive-${item.identifier}`,
         title: item.title || "Unknown Archive",
@@ -119,11 +140,14 @@ export async function searchTracks(query: string): Promise<Track[]> {
       updateCache(cacheKey, results);
       return results;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Oracle: Internet Archive silent.");
+  }
 
   // Final tier: YouTube (Quota-aware)
   if (YOUTUBE_API_KEY) {
     try {
+      console.log("Oracle: Summoning from YouTube Vault (Fallback)...");
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music')}&type=video&maxResults=15&key=${YOUTUBE_API_KEY}`;
       const searchRes = await fetch(searchUrl);
       if (searchRes.status === 403) throw new Error("QUOTA_EXCEEDED");
@@ -140,13 +164,17 @@ export async function searchTracks(query: string): Promise<Track[]> {
           thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
           duration: parseISO8601Duration(item.contentDetails.duration),
         }));
+        console.log(`Oracle: Manifested ${results.length} tracks from YouTube.`);
         updateCache(cacheKey, results);
         return results;
       }
-    } catch (error) {}
+    } catch (error) {
+      console.error("Oracle: YouTube Vault Quota Exceeded or Error.");
+    }
   }
 
   // Final Fallback: Cosmic Archive
+  console.log("Oracle: Cosmic Archive Manifested (Final Fallback).");
   return getMockResults(sanitizedQuery);
 }
 
