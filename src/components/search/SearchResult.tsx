@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 interface SearchResultProps {
   track: Track;
@@ -20,6 +22,9 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
   const addToQueue = usePlayerStore(s => s.addToQueue);
   const likedTrackIds = usePlayerStore(s => s.likedTrackIds);
   const toggleLike = usePlayerStore(s => s.toggleLike);
+  
+  const { user } = useUser();
+  const db = useFirestore();
   
   // Use .includes() for array-based persistence
   const isLiked = Array.isArray(likedTrackIds) && likedTrackIds.includes(track.id);
@@ -40,7 +45,24 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!user || !db) return;
+    
+    const likeRef = doc(db, 'users', user.uid, 'likedSongs', track.id);
     toggleLike(track.id);
+    
+    if (isLiked) {
+      deleteDocumentNonBlocking(likeRef);
+    } else {
+      setDocumentNonBlocking(likeRef, { 
+        id: track.id, 
+        userId: user.uid, 
+        title: track.title,
+        artist: track.artist,
+        thumbnailUrl: track.thumbnail,
+        durationSeconds: track.duration || 0,
+        likedAt: new Date().toISOString() 
+      }, { merge: true });
+    }
   };
 
   return (
