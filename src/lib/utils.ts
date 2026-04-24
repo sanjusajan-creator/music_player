@@ -8,18 +8,16 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Sovereign Image Manifestation Utility
  * Standardizes artwork extraction across Saavn, Gaana, and YouTube vaults.
+ * Optimized for Gaana artworkUrl priority.
  */
 export const getImage = (item: any) => {
-  if (!item) return "https://picsum.photos/seed/music/600/600";
+  if (!item) return "https://via.placeholder.com/150";
   
-  // Standard extraction priority
   return (
-    item.artworkUrl ||                         // Gaana Metadata
-    item.image?.[2]?.url ||                    // JioSaavn High Fidelity
-    item.image?.[1]?.url ||                    // JioSaavn Medium
-    item.image?.[0]?.url ||                    // JioSaavn Low
-    item.thumbnail?.url ||                     // YouTube Metadata
-    item.thumbnail ||                          // Generic Fallback
-    "https://picsum.photos/seed/music/600/600"
+    item?.artworkUrl ||                         // Gaana (PRIMARY)
+    item?.image?.[2]?.url ||                    // JioSaavn HD
+    item?.image?.[0]?.url ||
+    item?.thumbnail ||
+    "https://via.placeholder.com/150"
   );
 };

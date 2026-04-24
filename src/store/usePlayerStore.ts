@@ -18,6 +18,9 @@ export interface Track {
   hasLyrics?: boolean;
   bitrates?: string[];
   source?: 'jiosaavn' | 'gaana' | 'youtube' | 'local';
+  image?: any;
+  artworkUrl?: string;
+  url?: string;
 }
 
 export type AudioQuality = 'low' | 'medium' | 'high' | 'auto';

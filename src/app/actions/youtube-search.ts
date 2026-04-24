@@ -77,6 +77,9 @@ async function fetchSaavn(query: string) {
   }
 }
 
+/**
+ * Fetches and normalizes results from the Gaana Vercel Sanctuary.
+ */
 async function fetchGaana(query: string) {
   try {
     const res = await fetch(`${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}&country=IN`, {
@@ -86,22 +89,30 @@ async function fetchGaana(query: string) {
     const data = await res.json();
     const results = data.data || {};
 
-    const songs = (results.songs || []).map((track: any) => ({
-      id: track.id,
-      title: track.title,
-      artist: track.artist || "Gaana Artist",
-      thumbnail: track.image || track.thumbnail,
-      album: track.album || "Gaana Archive",
-      source: 'gaana',
+    // Normalize Gaana song response into unified format BEFORE rendering
+    const normalizeGaanaSong = (item: any) => ({
+      id: item.track_id || item.id,
+      title: item.title,
+      artist: item.artists || item.artist || "Gaana Artist",
+      album: item.album || "Gaana Archive",
+      image: item.artworkUrl,   // IMPORTANT FIX
+      artworkUrl: item.artworkUrl,
+      thumbnail: item.artworkUrl || item.image || item.thumbnail || "https://via.placeholder.com/150",
+      url: item.song_url,
+      duration: item.duration,
+      source: 'gaana' as const,
       isGaana: true,
       isIndiaContent: true
-    }));
+    });
+
+    const songs = (results.songs || []).map(normalizeGaanaSong);
 
     const albums = (results.albums || []).map((album: any) => ({
       id: album.id,
       title: album.title,
       artist: album.artist || "Gaana Collection",
-      thumbnail: album.image,
+      thumbnail: album.artworkUrl || album.image,
+      artworkUrl: album.artworkUrl,
       type: 'albums',
       source: 'gaana',
       isIndiaContent: true
@@ -110,7 +121,8 @@ async function fetchGaana(query: string) {
     const artists = (results.artists || []).map((artist: any) => ({
       id: artist.id,
       title: artist.title,
-      thumbnail: artist.image,
+      thumbnail: artist.artworkUrl || artist.image,
+      artworkUrl: artist.artworkUrl,
       type: 'artists',
       source: 'gaana',
       isIndiaContent: true
@@ -119,7 +131,8 @@ async function fetchGaana(query: string) {
     const playlists = (results.playlists || []).map((pl: any) => ({
       id: pl.id,
       title: pl.title,
-      thumbnail: pl.image,
+      thumbnail: pl.artworkUrl || pl.image,
+      artworkUrl: pl.artworkUrl,
       type: 'playlists',
       source: 'gaana',
       isIndiaContent: true
@@ -128,37 +141,6 @@ async function fetchGaana(query: string) {
     return { songs, albums, artists, playlists };
   } catch (e) {
     return { songs: [], albums: [], artists: [], playlists: [] };
-  }
-}
-
-async function fetchYouTube(query: string): Promise<Track[]> {
-  if (!RAPIDAPI_KEY) return [];
-  try {
-    const url = `https://${RAPIDAPI_HOST}/search/?query=${encodeURIComponent(query)}&regionCode=IN&hl=en-IN`;
-    const res = await fetch(url, {
-      headers: {
-        'X-RapidAPI-Key': RAPIDAPI_KEY,
-        'X-RapidAPI-Host': RAPIDAPI_HOST
-      },
-      next: { revalidate: 3600 }
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const items = data.items || data.search_results || [];
-    
-    return items.slice(0, 10).map((item: any) => ({
-      id: item.id || item.videoId,
-      title: item.title,
-      artist: item.channelTitle || item.author || "YouTube Discovery",
-      thumbnail: item.thumbnail?.url || item.thumbnails?.[0]?.url,
-      album: "YouTube Discovery (IN)",
-      source: 'youtube',
-      isYouTube: true,
-      videoId: item.id || item.videoId,
-      isIndiaContent: true
-    }));
-  } catch (e) {
-    return [];
   }
 }
 
