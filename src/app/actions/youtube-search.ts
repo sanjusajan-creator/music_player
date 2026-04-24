@@ -11,21 +11,18 @@ const SAAVN_API_BASE = 'https://my-jiosaavn-api.onrender.com';
 export async function searchMusicAction(query: string): Promise<Track[]> {
   try {
     const response = await fetch(`${SAAVN_API_BASE}/api/search?query=${encodeURIComponent(query)}`, {
-      next: { revalidate: 3600 } // Cache for 1 hour at edge
+      next: { revalidate: 3600 } 
     });
 
     if (!response.ok) throw new Error("Saavn Vault unreachable.");
 
     const data = await response.json();
-    
-    // Extract songs from data.data.songs.results
     const songs = data.data?.songs?.results || [];
 
     const results: Track[] = songs.map((song: any) => ({
       id: song.id,
-      title: song.title || song.name,
-      artist: song.primaryArtists || 'Unknown Artist',
-      // High quality image at index 2
+      title: song.title?.replace(/&quot;/g, '"')?.replace(/&amp;/g, '&') || song.name,
+      artist: song.primaryArtists?.replace(/&quot;/g, '"')?.replace(/&amp;/g, '&') || 'Unknown Artist',
       thumbnail: song.image?.[2]?.url || song.image?.[1]?.url || 'https://picsum.photos/seed/music/600/600',
       duration: parseInt(song.duration) || 0,
       isSaavn: true
@@ -33,14 +30,14 @@ export async function searchMusicAction(query: string): Promise<Track[]> {
 
     return results.slice(0, 15);
   } catch (error) {
-    console.error("Saavn Scraper Error:", error);
+    console.error("Saavn Search Error:", error);
     return [];
   }
 }
 
 /**
  * Sovereign Saavn Playback Fetcher
- * Extracts the 320kbps download link for a song ID.
+ * Dynamic high-quality stream extraction from the Saavn Vault.
  */
 export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
   try {
@@ -48,14 +45,16 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
     if (!response.ok) return null;
 
     const data = await response.json();
-    // Saavn API detail returns an array of songs in data.data
     const songData = data.data?.[0];
     if (!songData) return null;
 
-    // Prioritize 320kbps (index 4), fallback to 160kbps (index 3)
-    const downloadUrl = songData.downloadUrl?.[4]?.link || songData.downloadUrl?.[3]?.link || songData.downloadUrl?.[2]?.link;
+    const links = songData.downloadUrl;
+    if (!Array.isArray(links) || links.length === 0) return null;
+
+    // High Fidelity Strategy: Find the highest quality link available (usually 320kbps at the end)
+    const bestLink = links[links.length - 1]?.link || links[0]?.link;
     
-    return downloadUrl || null;
+    return bestLink || null;
   } catch (error) {
     console.error("Saavn Playback Error:", error);
     return null;

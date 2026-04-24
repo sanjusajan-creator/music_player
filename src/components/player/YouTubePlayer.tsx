@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { getSaavnPlaybackUrl } from '@/app/actions/youtube-search';
+import { toast } from '@/hooks/use-toast';
 
 /**
  * Vibecraft Sovereign Audio Engine
@@ -53,16 +54,14 @@ export const YouTubePlayer: React.FC = () => {
       });
       
       audio.addEventListener('pause', () => {
-        // Only update store if the pause wasn't triggered by a track change
         if (loadingId.current === currentTrack?.id) {
            setIsPlaying(false);
         }
       });
 
       audio.addEventListener('error', (e) => {
-        const err = audio.error;
         if (!audio.src || audio.src === window.location.href || audio.src === "") return;
-        console.error("Vibecraft Sovereign Audio Error:", err?.message || "Source Manifestation Failed", e);
+        console.warn("Sovereign Stream Interruption Detected:", audio.error?.message);
         setIsBuffering(false);
       });
 
@@ -81,8 +80,6 @@ export const YouTubePlayer: React.FC = () => {
   // Handle Track Source Switching (Saavn + Local)
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
-    
-    // Prevent redundant loads for the same manifestation
     if (loadingId.current === currentTrack.id) return;
     
     const initializePlayback = async () => {
@@ -98,24 +95,22 @@ export const YouTubePlayer: React.FC = () => {
           if (manifestedUrl) {
             url = manifestedUrl;
           } else {
-            throw new Error("Saavn Vault returned no stream.");
+            console.error("Saavn Vault returned no stream for:", currentTrack.title);
+            setIsBuffering(false);
+            toast({ title: "Stream Unavailable", description: "This archive could not be manifested.", variant: "destructive" });
+            return;
           }
         }
 
         if (url && audioRef.current) {
-          // Pause existing playback
           audioRef.current.pause();
           audioRef.current.src = url;
           audioRef.current.load();
           
-          // Only play if the global state is set to playing
           if (isPlaying) {
-            const playPromise = audioRef.current.play();
-            if (playPromise !== undefined) {
-              playPromise.catch(error => {
-                console.warn("Playback blocked by browser policy. Interaction required.", error);
-              });
-            }
+            audioRef.current.play().catch(error => {
+              console.warn("Playback blocked by browser policy.", error);
+            });
           }
         }
       } catch (error) {
@@ -125,47 +120,24 @@ export const YouTubePlayer: React.FC = () => {
     };
 
     initializePlayback();
-
-    // Cleanup object URL for local tracks
-    return () => {
-      if (currentTrack.isLocal && url) {
-        URL.revokeObjectURL(url);
-      }
-    };
   }, [currentTrack?.id]);
 
-  // Handle Global Play/Pause from Store
+  // Global Sync Listeners
   useEffect(() => {
     if (!audioRef.current || !audioRef.current.src || audioRef.current.src === window.location.href) return;
-    
-    if (isPlaying) {
-      if (audioRef.current.paused) {
-        audioRef.current.play().catch(() => {});
-      }
-    } else {
-      if (!audioRef.current.paused) {
-        audioRef.current.pause();
-      }
-    }
+    if (isPlaying) audioRef.current.paused && audioRef.current.play().catch(() => {});
+    else !audioRef.current.paused && audioRef.current.pause();
   }, [isPlaying]);
 
-  // Handle Volume
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
-    }
+    if (audioRef.current) audioRef.current.volume = volume / 100;
   }, [volume]);
 
-  // Handle Seek Requests
   useEffect(() => {
     if (seekRequest !== null && audioRef.current && audioRef.current.src) {
       audioRef.current.currentTime = seekRequest;
     }
   }, [seekRequest]);
 
-  return (
-    <div id="vibecraft-sovereign-audio-engine" className="hidden">
-      <p className="sr-only">Sovereign Audio Engine Active</p>
-    </div>
-  );
+  return <div id="vibecraft-sovereign-audio-engine" className="hidden" />;
 };

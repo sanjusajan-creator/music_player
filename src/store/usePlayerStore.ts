@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -14,15 +13,6 @@ export interface Track {
   isSaavn?: boolean;
 }
 
-export interface Playlist {
-  id: string;
-  name: string;
-  description?: string;
-  tracks: Track[];
-  userId: string;
-  createdAt: string;
-}
-
 type RepeatMode = 'none' | 'one' | 'all';
 
 interface PlayerState {
@@ -34,15 +24,12 @@ interface PlayerState {
   likedTrackIds: string[]; 
   isPlaying: boolean;
   isBuffering: boolean;
-  isAdPlaying: boolean;
   volume: number;
   progress: number;
   duration: number;
   seekRequest: number | null;
   repeatMode: RepeatMode;
   isShuffle: boolean;
-  isAutoplay: boolean;
-  sleepTimer: number | null; 
   hasHydrated: boolean;
   
   setHasHydrated: (state: boolean) => void;
@@ -56,15 +43,12 @@ interface PlayerState {
   toggleLike: (trackId: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setIsBuffering: (isBuffering: boolean) => void;
-  setIsAdPlaying: (isAdPlaying: boolean) => void;
   setVolume: (volume: number) => void;
   setProgress: (progress: number) => void;
   setDuration: (duration: number) => void;
   seekTo: (time: number) => void;
   toggleShuffle: () => void;
-  toggleAutoplay: () => void;
   setRepeatMode: (mode: RepeatMode) => void;
-  setSleepTimer: (minutes: number | null) => void;
   nextTrack: () => void;
   previousTrack: () => void;
   clearQueue: () => void;
@@ -81,15 +65,12 @@ export const usePlayerStore = create<PlayerState>()(
       likedTrackIds: [],
       isPlaying: false,
       isBuffering: false,
-      isAdPlaying: false,
       volume: 80,
       progress: 0,
       duration: 0,
       seekRequest: null,
       repeatMode: 'none',
       isShuffle: false,
-      isAutoplay: true,
-      sleepTimer: null,
       hasHydrated: false,
 
       setHasHydrated: (state) => set({ hasHydrated: state }),
@@ -100,24 +81,17 @@ export const usePlayerStore = create<PlayerState>()(
           const newHistory = [currentTrack, ...history.filter(t => t.id !== currentTrack.id)].slice(0, 50);
           set({ history: newHistory });
         }
-        set({ currentTrack: track, progress: 0, isPlaying: true, isAdPlaying: false, seekRequest: null });
+        set({ currentTrack: track, progress: 0, isPlaying: true, seekRequest: null });
       },
 
-      playNextFromQueue: (track) => {
-        set((state) => ({
-          queue: [track, ...state.queue]
-        }));
-      },
+      playNextFromQueue: (track) => set((state) => ({ queue: [track, ...state.queue] })),
 
       addToQueue: (track) => set((state) => ({ 
         queue: [...state.queue, track],
         originalQueue: [...state.originalQueue, track]
       })),
 
-      setQueue: (tracks) => set({ 
-        queue: tracks,
-        originalQueue: tracks
-      }),
+      setQueue: (tracks) => set({ queue: tracks, originalQueue: tracks }),
 
       setLocalTracks: (tracks) => set({ localTracks: tracks }),
 
@@ -140,7 +114,6 @@ export const usePlayerStore = create<PlayerState>()(
 
       setIsPlaying: (isPlaying) => set({ isPlaying }),
       setIsBuffering: (isBuffering) => set({ isBuffering }),
-      setIsAdPlaying: (isAdPlaying) => set({ isAdPlaying }),
       setVolume: (volume) => set({ volume }),
       setProgress: (progress) => set({ progress }),
       setDuration: (duration) => set({ duration }),
@@ -156,38 +129,18 @@ export const usePlayerStore = create<PlayerState>()(
         }
       }),
 
-      toggleAutoplay: () => set((state) => ({ isAutoplay: !state.isAutoplay })),
       setRepeatMode: (mode) => set({ repeatMode: mode }),
-      setSleepTimer: (minutes) => set({ sleepTimer: minutes }),
 
       nextTrack: () => {
-        const { queue, repeatMode, currentTrack } = get();
-        
+        const { queue, repeatMode, currentTrack, originalQueue } = get();
         if (repeatMode === 'one' && currentTrack) {
           set({ progress: 0, seekRequest: 0, isPlaying: true });
           return;
         }
-
         if (queue.length > 0) {
-          const next = queue[0];
-          set({ 
-            currentTrack: next, 
-            queue: queue.slice(1), 
-            progress: 0, 
-            seekRequest: null,
-            isPlaying: true
-          });
-        } else if (repeatMode === 'all') {
-          const { originalQueue } = get();
-          if (originalQueue.length > 0) {
-            set({ 
-              currentTrack: originalQueue[0], 
-              queue: originalQueue.slice(1), 
-              progress: 0, 
-              seekRequest: null,
-              isPlaying: true
-            });
-          }
+          set({ currentTrack: queue[0], queue: queue.slice(1), progress: 0, seekRequest: null, isPlaying: true });
+        } else if (repeatMode === 'all' && originalQueue.length > 0) {
+          set({ currentTrack: originalQueue[0], queue: originalQueue.slice(1), progress: 0, seekRequest: null, isPlaying: true });
         } else {
           set({ isPlaying: false });
         }
@@ -209,7 +162,7 @@ export const usePlayerStore = create<PlayerState>()(
       },
     }),
     {
-      name: 'vibecraft-vault-v7',
+      name: 'vibecraft-saavn-v1',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 
@@ -217,18 +170,13 @@ export const usePlayerStore = create<PlayerState>()(
         likedTrackIds: state.likedTrackIds,
         repeatMode: state.repeatMode,
         isShuffle: state.isShuffle,
-        isAutoplay: state.isAutoplay,
         queue: state.queue
       }),
-      onRehydrateStorage: (state) => {
-        return (rehydratedState) => {
-          if (rehydratedState) {
-            rehydratedState.hasHydrated = true;
-            if (!rehydratedState.likedTrackIds || !Array.isArray(rehydratedState.likedTrackIds)) {
-              rehydratedState.likedTrackIds = [];
-            }
-          }
-        };
+      onRehydrateStorage: () => (rehydratedState) => {
+        if (rehydratedState) {
+          rehydratedState.hasHydrated = true;
+          if (!Array.isArray(rehydratedState.likedTrackIds)) rehydratedState.likedTrackIds = [];
+        }
       }
     }
   )
