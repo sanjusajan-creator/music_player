@@ -12,10 +12,10 @@ import { SettingsView } from '@/components/settings/SettingsView';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { 
-  TrendingUp, Sparkles, Heart, 
-  Loader2, FolderOpen, Search, Library, Settings as SettingsIcon, X, Youtube, Play
+  TrendingUp, Sparkles, Heart, Home,
+  Loader2, FolderOpen, Search, Library, Settings as SettingsIcon, X, Youtube, Play, FolderPlus
 } from 'lucide-react';
-import { useUser, useAuth, useMemoFirebase, useFirestore } from '@/firebase';
+import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
