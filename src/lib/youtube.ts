@@ -7,9 +7,8 @@ const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
  * Sovereign Search Strategy (Innertune-inspired):
- * 1. YouTube Data API (If key available)
- * 2. Piped Public Instance (Real YouTube results without key)
- * 3. Audius Grid (High-Fidelity Full Tracks)
+ * 1. Direct YouTube Scraping via Piped Proxy (Accurate, Real results, No Key)
+ * 2. Audius Grid (High-Fidelity Full Tracks fallback)
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -32,39 +31,9 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // Tier 1: YouTube Official (If key present)
-  if (YOUTUBE_API_KEY) {
-    try {
-      console.log("Oracle: Summoning from YouTube Archive...");
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' official audio')}&type=video&maxResults=15&videoCategoryId=10&key=${YOUTUBE_API_KEY}`;
-      const searchRes = await fetch(searchUrl);
-      if (searchRes.ok) {
-        const searchData = await searchRes.json();
-        const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
-        
-        if (videoIds) {
-          const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
-          const listRes = await fetch(listUrl);
-          const listData = await listRes.json();
-          
-          const results = (listData.items || []).map((item: any) => ({
-            id: item.id,
-            title: normalizeMetadata(item.snippet.title),
-            artist: normalizeMetadata(item.snippet.channelTitle),
-            thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.standard?.url || item.snippet.thumbnails.high?.url || `https://i.ytimg.com/vi/${item.id}/maxresdefault.jpg`,
-            duration: parseISO8601Duration(item.contentDetails.duration),
-          }));
-          
-          updateCache(cacheKey, results);
-          return results;
-        }
-      }
-    } catch (error) {}
-  }
-
-  // Tier 2: Piped API (Real YouTube Results, No Key)
+  // Tier 1: Real YouTube Results via Piped (Free, High-Fidelity, Accurate)
   try {
-    console.log("Oracle: Manifesting via Piped Grid...");
+    console.log("Oracle: Summoning Real YouTube Archives...");
     const pipedInstances = [
       'https://pipedapi.kavin.rocks',
       'https://api.piped.video',
@@ -78,24 +47,29 @@ export async function searchTracks(query: string): Promise<Track[]> {
         const data = await res.json();
         
         if (data.items?.length > 0) {
-          const results = data.items.slice(0, 15).map((item: any) => ({
-            id: item.url.split('v=')[1],
-            title: normalizeMetadata(item.title),
-            artist: normalizeMetadata(item.uploaderName),
-            thumbnail: item.thumbnail || `https://i.ytimg.com/vi/${item.url.split('v=')[1]}/maxresdefault.jpg`,
-            duration: item.duration || 0,
-          }));
+          const results = data.items.slice(0, 15).map((item: any) => {
+            const videoId = item.url.split('v=')[1];
+            return {
+              id: videoId,
+              title: normalizeMetadata(item.title),
+              artist: normalizeMetadata(item.uploaderName),
+              // Innertune Technique: Force maxres for premium visuals
+              thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+              duration: item.duration || 0,
+            };
+          });
           
           updateCache(cacheKey, results);
+          console.log(`Oracle: Manifested ${results.length} real YouTube tracks.`);
           return results;
         }
       } catch (e) { continue; }
     }
   } catch (e) {}
 
-  // Tier 3: Audius Grid (Universal Fallback)
+  // Tier 2: Audius Grid (Fallback)
   try {
-    console.log("Oracle: Summoning full tracks from Audius...");
+    console.log("Oracle: YouTube Proxy restricted. Summoning from Audius...");
     const res = await fetch(`https://api.audius.co/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=VIBECRAFT`);
     const data = await res.json();
     if (data.data?.length > 0) {
@@ -126,6 +100,7 @@ function updateCache(key: string, results: Track[]) {
 }
 
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
+  // SOVEREIGN SHIELD: Don't call YT API for non-YT IDs
   if (!videoId || videoId.length !== 11 || videoId.includes('-')) {
     return MOCK_TRACKS;
   }
@@ -135,25 +110,19 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
     if (!res.ok) return MOCK_TRACKS;
     const data = await res.json();
     
-    return (data.relatedItems || []).slice(0, 10).map((item: any) => ({
-      id: item.url.split('v=')[1],
-      title: normalizeMetadata(item.title),
-      artist: normalizeMetadata(item.uploaderName),
-      thumbnail: item.thumbnail || `https://i.ytimg.com/vi/${item.url.split('v=')[1]}/maxresdefault.jpg`,
-      duration: item.duration || 0,
-    }));
+    return (data.relatedItems || []).slice(0, 10).map((item: any) => {
+      const vid = item.url.split('v=')[1];
+      return {
+        id: vid,
+        title: normalizeMetadata(item.title),
+        artist: normalizeMetadata(item.uploaderName),
+        thumbnail: `https://i.ytimg.com/vi/${vid}/maxresdefault.jpg`,
+        duration: item.duration || 0,
+      };
+    });
   } catch (error) {
     return MOCK_TRACKS;
   }
-}
-
-function parseISO8601Duration(duration: string): number {
-  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  if (!match) return 0;
-  const hours = parseInt(match[1] || '0');
-  const minutes = parseInt(match[2] || '0');
-  const seconds = parseInt(match[3] || '0');
-  return (hours * 3600) + (minutes * 60) + seconds;
 }
 
 function normalizeMetadata(text: string): string {
