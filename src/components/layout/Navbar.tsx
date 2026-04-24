@@ -8,7 +8,6 @@ import { useUser } from "@/firebase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useDebounce } from "@/hooks/use-debounce";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,7 +40,7 @@ export const Navbar: React.FC = () => {
   const handleLogout = () => signOut(auth);
 
   return (
-    <nav className="sticky top-0 z-40 h-16 px-6 flex items-center justify-between bg-black/80 backdrop-blur-xl border-b border-white/5">
+    <nav className="sticky top-0 z-40 h-16 px-6 flex items-center justify-between bg-black/90 backdrop-blur-xl border-b border-primary/20">
       <div className="flex items-center gap-4">
         <div className="flex gap-2">
           <NavArrow icon={<ChevronLeft />} onClick={() => router.back()} />
@@ -50,9 +49,9 @@ export const Navbar: React.FC = () => {
 
         {currentTab === 'search' && (
           <div className="relative group ml-4 w-full max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-white transition-all" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60 group-focus-within:text-primary transition-all" />
             <Input
-              className="pl-12 bg-white/10 border-none focus-visible:ring-2 focus-visible:ring-white/20 transition-all rounded-full h-10 text-sm placeholder:text-muted-foreground/60 font-black"
+              className="pl-12 bg-white/5 border-primary/20 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all rounded-full h-10 text-sm placeholder:text-primary/20 font-black text-primary"
               placeholder="What do you want to play?"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
@@ -66,19 +65,19 @@ export const Navbar: React.FC = () => {
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 bg-black border border-white/10 hover:scale-105 transition-all p-0">
+              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 bg-black border border-primary/20 hover:scale-105 transition-all p-0">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={`https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`} />
-                  <AvatarFallback className="bg-primary text-black">U</AvatarFallback>
+                  <AvatarFallback className="bg-primary text-black font-black">U</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white w-48 p-1">
-              <DropdownMenuItem className="focus:bg-white/10 p-2 cursor-pointer rounded-sm flex items-center gap-3">
-                <User className="w-4 h-4" /> Profile
+            <DropdownMenuContent className="bg-neutral-900 border-primary/20 text-primary w-48 p-1">
+              <DropdownMenuItem className="focus:bg-primary/10 p-2 cursor-pointer rounded-sm flex items-center gap-3 font-black">
+                <User className="w-4 h-4" /> PROFILE
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout} className="focus:bg-white/10 p-2 cursor-pointer rounded-sm flex items-center gap-3 text-red-400">
-                <LogOut className="w-4 h-4" /> Log out
+              <DropdownMenuItem onClick={handleLogout} className="focus:bg-red-500/10 p-2 cursor-pointer rounded-sm flex items-center gap-3 text-red-500 font-black">
+                <LogOut className="w-4 h-4" /> LOG OUT
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -91,7 +90,7 @@ export const Navbar: React.FC = () => {
 const NavArrow = ({ icon, onClick }: { icon: React.ReactNode, onClick: () => void }) => (
   <button 
     onClick={onClick}
-    className="h-8 w-8 bg-black rounded-full flex items-center justify-center text-white/60 hover:text-white border border-white/5 transition-all"
+    className="h-8 w-8 bg-black rounded-full flex items-center justify-center text-primary/40 hover:text-primary border border-primary/20 transition-all"
   >
     {React.cloneElement(icon as React.ReactElement, { className: 'w-5 h-5' })}
   </button>

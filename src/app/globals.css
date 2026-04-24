@@ -4,17 +4,17 @@
 
 :root {
   --background: 0 0% 0%; /* Absolute AMOLED Black #000000 */
-  --foreground: 0 0% 100%;
+  --foreground: 43 100% 50%; /* AMOLED Gold #FFD700 */
   --card: 0 0% 0%;
-  --card-foreground: 0 0% 100%;
+  --card-foreground: 43 100% 50%;
   --popover: 0 0% 0%;
-  --popover-foreground: 0 0% 100%;
+  --popover-foreground: 43 100% 50%;
   --primary: 43 100% 50%; /* AMOLED Gold #FFD700 */
   --primary-foreground: 0 0% 0%;
   --secondary: 0 0% 0%;
   --secondary-foreground: 43 100% 70%;
   --muted: 0 0% 0%;
-  --muted-foreground: 43 10% 60%;
+  --muted-foreground: 43 20% 40%;
   --accent: 43 100% 50%;
   --accent-foreground: 0 0% 0%;
   --destructive: 0 84.2% 60.2%;
@@ -31,48 +31,48 @@
   }
   html, body {
     background-color: #000000 !important;
-    color: #ffffff !important;
+    color: #FFD700 !important; /* Force Gold Text */
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
-    height: 100dvh;
-    width: 100vw;
+    height: 100%;
+    width: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
+    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6, span, p, button, input, div, a, label {
     font-weight: 900 !important;
+    color: inherit;
   }
 }
 
 .gold-glow {
-  text-shadow: 0 0 20px hsla(43, 100% , 50%, 0.4);
+  text-shadow: 0 0 20px hsla(43, 100% , 50%, 0.6);
 }
 
 .gold-border-glow {
-  box-shadow: 0 0 15px hsla(43, 100% , 50%, 0.2);
+  box-shadow: 0 0 15px hsla(43, 100% , 50%, 0.3);
 }
 
 .glass-header {
-  background-color: rgba(0, 0, 0, 0.8) !important;
+  background-color: rgba(0, 0, 0, 0.9) !important;
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
 }
 
 .spotify-sidebar-item {
-  @apply flex items-center gap-4 px-4 py-3 text-muted-foreground hover:text-primary transition-all rounded-lg cursor-pointer;
+  @apply flex items-center gap-4 px-4 py-3 text-primary/60 hover:text-primary transition-all rounded-lg cursor-pointer;
   background-color: transparent !important;
 }
 
 .spotify-sidebar-item.active {
-  @apply text-white;
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  @apply text-primary bg-white/5;
 }
 
 .spotify-card {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-  @apply p-4 rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer border border-transparent hover:border-primary/20;
+  background-color: rgba(255, 215, 0, 0.03) !important;
+  @apply p-4 rounded-xl hover:bg-primary/5 transition-all duration-300 cursor-pointer border border-transparent hover:border-primary/20;
 }
 
 .no-scrollbar::-webkit-scrollbar {

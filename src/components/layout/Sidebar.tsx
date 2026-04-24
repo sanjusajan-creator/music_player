@@ -49,24 +49,24 @@ export const Sidebar = () => {
   };
 
   return (
-    <div className="w-64 h-full bg-black flex flex-col p-2 gap-2 shrink-0 hidden md:flex border-r border-white/5">
+    <div className="w-64 h-full bg-black flex flex-col p-2 gap-2 shrink-0 hidden md:flex border-r border-primary/20">
       {/* Top Section */}
       <div className="bg-black space-y-1">
         <SidebarItem 
           icon={<Home />} 
-          label="Home" 
+          label="HOME" 
           active={currentTab === 'home'} 
           onClick={() => navigate('home')} 
         />
         <SidebarItem 
           icon={<Search />} 
-          label="Search" 
+          label="SEARCH" 
           active={currentTab === 'search'} 
           onClick={() => navigate('search')} 
         />
         <SidebarItem 
           icon={<Settings />} 
-          label="Settings" 
+          label="SETTINGS" 
           active={currentTab === 'settings'} 
           onClick={() => navigate('settings')} 
         />
@@ -75,8 +75,8 @@ export const Sidebar = () => {
       {/* Library Section */}
       <div className="bg-black flex-1 flex flex-col min-h-0 overflow-hidden mt-4">
         <div className="p-4 flex items-center justify-between">
-          <button className="flex items-center gap-3 text-muted-foreground hover:text-white transition-all font-black text-sm uppercase tracking-widest">
-            <Library className="w-6 h-6" /> Your Library
+          <button className="flex items-center gap-3 text-primary/60 hover:text-primary transition-all font-black text-xs uppercase tracking-widest">
+            <Library className="w-6 h-6" /> YOUR LIBRARY
           </button>
           <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/5 rounded-full" onClick={handleCreatePlaylist}>
             <Plus className="w-5 h-5 text-primary" />
@@ -87,13 +87,13 @@ export const Sidebar = () => {
           <div className="space-y-1">
             <SidebarItem 
               icon={<Heart className="fill-primary text-primary" />} 
-              label="Liked Songs" 
+              label="LIKED SONGS" 
               active={currentTab === 'liked'} 
               onClick={() => navigate('liked')} 
             />
             <SidebarItem 
-              icon={<FolderOpen className="text-blue-400" />} 
-              label="Local Archives" 
+              icon={<FolderOpen className="text-primary" />} 
+              label="LOCAL ARCHIVES" 
               active={currentTab === 'local'} 
               onClick={() => navigate('local')} 
             />
@@ -103,14 +103,14 @@ export const Sidebar = () => {
             {playlists?.map((p) => (
               <div key={p.id} className="group relative">
                 <SidebarItem 
-                  icon={<ListMusic />} 
-                  label={p.name} 
+                  icon={<ListMusic className="text-primary/60" />} 
+                  label={p.name.toUpperCase()} 
                   active={false} 
                   onClick={() => {}} 
                 />
                 <button 
                   onClick={(e) => handleDeletePlaylist(p.id, e)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-primary/40 hover:text-red-500 transition-all"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -127,11 +127,11 @@ const SidebarItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, 
   <div 
     onClick={onClick}
     className={cn(
-      "spotify-sidebar-item",
-      active && "active"
+      "flex items-center gap-4 px-4 py-3 transition-all rounded-lg cursor-pointer font-black text-xs uppercase tracking-widest",
+      active ? "text-primary bg-primary/10 gold-glow" : "text-primary/40 hover:text-primary hover:bg-white/5"
     )}
   >
-    {React.cloneElement(icon as React.ReactElement, { className: 'w-6 h-6' })}
-    <span className="text-xs uppercase tracking-widest truncate">{label}</span>
+    {React.cloneElement(icon as React.ReactElement, { className: cn('w-6 h-6', active ? 'text-primary' : 'text-primary/40') })}
+    <span className="truncate">{label}</span>
   </div>
 );

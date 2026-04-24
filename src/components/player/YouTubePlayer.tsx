@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -87,16 +86,18 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
     
-    // We re-load if quality setting changes for Saavn tracks
     const initializePlayback = async () => {
       loadingId.current = currentTrack.id;
       let url = "";
+      let source = "Unknown Vault";
 
       try {
         if (currentTrack.isLocal && currentTrack.localFile) {
           url = URL.createObjectURL(currentTrack.localFile);
+          source = "Local Vault";
         } else if (currentTrack.isSaavn) {
           setIsBuffering(true);
+          source = "JioSaavn Vault";
           const quality = settings.dataSaver ? 'low' : settings.audioQuality;
           const manifestedUrl = await getSaavnPlaybackUrl(currentTrack.id, quality);
           if (manifestedUrl) {
@@ -108,15 +109,17 @@ export const YouTubePlayer: React.FC = () => {
             return;
           }
         } else if (currentTrack.isYouTube) {
-          // If the engine falls back to YouTube, we'd normally use an Iframe,
-          // but for unified native audio, we'd need a third party scraper or proxy.
-          // For now, we simulate Saavn native only.
+          source = "YouTube Discovery";
+          // Simulation for YouTube manifest via native engine (requires proxy/scrapper)
+          // For now we toast the limitation or fallback to saavn if possible
           toast({ title: "YouTube discovery", description: "Native audio fallback coming soon." });
           return;
         }
 
         if (url && audioRef.current) {
-          const currentTime = audioRef.current.currentTime;
+          // Log the source manifesting the track
+          console.log(`%cOracle: Manifesting track from ${source}`, "color: #FFD700; font-weight: bold; font-size: 14px; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);");
+          
           const wasPlaying = !audioRef.current.paused;
           
           audioRef.current.pause();

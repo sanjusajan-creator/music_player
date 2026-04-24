@@ -13,10 +13,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { 
   TrendingUp, Sparkles, Heart, 
-  Loader2, FolderOpen, History, Music2, FolderPlus, Play, 
+  Loader2, FolderOpen, Music2, FolderPlus, Play, 
   Disc, User, ListMusic, Home, Search, Library, Settings as SettingsIcon, Clock
 } from 'lucide-react';
-import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
+import { useUser, useAuth, useMemoFirebase, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,7 +42,7 @@ export default function AppWrapper() {
       <Suspense fallback={
         <div className="h-screen w-screen bg-black flex flex-col items-center justify-center">
           <Loader2 className="animate-spin text-primary w-12 h-12 mb-4" />
-          <p className="text-primary/40 font-black uppercase tracking-[0.3em] text-[10px]">Manifesting Sanctuary...</p>
+          <p className="text-primary font-black uppercase tracking-[0.3em] text-[10px]">Manifesting Sanctuary...</p>
         </div>
       }>
         <HomeContent />
@@ -108,16 +108,16 @@ function HomeContent() {
       <div className="w-full max-w-md space-y-12 animate-in fade-in zoom-in duration-700">
         <header>
           <h1 className="text-6xl font-black text-primary gold-glow tracking-tighter uppercase leading-none">VIBECRAFT</h1>
-          <p className="text-primary/40 uppercase tracking-[0.5em] text-[10px] font-black mt-4">Premium Gold Sanctuary</p>
+          <p className="text-primary uppercase tracking-[0.5em] text-[10px] font-black mt-4">Premium Gold Sanctuary</p>
         </header>
 
         <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-8 rounded-[2rem] space-y-6 backdrop-blur-xl shadow-2xl">
           <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-black border-primary/20 h-14 rounded-xl text-primary font-black placeholder:text-primary/20" />
           <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-black border-primary/20 h-14 rounded-xl text-primary font-black placeholder:text-primary/20" />
-          <Button type="submit" disabled={isAuthLoading} className="w-full bg-primary text-black font-black h-14 rounded-xl text-lg hover:scale-105 transition-all shadow-[0_0_30px_rgba(212,175,55,0.2)] uppercase tracking-widest">
+          <Button type="submit" disabled={isAuthLoading} className="w-full bg-primary text-black font-black h-14 rounded-xl text-lg hover:scale-105 transition-all shadow-[0_0_30px_rgba(255,215,0,0.2)] uppercase tracking-widest">
             {isAuthLoading ? <Loader2 className="animate-spin" /> : (isLogin ? "Enter Sanctuary" : "Create Archive")}
           </Button>
-          <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary/40 hover:text-primary text-[10px] uppercase font-black tracking-widest transition-colors w-full">
+          <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary hover:text-white text-[10px] uppercase font-black tracking-widest transition-colors w-full">
             {isLogin ? "Need a new archive? Sign up" : "Already registered? Log in"}
           </button>
         </form>
@@ -126,7 +126,7 @@ function HomeContent() {
   );
 
   return (
-    <div className="flex h-screen w-screen bg-black overflow-hidden relative selection:bg-primary/20">
+    <div className="flex h-screen w-screen bg-black overflow-hidden relative selection:bg-primary/20 text-primary">
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 bg-black relative h-full">
         <Navbar />
@@ -169,7 +169,7 @@ function HomeContent() {
 }
 
 const MobileNavItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) => (
-  <button onClick={onClick} className={cn("flex flex-col items-center gap-1 transition-all", active ? "text-primary" : "text-muted-foreground")}>
+  <button onClick={onClick} className={cn("flex flex-col items-center gap-1 transition-all", active ? "text-primary" : "text-primary/40")}>
     {React.cloneElement(icon as React.ReactElement, { className: 'w-6 h-6' })}
     <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
   </button>
@@ -186,13 +186,13 @@ function HomeView() {
   return (
     <div className="space-y-10 bg-black">
       <section>
-        <h2 className="text-3xl font-black text-white mb-6 gold-glow">{greeting}</h2>
+        <h2 className="text-3xl font-black text-primary mb-6 gold-glow uppercase tracking-tighter">{greeting}</h2>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           <GreetingCard label="Gold Hits" icon={<TrendingUp className="text-primary" />} />
-          <GreetingCard label="Liked Songs" icon={<Heart className="text-pink-500 fill-current" />} />
-          <GreetingCard label="Magic Mix" icon={<Sparkles className="text-blue-400" />} />
-          <GreetingCard label="Local Vault" icon={<FolderOpen className="text-orange-400" />} />
-          <GreetingCard label="History" icon={<Clock className="text-green-400" />} />
+          <GreetingCard label="Liked Songs" icon={<Heart className="text-primary fill-current" />} />
+          <GreetingCard label="Magic Mix" icon={<Sparkles className="text-primary" />} />
+          <GreetingCard label="Local Vault" icon={<FolderOpen className="text-primary" />} />
+          <GreetingCard label="History" icon={<Clock className="text-primary" />} />
         </div>
       </section>
 
@@ -210,8 +210,8 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
   return (
     <section className="bg-black">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl md:text-2xl font-black text-white hover:text-primary cursor-pointer transition-all uppercase tracking-tighter">{title}</h3>
-        <button className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">Show all</button>
+        <h3 className="text-xl md:text-2xl font-black text-primary hover:text-white cursor-pointer transition-all uppercase tracking-tighter gold-glow">{title}</h3>
+        <button className="text-[10px] font-black uppercase tracking-widest text-primary/40 hover:text-primary">Show all</button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {isLoading ? [...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
@@ -249,7 +249,7 @@ function SearchResultsView({ query }: { query: string }) {
   );
 
   if (!results) return (
-    <div className="h-96 flex flex-col items-center justify-center gap-4 text-muted-foreground bg-black">
+    <div className="h-96 flex flex-col items-center justify-center gap-4 text-primary/20 bg-black">
       <Music2 className="w-16 h-16 opacity-20" />
       <p className="text-[10px] font-black uppercase tracking-widest">Search the archives for gold</p>
     </div>
@@ -259,7 +259,7 @@ function SearchResultsView({ query }: { query: string }) {
     <div className="space-y-12 bg-black">
       {results.songs?.results?.length > 0 && (
         <section>
-          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter gold-glow">Top Songs</h2>
+          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Top Songs</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
             {results.songs.results.map((t: any) => (
               <SearchResult key={t.id} track={{
@@ -271,17 +271,6 @@ function SearchResultsView({ query }: { query: string }) {
                 isSaavn: true,
                 isYouTube: false
               }} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {results.albums?.results?.length > 0 && (
-        <section>
-          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter gold-glow">Albums</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
-            {results.albums.results.map((a: any) => (
-              <CategoryCard key={a.id} label={a.title} image={a.image?.[2]?.url} type="albums" id={a.id} subtitle={a.artist} />
             ))}
           </div>
         </section>
@@ -312,23 +301,23 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 bg-black">
-      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/5">
+      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
         <img src={data.image?.[2]?.url} className={cn("w-48 h-48 md:w-64 md:h-64 shadow-2xl object-cover gold-border-glow", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
         <div className="space-y-4 flex-1 text-center md:text-left">
           <p className="text-[10px] font-black uppercase tracking-widest text-primary/60">{type.slice(0, -1)}</p>
-          <h1 className="text-3xl md:text-6xl font-black text-white gold-glow tracking-tighter leading-none">{data.title || data.name}</h1>
+          <h1 className="text-3xl md:text-6xl font-black text-primary gold-glow tracking-tighter leading-none uppercase">{data.title || data.name}</h1>
           <div className="flex flex-col md:flex-row items-center gap-6 mt-4">
-             <Button onClick={handlePlayAll} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all shadow-[0_0_30px_rgba(212,175,55,0.3)]"><Play className="w-6 h-6 fill-current mr-2" /> Play All</Button>
+             <Button onClick={handlePlayAll} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all shadow-[0_0_30px_rgba(255,215,0,0.3)]"><Play className="w-6 h-6 fill-current mr-2" /> Play All</Button>
              <div className="flex flex-col">
-                <span className="text-sm font-black text-white/80">{songs.length} Manifestations</span>
-                <span className="text-[10px] uppercase font-black text-muted-foreground">{data.year || data.language || "Public Archive"}</span>
+                <span className="text-sm font-black text-primary">{songs.length} Manifestations</span>
+                <span className="text-[10px] uppercase font-black text-primary/40">{data.year || data.language || "Public Archive"}</span>
              </div>
           </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-[32px_1fr_1fr_48px] px-4 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-white/5">
+        <div className="grid grid-cols-[32px_1fr_1fr_48px] px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary/40 border-b border-primary/10">
           <span>#</span>
           <span>Title</span>
           <span className="hidden md:block">Album</span>
@@ -360,7 +349,7 @@ function TrackRow({ track, index }: { track: Track, index: number }) {
       onClick={() => setCurrentTrack(track)} 
       className={cn(
         "grid grid-cols-[32px_1fr_48px] md:grid-cols-[32px_1fr_1fr_48px] items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer border border-transparent",
-        isActive && "bg-white/10 border-primary/20"
+        isActive && "bg-primary/10 border-primary/20"
       )}
     >
       <div className="flex items-center justify-center">
@@ -371,26 +360,26 @@ function TrackRow({ track, index }: { track: Track, index: number }) {
              <div className="w-0.5 h-1/2 bg-primary animate-bounce" style={{ animationDelay: '0.4s' }} />
           </div>
         ) : (
-          <span className={cn("text-sm font-black text-muted-foreground group-hover:text-primary transition-colors", isActive && "text-primary")}>{index}</span>
+          <span className={cn("text-sm font-black text-primary/40 group-hover:text-primary transition-colors", isActive && "text-primary")}>{index}</span>
         )}
       </div>
       <div className="flex items-center gap-3 md:gap-4 min-w-0">
         <img src={track.thumbnail} className="w-10 h-10 rounded shadow-md object-cover shrink-0" alt="t" />
         <div className="flex flex-col min-w-0">
-          <p className={cn("text-sm font-black truncate uppercase tracking-tighter", isActive ? "text-primary" : "text-white")}>{track.title}</p>
-          <p className="text-[10px] text-muted-foreground font-black truncate uppercase tracking-widest">{track.artist}</p>
+          <p className={cn("text-sm font-black truncate uppercase tracking-tighter", isActive ? "text-primary gold-glow" : "text-primary/80")}>{track.title}</p>
+          <p className="text-[10px] text-primary/40 font-black truncate uppercase tracking-widest">{track.artist}</p>
         </div>
       </div>
-      <p className="text-[10px] text-muted-foreground font-black hidden md:block uppercase tracking-widest truncate">{track.album}</p>
+      <p className="text-[10px] text-primary/40 font-black hidden md:block uppercase tracking-widest truncate">{track.album}</p>
       <button className="opacity-0 group-hover:opacity-100 text-primary flex justify-center"><Play className="w-5 h-5 fill-current" /></button>
     </div>
   );
 }
 
 const GreetingCard = ({ label, icon }: { label: string, icon: React.ReactNode }) => (
-  <div className="flex items-center gap-3 md:gap-4 bg-white/5 hover:bg-white/10 transition-all rounded-md overflow-hidden cursor-pointer group pr-4 h-16 md:h-20 border border-white/5">
-    <div className="w-16 h-16 md:w-20 md:h-20 bg-white/5 flex items-center justify-center shrink-0 border-r border-white/5">{React.cloneElement(icon as React.ReactElement, { className: 'w-8 h-8 md:w-10 md:h-10' })}</div>
-    <span className="text-xs md:text-sm font-black text-white truncate flex-1 uppercase tracking-tighter">{label}</span>
+  <div className="flex items-center gap-3 md:gap-4 bg-white/5 hover:bg-primary/10 transition-all rounded-md overflow-hidden cursor-pointer group pr-4 h-16 md:h-20 border border-primary/10">
+    <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/5 flex items-center justify-center shrink-0 border-r border-primary/10">{React.cloneElement(icon as React.ReactElement, { className: 'w-8 h-8 md:w-10 md:h-10' })}</div>
+    <span className="text-xs md:text-sm font-black text-primary truncate flex-1 uppercase tracking-tighter">{label}</span>
     <button className="w-10 h-10 bg-primary rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl hidden md:flex"><Play className="w-6 h-6 text-black fill-current" /></button>
   </div>
 );
@@ -419,8 +408,8 @@ const CategoryCard = ({ label, image, subtitle, type, id, isCircle }: { label: s
         )}
       </div>
       <div className="space-y-1">
-        <p className="text-xs md:text-sm font-black text-white truncate uppercase tracking-tighter gold-glow group-hover:text-primary transition-colors">{label}</p>
-        {subtitle && <p className="text-[9px] md:text-[10px] text-muted-foreground font-black uppercase tracking-widest truncate">{subtitle}</p>}
+        <p className="text-xs md:text-sm font-black text-primary truncate uppercase tracking-tighter gold-glow group-hover:scale-105 transition-all">{label}</p>
+        {subtitle && <p className="text-[9px] md:text-[10px] text-primary/40 font-black uppercase tracking-widest truncate">{subtitle}</p>}
       </div>
     </div>
   );
@@ -435,14 +424,14 @@ function LikedSongsView({ userId }: { userId: string }) {
   const { data: likedDocs } = useCollection(q);
   return (
     <div className="space-y-10 bg-black">
-      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-indigo-600/20 to-transparent p-6 md:p-8 rounded-[2rem] border border-indigo-500/10">
-        <div className="w-48 h-48 md:w-64 md:h-64 bg-gradient-to-br from-indigo-600 to-indigo-900 rounded-2xl shadow-2xl flex items-center justify-center gold-border-glow">
-          <Heart className="w-24 h-24 md:w-32 md:h-32 text-white fill-current animate-pulse-gold" />
+      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
+        <div className="w-48 h-48 md:w-64 md:h-64 bg-primary/10 rounded-2xl shadow-2xl flex items-center justify-center gold-border-glow">
+          <Heart className="w-24 h-24 md:w-32 md:h-32 text-primary fill-current animate-pulse-gold" />
         </div>
         <div className="space-y-4 text-center md:text-left">
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Collection</p>
-          <h2 className="text-4xl md:text-8xl font-black text-white gold-glow tracking-tighter leading-none">Liked Songs</h2>
-          <p className="text-sm font-black text-white/40 uppercase tracking-widest">{likedDocs?.length || 0} Saved Manifestations</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-primary/40">Collection</p>
+          <h2 className="text-4xl md:text-8xl font-black text-primary gold-glow tracking-tighter leading-none uppercase">Liked Songs</h2>
+          <p className="text-sm font-black text-primary/40 uppercase tracking-widest">{likedDocs?.length || 0} Saved Manifestations</p>
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
@@ -495,19 +484,19 @@ function LocalArchivesView() {
 
   return (
     <div className="space-y-12 bg-black">
-      <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 bg-gradient-to-b from-orange-500/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-orange-500/10">
+      <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
         <div className="text-center md:text-left">
-          <h2 className="text-4xl md:text-7xl font-black text-white gold-glow tracking-tighter uppercase leading-none">Local Vault</h2>
-          <p className="text-[10px] text-orange-400 font-black uppercase tracking-widest mt-4">System archives manifested</p>
+          <h2 className="text-4xl md:text-7xl font-black text-primary gold-glow tracking-tighter uppercase leading-none">Local Vault</h2>
+          <p className="text-[10px] text-primary/40 font-black uppercase tracking-widest mt-4">System archives manifested</p>
         </div>
-        <Button onClick={handleSummon} className="bg-orange-500 text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all shadow-[0_0_30px_rgba(249,115,22,0.3)]">Summon Folder</Button>
+        <Button onClick={handleSummon} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all shadow-[0_0_30px_rgba(255,215,0,0.3)]">Summon Folder</Button>
       </header>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {localTracks.map(t => <SearchResult key={t.id} track={t} />)}
         {localTracks.length === 0 && (
-          <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-white/5 transition-all group">
-            <FolderPlus className="w-20 h-24 md:w-24 md:h-24 text-muted-foreground/10 group-hover:text-primary/20 transition-colors" />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">Click to unlock local vault</p>
+          <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-primary/20 rounded-[2rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-primary/5 transition-all group">
+            <FolderPlus className="w-20 h-24 md:w-24 md:h-24 text-primary/20 group-hover:text-primary transition-colors" />
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/20">Click to unlock local vault</p>
           </div>
         )}
       </div>

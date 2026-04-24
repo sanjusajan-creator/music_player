@@ -46,18 +46,18 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="spotify-card group relative h-full flex flex-col"
+      className="spotify-card group relative h-full flex flex-col bg-primary/5 hover:bg-primary/10 transition-all rounded-xl border border-transparent hover:border-primary/20"
       onClick={() => setCurrentTrack(track)}
     >
       <div className="relative aspect-square mb-4 shadow-2xl rounded-lg overflow-hidden shrink-0">
         {track.thumbnail ? (
-          <img src={track.thumbnail} className="w-full h-full object-cover" alt={track.title} loading="lazy" />
+          <img src={track.thumbnail} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={track.title} loading="lazy" />
         ) : (
-          <div className="w-full h-full bg-white/5 flex items-center justify-center"><Music2 className="w-12 h-12 text-muted-foreground/20" /></div>
+          <div className="w-full h-full bg-white/5 flex items-center justify-center"><Music2 className="w-12 h-12 text-primary/20" /></div>
         )}
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
         <button 
-          className="absolute bottom-2 right-2 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-2xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300"
+          className="absolute bottom-2 right-2 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-2xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 active:scale-90"
           onClick={(e) => { e.stopPropagation(); setCurrentTrack(track); }}
         >
           <Play className="fill-black text-black w-6 h-6 ml-1" />
@@ -65,11 +65,11 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
       </div>
       
       <div className="space-y-1 min-w-0 flex-1 flex flex-col">
-        <h4 className="font-black text-sm text-white truncate uppercase tracking-tighter leading-none">{track.title}</h4>
+        <h4 className="font-black text-sm text-primary truncate uppercase tracking-tighter leading-none gold-glow">{track.title}</h4>
         <div className="flex items-center justify-between gap-2 mt-auto pt-1">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate font-black flex-1">{track.artist}</p>
-          <button onClick={handleLike} className="shrink-0 p-1">
-            <Heart className={cn("w-4 h-4 transition-all", isLiked ? "fill-primary text-primary" : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-white")} />
+          <p className="text-[10px] text-primary/40 uppercase tracking-widest truncate font-black flex-1">{track.artist}</p>
+          <button onClick={handleLike} className="shrink-0 p-1 transition-all active:scale-125">
+            <Heart className={cn("w-4 h-4 transition-all", isLiked ? "fill-primary text-primary" : "text-primary/20 opacity-0 group-hover:opacity-100 hover:text-primary")} />
           </button>
         </div>
       </div>
