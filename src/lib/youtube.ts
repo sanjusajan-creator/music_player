@@ -6,11 +6,10 @@ const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
- * Sovereign Multi-Provider Search Strategy (FULL SONGS):
- * Tier 1: YouTube Music Vault (Prioritized for mainstream accuracy and HD thumbnails)
- * Tier 2: Audius API (Decentralized Full Tracks)
- * Tier 3: Jamendo API (Open Music Full Audio)
- * Tier 4: Archive.org (Historical Full Audio)
+ * Innertune-inspired Sovereign Search Strategy:
+ * 1. Official YouTube Music Vault (Prioritized for mainstream accuracy and HD thumbnails)
+ * 2. Audius Decentralized Grid (High-Fidelity Full Tracks)
+ * 3. Jamendo / Archive.org (Universal Archive Fallbacks)
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -33,11 +32,11 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // Tier 1: YouTube Vault (Official Music Priority)
+  // Tier 1: YouTube Music Vault (Official Archive Priority)
   if (YOUTUBE_API_KEY) {
     try {
-      console.log("Oracle: Summoning from YouTube Vault...");
-      // Add 'official audio' to force high-fidelity music results
+      console.log("Oracle: Summoning from YouTube Archive...");
+      // Innertune Technique: Force 'official audio' and music category (10)
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' official audio')}&type=video&maxResults=15&videoCategoryId=10&key=${YOUTUBE_API_KEY}`;
       const searchRes = await fetch(searchUrl);
       if (searchRes.status === 403) throw new Error("QUOTA_EXCEEDED");
@@ -54,21 +53,21 @@ export async function searchTracks(query: string): Promise<Track[]> {
           id: item.id,
           title: normalizeMetadata(item.snippet.title),
           artist: normalizeMetadata(item.snippet.channelTitle),
-          // PRIORITY: Use maxres or standard if available for crystal clear UI
+          // Innertune Technique: Strictly prioritize High-Resolution artwork
           thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.standard?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
           duration: parseISO8601Duration(item.contentDetails.duration),
         }));
         
-        console.log(`Oracle: Manifested ${results.length} tracks from YouTube.`);
+        console.log(`Oracle: Manifested ${results.length} official tracks from YouTube.`);
         updateCache(cacheKey, results);
         return results;
       }
     } catch (error) {
-      console.warn("Oracle: YouTube Vault restricted. Falling back to public grids.");
+      console.warn("Oracle: YouTube Archive restricted. Falling back to public grids.");
     }
   }
 
-  // Tier 2: Audius Decentralized Grid (FULL TRACKS)
+  // Tier 2: Audius Decentralized Grid (Full Songs)
   try {
     console.log("Oracle: Summoning full tracks from Audius...");
     const res = await fetch(`https://api.audius.co/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=VIBECRAFT`);
@@ -87,9 +86,8 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // Tier 3: Jamendo Open Archive (FULL TRACKS)
+  // Tier 3: Jamendo Open Archive
   try {
-    console.log("Oracle: Summoning from Jamendo...");
     const jamendoUrl = `https://api.jamendo.com/v2.0/tracks/?client_id=56d30cce&format=jsonsearch&limit=15&search=${encodeURIComponent(query)}`;
     const res = await fetch(jamendoUrl);
     const data = await res.json();
@@ -142,7 +140,7 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
       id: item.id,
       title: normalizeMetadata(item.snippet.title),
       artist: normalizeMetadata(item.snippet.channelTitle),
-      thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
+      thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.standard?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
       duration: parseISO8601Duration(item.contentDetails.duration),
     }));
   } catch (error) {
@@ -161,6 +159,7 @@ function parseISO8601Duration(duration: string): number {
 
 function normalizeMetadata(text: string): string {
   if (!text) return "";
+  // Innertune Technique: Purge noisy metadata for high-fidelity UI
   return text
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
@@ -168,7 +167,9 @@ function normalizeMetadata(text: string): string {
     .replace(/\(Official Video\)/gi, '')
     .replace(/\(Official Audio\)/gi, '')
     .replace(/\(Lyrics\)/gi, '')
+    .replace(/\(Official Lyric Video\)/gi, '')
     .replace(/\[Official Video\]/gi, '')
+    .replace(/\[Official Audio\]/gi, '')
     .replace(/VEVO/gi, '')
     .trim();
 }

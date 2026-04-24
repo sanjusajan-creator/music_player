@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import YouTube, { YouTubePlayer as YTPlayer, YouTubeProps } from 'react-youtube';
 import { usePlayerStore } from '@/store/usePlayerStore';
 
