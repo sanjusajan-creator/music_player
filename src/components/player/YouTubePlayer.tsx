@@ -7,14 +7,13 @@ import { toast } from '@/hooks/use-toast';
 
 /**
  * Vibecraft Sovereign Audio Engine
- * Pure HTML5 Native Audio implementation for Saavn High-Fidelity streams.
+ * Pure HTML5 Native Audio implementation with Hybrid Fallback Diagnostics.
  */
 export const YouTubePlayer: React.FC = () => {
   const { 
     currentTrack, 
     isPlaying, 
     volume, 
-    settings,
     setIsPlaying, 
     setIsBuffering,
     setProgress,
@@ -24,9 +23,7 @@ export const YouTubePlayer: React.FC = () => {
   } = usePlayerStore();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const loadingId = useRef<string | null>(null);
 
-  // Initialize Persistent Native Audio Engine
   useEffect(() => {
     if (!audioRef.current) {
       const audio = new Audio();
@@ -44,27 +41,14 @@ export const YouTubePlayer: React.FC = () => {
         }
       });
       
-      audio.addEventListener('ended', () => {
-        nextTrack();
-      });
-
+      audio.addEventListener('ended', () => nextTrack());
       audio.addEventListener('waiting', () => setIsBuffering(true));
       audio.addEventListener('playing', () => {
         setIsBuffering(false);
         setIsPlaying(true);
       });
+      audio.addEventListener('pause', () => setIsPlaying(false));
       
-      audio.addEventListener('pause', () => {
-        if (loadingId.current === currentTrack?.id) {
-           setIsPlaying(false);
-        }
-      });
-
-      audio.addEventListener('error', (e) => {
-        if (!audio.src || audio.src === window.location.href || audio.src === "") return;
-        setIsBuffering(false);
-      });
-
       audioRef.current = audio;
     }
 
@@ -72,17 +56,14 @@ export const YouTubePlayer: React.FC = () => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
-        audioRef.current = null;
       }
     };
-  }, [nextTrack, setDuration, setIsBuffering, setIsPlaying, setProgress, currentTrack?.id]);
+  }, [nextTrack, setDuration, setIsBuffering, setIsPlaying, setProgress]);
 
-  // Handle Manifestation Switching
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
     
     const initializePlayback = async () => {
-      loadingId.current = currentTrack.id;
       let url = "";
       let source = "Unknown Vault";
 
@@ -93,36 +74,28 @@ export const YouTubePlayer: React.FC = () => {
         } else if (currentTrack.isSaavn) {
           setIsBuffering(true);
           source = "JioSaavn Vault";
-          const quality = settings.dataSaver ? 'low' : settings.audioQuality;
-          const manifestedUrl = await getSaavnPlaybackUrl(currentTrack.id, quality);
+          const manifestedUrl = await getSaavnPlaybackUrl(currentTrack.id);
           if (manifestedUrl) {
             url = manifestedUrl;
           } else {
             setIsBuffering(false);
+            toast({ title: "Manifestation Failed", description: "Stream unreachable in Saavn Vault.", variant: "destructive" });
             return;
           }
         } else if (currentTrack.isYouTube) {
           source = "YouTube Discovery";
-          // YouTube tracks use Iframe, so stop native audio
           audioRef.current.pause();
           audioRef.current.src = "";
-          console.log(`%cOracle: Pausing Native Audio for YouTube Discovery`, "color: #FFD700; font-weight: 900;");
-          return;
+          // YouTube handled via Iframe in page.tsx
         }
 
         if (url && audioRef.current) {
           console.log(`%cOracle: Manifesting track from ${source}`, "color: #FFD700; font-weight: 900; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);");
-          
-          const wasPlaying = !audioRef.current.paused;
-          
           audioRef.current.pause();
           audioRef.current.src = url;
           audioRef.current.load();
-          
-          if (wasPlaying || isPlaying) {
-            audioRef.current.play().catch(error => {
-              setIsPlaying(false);
-            });
+          if (isPlaying) {
+            audioRef.current.play().catch(() => setIsPlaying(false));
           }
         }
       } catch (error) {
@@ -131,24 +104,21 @@ export const YouTubePlayer: React.FC = () => {
     };
 
     initializePlayback();
-  }, [currentTrack?.id, settings.audioQuality, settings.dataSaver]);
+  }, [currentTrack?.id]);
 
-  // Sync Global Play/Pause
   useEffect(() => {
-    if (!audioRef.current || !audioRef.current.src || audioRef.current.src === window.location.href || currentTrack?.isYouTube) return;
+    if (!audioRef.current || !audioRef.current.src || currentTrack?.isYouTube) return;
     if (isPlaying) {
-      if (audioRef.current.paused) audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch(() => {});
     } else {
-      if (!audioRef.current.paused) audioRef.current.pause();
+      audioRef.current.pause();
     }
   }, [isPlaying, currentTrack?.isYouTube]);
 
-  // Sync Global Volume
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume / 100;
   }, [volume]);
 
-  // Sync Global Seek Requests
   useEffect(() => {
     if (seekRequest !== null && audioRef.current && audioRef.current.src) {
       audioRef.current.currentTime = seekRequest;

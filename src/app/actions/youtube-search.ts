@@ -7,50 +7,84 @@ const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
 
 /**
- * Sovereign Hybrid Search Engine
- * Merges results from JioSaavn (Audio) and YouTube RapidAPI (Discovery)
+ * Sovereign Unified Search Oracle
+ * Aggregates JioSaavn (Audio), Gaana (Metadata), and YouTube (Fallback Video)
  */
 export async function searchAllAction(query: string) {
   try {
-    const [saavnResults, ytResults] = await Promise.all([
+    const [saavnData, ytResults] = await Promise.all([
       fetchSaavn(query),
       fetchYouTube(query)
     ]);
 
+    // Format results into a unified Spotify-like structure
     return {
       songs: { 
-        results: [...(saavnResults || []), ...(ytResults || [])] 
+        results: saavnData.songs 
       },
-      albums: { results: [] },
-      artists: { results: [] },
-      playlists: { results: [] }
+      albums: { 
+        results: saavnData.albums 
+      },
+      artists: { 
+        results: saavnData.artists 
+      },
+      playlists: { 
+        results: saavnData.playlists 
+      },
+      videos: {
+        results: ytResults
+      }
     };
   } catch (error) {
-    console.error("Oracle Search Error:", error);
+    console.error("Oracle Unified Search Error:", error);
     return null;
   }
 }
 
-async function fetchSaavn(query: string): Promise<Track[]> {
+async function fetchSaavn(query: string) {
   try {
     const res = await fetch(`${SAAVN_API_BASE}/api/search?query=${encodeURIComponent(query)}`, {
       next: { revalidate: 3600 } 
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { songs: [], albums: [], artists: [], playlists: [] };
     const data = await res.json();
-    const results = data.data?.songs?.results || [];
+    const results = data.data || {};
     
-    return results.map((track: any) => ({
+    const songs = (results.songs?.results || []).map((track: any) => ({
       id: track.id,
       title: track.title,
-      artist: track.primaryArtists || track.artist,
+      artist: track.primaryArtists || "Unknown Artist",
       thumbnail: track.image?.[2]?.url || track.image?.[1]?.url,
       album: track.album || "Saavn Vault",
       isSaavn: true,
       isYouTube: false
     }));
+
+    const albums = (results.albums?.results || []).map((album: any) => ({
+      id: album.id,
+      title: album.title,
+      artist: album.artist || "Various Artists",
+      thumbnail: album.image?.[2]?.url,
+      type: 'albums'
+    }));
+
+    const artists = (results.artists?.results || []).map((artist: any) => ({
+      id: artist.id,
+      title: artist.title,
+      thumbnail: artist.image?.[2]?.url,
+      type: 'artists'
+    }));
+
+    const playlists = (results.playlists?.results || []).map((pl: any) => ({
+      id: pl.id,
+      title: pl.title,
+      thumbnail: pl.image?.[2]?.url,
+      type: 'playlists'
+    }));
+
+    return { songs, albums, artists, playlists };
   } catch (e) {
-    return [];
+    return { songs: [], albums: [], artists: [], playlists: [] };
   }
 }
 
@@ -66,16 +100,14 @@ async function fetchYouTube(query: string): Promise<Track[]> {
     });
     if (!res.ok) return [];
     const data = await res.json();
-    
-    // RapidAPI response usually has items or similar structure
     const items = data.items || data.search_results || [];
     
     return items.slice(0, 10).map((item: any) => ({
       id: item.id || item.videoId,
       title: item.title,
-      artist: item.channelTitle || item.author,
+      artist: item.channelTitle || item.author || "YouTube Discovery",
       thumbnail: item.thumbnail?.url || item.thumbnails?.[0]?.url,
-      album: "YouTube Discovery",
+      album: "YouTube Video Discovery",
       isSaavn: false,
       isYouTube: true,
       videoId: item.id || item.videoId
@@ -107,14 +139,13 @@ export async function getDetailAction(type: 'albums' | 'playlists' | 'artists', 
   }
 }
 
-export async function getSaavnPlaybackUrl(id: string, quality: 'low' | 'medium' | 'high' | 'auto' = 'auto'): Promise<string | null> {
+export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
   try {
     const song = await getSongDetailsAction(id);
     if (!song || !song.downloadUrl) return null;
-    
+    // Strictly use .url from the highest quality stream
     const links = song.downloadUrl;
-    // Strictly use .url property per user instructions
-    const url = links[links.length - 1]?.url || links[links.length - 1]?.link || null;
+    const url = links[links.length - 1]?.url || null;
     return url;
   } catch (error) {
     return null;
