@@ -1,3 +1,4 @@
+
 'use server';
 
 import { Track } from '@/store/usePlayerStore';
@@ -15,14 +16,15 @@ const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
  */
 function parseQuery(query: string) {
   const lowerQuery = query.toLowerCase();
-  // Support both :yt and yt keywords for robustness
-  const ytMode = lowerQuery.includes(":yt") || lowerQuery.includes("yt ");
+  
+  // Detect modes accurately
+  const ytMode = lowerQuery.includes(":yt");
   const lyricMode = lowerQuery.includes(":lyrics");
   
+  // Clean query thoroughly
   const cleanQuery = query
     .replace(/:yt/gi, "")
     .replace(/:lyrics/gi, "")
-    .replace(/^yt\s+/gi, "")
     .trim();
 
   return { ytMode, lyricMode, cleanQuery };
@@ -31,20 +33,17 @@ function parseQuery(query: string) {
 /**
  * Sovereign Hybrid Search Oracle - India Optimized
  * Aggregates JioSaavn (Primary), Gaana (Secondary), and YouTube (Explicit Fallback via :yt)
- * Hardened with Fault-Tolerance: One API failure will not kill the manifestation.
  */
 export async function searchAllAction(query: string) {
   try {
-    const { ytMode, lyricMode, cleanQuery } = parseQuery(query);
+    const { ytMode, cleanQuery } = parseQuery(query);
 
-    // If no query and no ytMode, return empty
     if (!cleanQuery && !ytMode) return null;
 
     // Parallel Summoning with Sovereign Fault-Tolerance
     const saavnPromise = cleanQuery ? fetchSaavn(cleanQuery).catch(() => ({ songs: [] })) : Promise.resolve({ songs: [] });
     const gaanaPromise = cleanQuery ? fetchGaana(cleanQuery).catch(() => ({ songs: [], albums: [], artists: [], playlists: [] })) : Promise.resolve({ songs: [], albums: [], artists: [], playlists: [] });
     
-    // YouTube Summoning: If ytMode is true and cleanQuery is empty, fetch trending.
     const youtubeQuery = cleanQuery || "Trending Music India";
     const youtubePromise = ytMode ? fetchYouTube(youtubeQuery).catch(() => []) : Promise.resolve([]);
 
@@ -57,7 +56,7 @@ export async function searchAllAction(query: string) {
     // Unified Song List (JioSaavn + Gaana merged)
     const allSongs = [...(saavnData.songs || []), ...(gaanaData.songs || [])];
     
-    // De-duplication Strategy: Compare Title and Artist
+    // De-duplication Strategy
     const seen = new Set<string>();
     const uniqueSongs = allSongs.filter(song => {
       const key = `${song.title.toLowerCase().trim()}-${song.artist.toLowerCase().trim()}`;
@@ -66,19 +65,13 @@ export async function searchAllAction(query: string) {
       return true;
     });
 
-    // If :lyrics is used, prioritize tracks from JioSaavn as they have high-fidelity lyrics
-    if (lyricMode) {
-      uniqueSongs.sort((a, b) => (a.source === 'jiosaavn' ? -1 : 1));
-    }
-
     return {
       songs: { results: uniqueSongs },
       albums: { results: gaanaData.albums || [] },
       artists: { results: gaanaData.artists || [] },
       playlists: { results: gaanaData.playlists || [] },
       videos: { results: ytResults || [] },
-      ytMode,
-      lyricMode
+      ytMode
     };
   } catch (error) {
     console.error("Oracle Unified Search Error:", error);
@@ -116,7 +109,7 @@ async function fetchSaavn(query: string) {
 
 async function fetchGaana(query: string) {
   try {
-    const res = await fetch(`${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}`, {
+    const res = await fetch(`${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}&country=IN`, {
       next: { revalidate: 3600 }
     });
     if (!res.ok) return { songs: [], albums: [], artists: [], playlists: [] };
@@ -178,10 +171,7 @@ async function fetchGaana(query: string) {
 }
 
 async function fetchYouTube(query: string) {
-  if (!RAPIDAPI_KEY) {
-    console.warn("Oracle: YouTube RapidAPI Key missing. Fallback Discovery disabled.");
-    return [];
-  }
+  if (!RAPIDAPI_KEY) return [];
   try {
     const res = await fetch(`https://${RAPIDAPI_HOST}/search?query=${encodeURIComponent(query)}&regionCode=IN&hl=en-IN`, {
       headers: {
@@ -192,8 +182,6 @@ async function fetchYouTube(query: string) {
     });
     if (!res.ok) return [];
     const data = await res.json();
-    
-    // RapidAPI response can be an array directly or inside a results property
     const items = Array.isArray(data) ? data : (data.results || []);
 
     return items.map((v: any) => ({
@@ -220,11 +208,9 @@ export async function resolveTrackAudio(track: Track): Promise<string | null> {
     }
     return null; 
   }
-  
   if (track.source === 'jiosaavn') {
     return getSaavnPlaybackUrl(track.id);
   }
-
   return null;
 }
 
@@ -235,7 +221,6 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
     const data = await res.json();
     const song = data.data?.[0];
     if (!song || !song.downloadUrl) return null;
-    
     const links = song.downloadUrl;
     return links[links.length - 1]?.url || links[0]?.url || null;
   } catch (error) {
@@ -245,23 +230,23 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
 
 export async function getLyricsAction(songId: string, songUrl?: string) {
   try {
+    // Tier 1: Summon via ID
     let res = await fetch(`${SAAVN_API_BASE}/api/songs/${songId}`);
-    if (!res.ok) return null;
-    let data = await res.json();
-    let song = data?.data?.[0];
-
-    if (song?.lyrics) return song.lyrics;
-
-    if (songUrl || song?.url) {
-      const urlToFetch = songUrl || song?.url;
-      res = await fetch(`${SAAVN_API_BASE}/api/songs?link=${encodeURIComponent(urlToFetch)}`);
-      if (res.ok) {
-        data = await res.json();
-        const fallbackSong = data?.data?.[0];
-        if (fallbackSong?.lyrics) return fallbackSong.lyrics;
-      }
+    if (res.ok) {
+      let data = await res.json();
+      let song = data?.data?.[0];
+      if (song?.lyrics) return song.lyrics;
     }
 
+    // Tier 2: Fallback via Link
+    if (songUrl) {
+      res = await fetch(`${SAAVN_API_BASE}/api/songs?link=${encodeURIComponent(songUrl)}`);
+      if (res.ok) {
+        let data = await res.json();
+        let song = data?.data?.[0];
+        if (song?.lyrics) return song.lyrics;
+      }
+    }
     return null;
   } catch (error) {
     console.error("Oracle Lyrics Fetch Error:", error);

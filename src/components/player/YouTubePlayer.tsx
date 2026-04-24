@@ -1,3 +1,6 @@
+
+"use client";
+
 import React, { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { resolveTrackAudio } from '@/app/actions/youtube-search';
@@ -24,7 +27,7 @@ export const YouTubePlayer: React.FC = () => {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Sleep Timer Tick
+  // Global Sleep Timer Heartbeat
   useEffect(() => {
     const timer = setInterval(() => {
       tickSleepTimer();
@@ -75,10 +78,11 @@ export const YouTubePlayer: React.FC = () => {
     if (!audioRef.current) return;
     
     const initializePlayback = async () => {
-      // MANDATORY: Immediately stop, clear source, and load nothing to preventSnip playback of previous tracks
+      // MANDATORY: Aggressively purge state before manifestation to prevent overlapping snippets
       audioRef.current!.pause();
       audioRef.current!.src = "";
-      audioRef.current!.load();
+      audioRef.current!.load(); // Forces cleanup
+      setProgress(0);
       
       if (!currentTrack) return;
 
@@ -131,7 +135,7 @@ export const YouTubePlayer: React.FC = () => {
     };
 
     initializePlayback();
-  }, [currentTrack?.id]); // Only trigger on track change
+  }, [currentTrack?.id]); // Strictly on manifestation change
 
   useEffect(() => {
     if (!audioRef.current || !audioRef.current.src || currentTrack?.isYouTube) return;

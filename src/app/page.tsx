@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
@@ -116,7 +117,12 @@ function HomeContent() {
             
             <AnimatePresence>
               {currentTrack?.isYouTube && (
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="mb-10 w-full aspect-video rounded-3xl overflow-hidden bg-black border border-primary/20 relative group">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }} 
+                  animate={{ opacity: 1, scale: 1 }} 
+                  exit={{ opacity: 0, scale: 0.9 }} 
+                  className="mb-10 w-full aspect-video rounded-3xl overflow-hidden bg-black border border-primary/20 relative group"
+                >
                   <iframe src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen />
                   <button onClick={() => setCurrentTrack(null)} className="absolute top-4 right-4 bg-black/80 p-2 rounded-full text-primary opacity-0 group-hover:opacity-100 transition-opacity border border-primary/20"><X className="w-6 h-6" /></button>
                   <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4 backdrop-blur-md border-t border-primary/20">
@@ -128,7 +134,13 @@ function HomeContent() {
             </AnimatePresence>
 
             <AnimatePresence mode="wait">
-              <motion.div key={currentTab + searchQuery + detailId} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+              <motion.div 
+                key={currentTab + searchQuery + detailId} 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: -10 }} 
+                transition={{ duration: 0.2 }}
+              >
                 {currentTab === 'home' && <HomeView />}
                 {currentTab === 'search' && <SearchResultsView query={searchQuery} />}
                 {currentTab === 'liked' && <LikedSongsView userId={user.uid} />}
@@ -199,7 +211,7 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {isLoading ? [...Array(5)].map((_, i) => <div key={`skeleton-${i}`} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
           songs.slice(0, 5).map((track: any, i: number) => (
-            <SearchResult key={`track-${track.id}-${i}`} track={track} results={songs.slice(0, 5)} index={i} />
+            <SearchResult key={`${track.id}-${i}`} track={track} results={songs.slice(0, 5)} index={i} />
           ))
         }
       </div>
@@ -318,7 +330,7 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
       <div className="space-y-1">
         {normalizedSongs.map((track: any, i: number) => (
           <TrackRow 
-            key={`track-row-${track.id}-${i}`} 
+            key={`${track.id}-${i}`} 
             track={track} 
             index={i + 1} 
             onClick={() => setQueue(normalizedSongs, i)} 

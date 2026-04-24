@@ -1,3 +1,6 @@
+
+"use client";
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -147,6 +150,7 @@ export const Player: React.FC = () => {
                 <span className="text-xs font-black uppercase tracking-widest text-primary truncate max-w-[200px]">{currentTrack.album || "Sovereign Track"}</span>
               </div>
               <div className="flex items-center gap-4">
+                <SleepTimerButton />
                 <button onClick={() => openSheet('queue')} className="text-white/60 hover:text-white"><ListMusic className="w-6 h-6" /></button>
                 <button className="text-white/60 hover:text-white"><Share2 className="w-6 h-6" /></button>
               </div>
@@ -177,9 +181,9 @@ export const Player: React.FC = () => {
                   />
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/40">
                     <span>{formatTime(progress)}</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                        {sleepTimer !== null && (
-                         <span className="text-primary flex items-center gap-1"><Moon className="w-3 h-3" /> {formatSleepTimer(sleepTimer)}</span>
+                         <span className="text-primary flex items-center gap-1 animate-pulse"><Moon className="w-3 h-3" /> {formatSleepTimer(sleepTimer)}</span>
                        )}
                        <span>{formatTime(duration)}</span>
                     </div>
@@ -198,7 +202,7 @@ export const Player: React.FC = () => {
                     </button>
                     <button onClick={nextTrack} className="text-white hover:text-primary transition-all"><SkipForward className="w-8 h-8 md:w-10 md:h-10 fill-current" /></button>
                   </div>
-                  <SleepTimerButton />
+                  <div className="w-6" /> {/* Placeholder for balance */}
                 </div>
               </div>
             )}
@@ -245,7 +249,9 @@ export const Player: React.FC = () => {
                 {isPlaying ? <Pause className="fill-black text-black w-4 h-4 md:w-5 md:h-5" /> : <Play className="fill-black text-black w-4 h-4 md:w-5 md:h-5 ml-0.5" />}
               </button>
               <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all"><SkipForward className="fill-current w-5 h-5 md:w-6 md:h-6" /></button>
-              <SleepTimerButton />
+              <div className="hidden md:block">
+                 <Repeat className="w-4 h-4 text-muted-foreground opacity-30" />
+              </div>
             </div>
             {/* PROGRESS BAR: Hidden on mobile mini-player */}
             <div className="flex items-center gap-3 w-full px-2 hidden md:flex">
@@ -267,16 +273,17 @@ export const Player: React.FC = () => {
           </div>
         )}
 
-        <div className="flex-1 flex items-center justify-end gap-3 md:gap-5">
+        <div className="flex-1 flex items-center justify-end gap-3 md:gap-4">
           {!currentTrack.isYouTube && (
             <button onClick={fetchLyrics} title="Lyrics" className={cn("transition-all", isLyricsSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
               <Music className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           )}
+          <SleepTimerButton />
           <button onClick={() => openSheet('queue')} title="Queue" className={cn("transition-all", isQueueSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
             <ListMusic className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2 w-24 md:w-32 ml-2 hidden sm:flex">
+          <div className="flex items-center gap-2 w-24 md:w-32 ml-2 hidden lg:flex">
             <button onClick={handleToggleMute}>
               {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-primary" /> : <Volume2 className="w-4 h-4 text-muted-foreground hover:text-white" />}
             </button>
@@ -296,18 +303,22 @@ const SleepTimerButton = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button title="Sleep Timer" className={cn("transition-all relative p-2", sleepTimer !== null ? "text-primary" : "text-white/40")}>
+        <button title="Sleep Timer" className={cn("transition-all relative p-2 rounded-full hover:bg-white/5", sleepTimer !== null ? "text-primary" : "text-muted-foreground hover:text-white")}>
           <Moon className="w-5 h-5 md:w-6 md:h-6" />
-          {sleepTimer !== null && <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />}
+          {sleepTimer !== null && <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_5px_rgba(255,215,0,0.8)]" />}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="bg-neutral-900 border-primary/20 text-white font-black uppercase text-[10px] z-[120]">
-        <DropdownMenuItem onClick={() => setSleepTimer(15)} className="focus:bg-primary/10 cursor-pointer">15 Minutes</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setSleepTimer(30)} className="focus:bg-primary/10 cursor-pointer">30 Minutes</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setSleepTimer(45)} className="focus:bg-primary/10 cursor-pointer">45 Minutes</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setSleepTimer(60)} className="focus:bg-primary/10 cursor-pointer">60 Minutes</DropdownMenuItem>
+      <DropdownMenuContent 
+        align="end" 
+        side="top" 
+        className="bg-[#0a0a0a] border border-primary/20 text-white font-black uppercase text-[10px] z-[120] p-1 min-w-[140px]"
+      >
+        <DropdownMenuItem onClick={() => setSleepTimer(15)} className="focus:bg-primary/10 cursor-pointer p-2 rounded-md">15 Minutes</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSleepTimer(30)} className="focus:bg-primary/10 cursor-pointer p-2 rounded-md">30 Minutes</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSleepTimer(45)} className="focus:bg-primary/10 cursor-pointer p-2 rounded-md">45 Minutes</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSleepTimer(60)} className="focus:bg-primary/10 cursor-pointer p-2 rounded-md">60 Minutes</DropdownMenuItem>
         {sleepTimer !== null && (
-          <DropdownMenuItem onClick={() => setSleepTimer(null)} className="text-red-500 focus:bg-red-500/10 cursor-pointer">Stop Timer</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setSleepTimer(null)} className="text-red-500 focus:bg-red-500/10 cursor-pointer p-2 rounded-md border-t border-primary/10 mt-1">Stop Timer</DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
