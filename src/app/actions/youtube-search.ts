@@ -12,19 +12,19 @@ const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
 
 /**
  * Sovereign Query Parser
- * Strips modifiers and returns logic flags
+ * Strips modifiers and returns logic flags with regex-level precision
  */
 function parseQuery(query: string) {
   const lowerQuery = query.toLowerCase();
   
-  // Detect modes accurately
-  const ytMode = lowerQuery.includes(":yt");
-  const lyricMode = lowerQuery.includes(":lyrics");
+  // Detect modes accurately with global flags
+  const ytMode = /:yt\b/i.test(query);
+  const lyricMode = /:lyrics\b/i.test(query);
   
-  // Clean query thoroughly
+  // Clean query thoroughly using global regex
   const cleanQuery = query
-    .replace(/:yt/gi, "")
-    .replace(/:lyrics/gi, "")
+    .replace(/:yt\b/gi, "")
+    .replace(/:lyrics\b/gi, "")
     .trim();
 
   return { ytMode, lyricMode, cleanQuery };
@@ -40,12 +40,17 @@ export async function searchAllAction(query: string) {
 
     if (!cleanQuery && !ytMode) return null;
 
+    console.log(`%cOracle: Parsing query for manifestation [Mode: ${ytMode ? 'YT' : 'Standard'}]`, "color: #FFD700; font-weight: 900;");
+
     // Parallel Summoning with Sovereign Fault-Tolerance
     const saavnPromise = cleanQuery ? fetchSaavn(cleanQuery).catch(() => ({ songs: [] })) : Promise.resolve({ songs: [] });
     const gaanaPromise = cleanQuery ? fetchGaana(cleanQuery).catch(() => ({ songs: [], albums: [], artists: [], playlists: [] })) : Promise.resolve({ songs: [], albums: [], artists: [], playlists: [] });
     
     const youtubeQuery = cleanQuery || "Trending Music India";
-    const youtubePromise = ytMode ? fetchYouTube(youtubeQuery).catch(() => []) : Promise.resolve([]);
+    const youtubePromise = ytMode ? fetchYouTube(youtubeQuery).catch((err) => {
+      console.error("Oracle: YouTube Vault error", err);
+      return [];
+    }) : Promise.resolve([]);
 
     const [saavnData, gaanaData, ytResults] = await Promise.all([
       saavnPromise,
@@ -171,7 +176,10 @@ async function fetchGaana(query: string) {
 }
 
 async function fetchYouTube(query: string) {
-  if (!RAPIDAPI_KEY) return [];
+  if (!RAPIDAPI_KEY) {
+    console.warn("Oracle: YouTube Vault key missing.");
+    return [];
+  }
   try {
     const res = await fetch(`https://${RAPIDAPI_HOST}/search?query=${encodeURIComponent(query)}&regionCode=IN&hl=en-IN`, {
       headers: {
@@ -182,17 +190,23 @@ async function fetchYouTube(query: string) {
     });
     if (!res.ok) return [];
     const data = await res.json();
-    const items = Array.isArray(data) ? data : (data.results || []);
+    
+    // Robust normalization for diverse RapidAPI response structures
+    let items = [];
+    if (Array.isArray(data)) items = data;
+    else if (data.results && Array.isArray(data.results)) items = data.results;
+    else if (data.contents && Array.isArray(data.contents)) items = data.contents;
+    else if (data.data && Array.isArray(data.data)) items = data.data;
 
     return items.map((v: any) => ({
-      id: v.videoId || v.id,
-      videoId: v.videoId || v.id,
-      title: v.title,
-      artist: v.channelTitle || "YouTube Discovery",
-      thumbnail: v.thumbnail?.[0]?.url || v.thumbnail || "https://via.placeholder.com/150",
+      id: v.videoId || v.id || v.id?.videoId,
+      videoId: v.videoId || v.id || v.id?.videoId,
+      title: v.title || v.snippet?.title || "Untitled Discovery",
+      artist: v.channelTitle || v.snippet?.channelTitle || "YouTube Discovery",
+      thumbnail: v.thumbnail?.[0]?.url || v.thumbnail || v.snippet?.thumbnails?.high?.url || "https://via.placeholder.com/150",
       source: 'youtube' as const,
       isYouTube: true,
-      url: `https://www.youtube.com/watch?v=${v.videoId || v.id}`,
+      url: `https://www.youtube.com/watch?v=${v.videoId || v.id || v.id?.videoId}`,
       isIndiaContent: true
     }));
   } catch (e) {
