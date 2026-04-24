@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import { Track, usePlayerStore } from '@/store/usePlayerStore';
-import { Play, Plus, Heart } from 'lucide-react';
+import { Play, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -14,14 +14,12 @@ interface SearchResultProps {
 
 export const SearchResult = memo(({ track }: SearchResultProps) => {
   const setCurrentTrack = usePlayerStore(s => s.setCurrentTrack);
-  const addToQueue = usePlayerStore(s => s.addToQueue);
   const likedTrackIds = usePlayerStore(s => s.likedTrackIds);
   const toggleLike = usePlayerStore(s => s.toggleLike);
   
   const { user } = useUser();
   const db = useFirestore();
   
-  // Gold Collection Logic: Strictly use .includes() for consistency
   const isLiked = Array.isArray(likedTrackIds) ? likedTrackIds.includes(track.id) : false;
 
   const handleLike = (e: React.MouseEvent) => {
@@ -48,7 +46,7 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="spotify-card group"
+      className="spotify-card group relative"
       onClick={() => setCurrentTrack(track)}
     >
       <div className="relative aspect-square mb-4 shadow-2xl rounded-lg overflow-hidden">

@@ -17,9 +17,6 @@ import { doc } from 'firebase/firestore';
 import { generateLyrics } from '@/ai/flows/generate-lyrics';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { getRelatedVideos } from '@/lib/youtube';
-import { toast } from '@/hooks/use-toast';
 
 export const Player: React.FC = () => {
   const router = useRouter();
@@ -28,7 +25,7 @@ export const Player: React.FC = () => {
     currentTrack, isPlaying, setIsPlaying, nextTrack, previousTrack, 
     progress, duration, volume, setVolume, isAdPlaying, likedTrackIds, toggleLike, seekTo,
     isShuffle, toggleShuffle, repeatMode, setRepeatMode, hasHydrated,
-    sleepTimer, setSleepTimer, queue, removeFromQueue, clearQueue
+    queue, clearQueue
   } = usePlayerStore();
   
   const { user } = useUser();
@@ -124,7 +121,7 @@ export const Player: React.FC = () => {
           </div>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-sm font-black text-white truncate hover:underline cursor-pointer">{currentTrack.title}</span>
+          <span className="text-sm font-black text-white truncate hover:underline cursor-pointer tracking-tighter">{currentTrack.title}</span>
           <span className="text-[10px] text-muted-foreground truncate font-black hover:text-white transition-all cursor-pointer uppercase tracking-widest">{currentTrack.artist}</span>
         </div>
         <button onClick={handleLike} className="ml-2">
@@ -202,7 +199,7 @@ const LyricsSheet = ({ isOpen, lyrics, isLoading, onOpenChange }: { isOpen: bool
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-6 py-20"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
           ) : (
-            <p className="text-xl font-black whitespace-pre-wrap leading-[2.5] tracking-wide text-center">{lyrics || "Searching archives..."}</p>
+            <p className="text-xl font-black whitespace-pre-wrap leading-[2.5] tracking-wide text-center uppercase">{lyrics || "Searching archives..."}</p>
           )}
         </ScrollArea>
       </div>

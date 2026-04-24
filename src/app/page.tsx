@@ -14,13 +14,14 @@ import {
   TrendingUp, Sparkles, LogIn, Heart, 
   Loader2, Mail, Lock, UserPlus, History, FolderOpen, Music2, Plus
 } from 'lucide-react';
-import { useUser, useAuth, useMemoFirebase, useFirestore } from '@/firebase';
+import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { query, collection, orderBy, limit, getDocs } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { usePlayerStore, Track } from '@/store/usePlayerStore';
+import { cn } from '@/lib/utils';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,8 +114,8 @@ function HomeContent() {
         </header>
 
         <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-8 rounded-[2rem] space-y-6 backdrop-blur-xl">
-          <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-black/60 border-primary/20 h-14 rounded-xl text-primary font-black" />
-          <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-black/60 border-primary/20 h-14 rounded-xl text-primary font-black" />
+          <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-black/60 border-primary/20 h-14 rounded-xl text-primary font-black placeholder:text-primary/20" />
+          <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-black/60 border-primary/20 h-14 rounded-xl text-primary font-black placeholder:text-primary/20" />
           <Button type="submit" disabled={isAuthLoading} className="w-full bg-primary text-black font-black h-14 rounded-xl text-lg hover:scale-105 transition-all shadow-[0_0_30px_rgba(212,175,55,0.2)] uppercase tracking-widest">
             {isAuthLoading ? <Loader2 className="animate-spin" /> : (isLogin ? "Enter Sanctuary" : "Create Archive")}
           </Button>
@@ -136,7 +137,6 @@ function HomeContent() {
         <div className="flex-1 overflow-y-auto no-scrollbar pb-32">
           <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-10">
             
-            {/* View Transitions */}
             {currentTab === 'home' && (
               <div className="space-y-10">
                 <section>
@@ -204,7 +204,7 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
   return (
     <section>
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-black text-white hover:underline cursor-pointer transition-all">{title}</h3>
+        <h3 className="text-xl font-black text-white hover:underline cursor-pointer transition-all uppercase tracking-tighter">{title}</h3>
         <button className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">Show all</button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
