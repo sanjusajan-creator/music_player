@@ -68,7 +68,7 @@ function HomeContent() {
   const db = useFirestore();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setQueue, hasHydrated } = usePlayerStore();
+  const { setQueue, setLikedTracks, hasHydrated } = usePlayerStore();
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -82,7 +82,7 @@ function HomeContent() {
     return ORACLE_SEEDS[Math.floor(Math.random() * ORACLE_SEEDS.length)];
   }, []);
 
-  // Initialize Liked Songs as Queue on mount - Non-blocking background fetch
+  // Initialize Liked Songs and Queue on mount - Non-blocking background fetch
   useEffect(() => {
     if (user && db && hasHydrated) {
       const fetchLikedAsQueue = async () => {
@@ -90,6 +90,7 @@ function HomeContent() {
           const likedRef = collection(db, 'users', user.uid, 'likedSongs');
           const q = query(likedRef, orderBy('likedAt', 'desc'), limit(50));
           const snap = await getDocs(q);
+          
           const tracks = snap.docs.map(doc => ({
             id: doc.id,
             title: doc.data().title,
@@ -97,6 +98,11 @@ function HomeContent() {
             thumbnail: doc.data().thumbnailUrl,
             duration: doc.data().durationSeconds
           }));
+
+          // Manifest liked IDs into the store for consistent heart icons
+          const likedIds = snap.docs.map(doc => doc.id);
+          setLikedTracks(likedIds);
+
           if (tracks.length > 0) {
             setQueue(tracks);
           }
@@ -106,7 +112,7 @@ function HomeContent() {
       };
       fetchLikedAsQueue();
     }
-  }, [user?.uid, db, hasHydrated, setQueue]);
+  }, [user?.uid, db, hasHydrated, setQueue, setLikedTracks]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();

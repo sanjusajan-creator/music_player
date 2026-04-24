@@ -29,7 +29,7 @@ interface PlayerState {
   originalQueue: Track[]; 
   history: Track[];
   localTracks: Track[];
-  likedTrackIds: Set<string>;
+  likedTrackIds: string[]; // Changed to string array for robust persistence
   isPlaying: boolean;
   isBuffering: boolean;
   isAdPlaying: boolean;
@@ -77,7 +77,7 @@ export const usePlayerStore = create<PlayerState>()(
       originalQueue: [],
       history: [],
       localTracks: [],
-      likedTrackIds: new Set(),
+      likedTrackIds: [],
       isPlaying: false,
       isBuffering: false,
       isAdPlaying: false,
@@ -127,11 +127,11 @@ export const usePlayerStore = create<PlayerState>()(
       
       clearQueue: () => set({ queue: [], originalQueue: [] }),
 
-      setLikedTracks: (ids) => set({ likedTrackIds: new Set(ids) }),
+      setLikedTracks: (ids) => set({ likedTrackIds: ids }),
       toggleLike: (trackId) => set((state) => {
-        const next = new Set(state.likedTrackIds);
-        if (next.has(trackId)) next.delete(trackId);
-        else next.add(trackId);
+        const next = state.likedTrackIds.includes(trackId)
+          ? state.likedTrackIds.filter(id => id !== trackId)
+          : [...state.likedTrackIds, trackId];
         return { likedTrackIds: next };
       }),
 
@@ -211,7 +211,7 @@ export const usePlayerStore = create<PlayerState>()(
       partialize: (state) => ({ 
         volume: state.volume, 
         history: state.history,
-        likedTrackIds: Array.from(state.likedTrackIds) as any,
+        likedTrackIds: state.likedTrackIds,
         repeatMode: state.repeatMode,
         isShuffle: state.isShuffle,
         isAutoplay: state.isAutoplay,
@@ -221,9 +221,6 @@ export const usePlayerStore = create<PlayerState>()(
         return (rehydratedState, error) => {
           if (rehydratedState) {
             rehydratedState.hasHydrated = true;
-            if (Array.isArray(rehydratedState.likedTrackIds)) {
-              rehydratedState.likedTrackIds = new Set(rehydratedState.likedTrackIds);
-            }
           }
         };
       }

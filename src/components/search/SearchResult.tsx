@@ -17,7 +17,7 @@ interface SearchResultProps {
  */
 export const SearchResult = memo(({ track }: SearchResultProps) => {
   const { setCurrentTrack, addToQueue, likedTrackIds, toggleLike } = usePlayerStore();
-  const isLiked = likedTrackIds.has(track.id);
+  const isLiked = likedTrackIds.includes(track.id);
 
   const handleAddToQueue = (e: React.MouseEvent) => {
     e.stopPropagation();
