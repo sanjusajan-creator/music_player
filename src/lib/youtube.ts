@@ -6,12 +6,14 @@ const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
- * Multi-Provider Search Strategy (Sovereignty Architecture):
- * 1. iTunes API (Public, No Key needed)
- * 2. Audius API (Public, Decentralized, No Key needed)
- * 3. Deezer API (Via Proxy, No Key needed)
- * 4. YouTube (Fallback/Quota-aware)
- * 5. Cosmic Archive (Mock fallback)
+ * Sovereign Multi-Provider Search Strategy:
+ * 1. iTunes API (Public)
+ * 2. Audius API (Decentralized Public)
+ * 3. Deezer API (Via Proxy)
+ * 4. Mixcloud API (Public)
+ * 5. Archive.org (Public)
+ * 6. YouTube (Fallback/Quota-aware)
+ * 7. Cosmic Archive (Mock fallback)
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -19,12 +21,11 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
   const cacheKey = sanitizedQuery.replace(/\s+/g, '_');
   
-  // 1. Check Firestore Cache first for performance
+  // 1. Check Firestore Cache first
   try {
     const db = getDb();
     const cacheRef = doc(db, "search_cache", cacheKey);
     const cacheSnap = await getDoc(cacheRef);
-
     if (cacheSnap.exists()) {
       const data = cacheSnap.data();
       const age = Date.now() - (data.timestamp?.toMillis() || 0);
@@ -32,13 +33,13 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // 2. Try iTunes Search API
+  // tier 1: iTunes Search API
   try {
     const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`;
-    const itunesRes = await fetch(itunesUrl);
-    const itunesData = await itunesRes.json();
-    if (itunesData.results && itunesData.results.length > 0) {
-      const results = itunesData.results.map((item: any) => ({
+    const res = await fetch(itunesUrl);
+    const data = await res.json();
+    if (data.results?.length > 0) {
+      const results = data.results.map((item: any) => ({
         id: `itunes-${item.trackId}`,
         title: item.trackName,
         artist: item.artistName,
@@ -50,12 +51,12 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // 3. Try Audius API (Decentralized, No Key)
+  // tier 2: Audius API (Decentralized)
   try {
-    const audiusRes = await fetch(`https://api.audius.co/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=VIBECRAFT`);
-    const audiusData = await audiusRes.json();
-    if (audiusData.data && audiusData.data.length > 0) {
-      const results = audiusData.data.map((item: any) => ({
+    const res = await fetch(`https://api.audius.co/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=VIBECRAFT`);
+    const data = await res.json();
+    if (data.data?.length > 0) {
+      const results = data.data.map((item: any) => ({
         id: `audius-${item.id}`,
         title: item.title,
         artist: item.user.name,
@@ -67,13 +68,13 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // 4. Try Deezer Search API (Via allorigins proxy)
+  // tier 3: Deezer API
   try {
     const deezerUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.deezer.com/search?q=${query}&limit=15`)}`;
-    const deezerRes = await fetch(deezerUrl);
-    const deezerData = await deezerRes.json();
-    const contents = JSON.parse(deezerData.contents);
-    if (contents.data && contents.data.length > 0) {
+    const res = await fetch(deezerUrl);
+    const data = await res.json();
+    const contents = JSON.parse(data.contents);
+    if (contents.data?.length > 0) {
       const results = contents.data.map((item: any) => ({
         id: `deezer-${item.id}`,
         title: item.title,
@@ -86,17 +87,48 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // 5. YouTube API (Quota-aware fallback)
+  // tier 4: Mixcloud API
+  try {
+    const res = await fetch(`https://api.mixcloud.com/search/?q=${encodeURIComponent(query)}&type=cloudcast`);
+    const data = await res.json();
+    if (data.data?.length > 0) {
+      const results = data.data.map((item: any) => ({
+        id: `mixcloud-${item.key.replace(/\//g, '-')}`,
+        title: item.name,
+        artist: item.user.username,
+        thumbnail: item.pictures.extra_large || item.pictures.large || 'https://picsum.photos/seed/mixcloud/400/400',
+        duration: item.audio_length
+      }));
+      updateCache(cacheKey, results);
+      return results;
+    }
+  } catch (e) {}
+
+  // tier 5: Archive.org API
+  try {
+    const res = await fetch(`https://archive.org/advancedsearch.php?q=${encodeURIComponent(query)}+AND+mediatype:audio&output=json&rows=15`);
+    const data = await res.json();
+    if (data.response.docs?.length > 0) {
+      const results = data.response.docs.map((item: any) => ({
+        id: `archive-${item.identifier}`,
+        title: item.title || "Unknown Archive",
+        artist: item.creator?.[0] || item.creator || "Unknown Artist",
+        thumbnail: `https://archive.org/services/img/${item.identifier}`,
+        duration: 0
+      }));
+      updateCache(cacheKey, results);
+      return results;
+    }
+  } catch (e) {}
+
+  // Final tier: YouTube (Quota-aware)
   if (YOUTUBE_API_KEY) {
     try {
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music')}&type=video&maxResults=15&key=${YOUTUBE_API_KEY}`;
       const searchRes = await fetch(searchUrl);
-      
       if (searchRes.status === 403) throw new Error("QUOTA_EXCEEDED");
-
       const searchData = await searchRes.json();
       const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
-      
       if (videoIds) {
         const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
         const listRes = await fetch(listUrl);
@@ -114,7 +146,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     } catch (error) {}
   }
 
-  // 6. Final Fallback: Cosmic Archive
+  // Final Fallback: Cosmic Archive
   return getMockResults(sanitizedQuery);
 }
 
@@ -131,7 +163,6 @@ function updateCache(key: string, results: Track[]) {
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
   if (!videoId || videoId.startsWith('local-')) return [];
   if (!YOUTUBE_API_KEY) return MOCK_TRACKS.slice(0, 5);
-
   try {
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
     const searchRes = await fetch(searchUrl);
@@ -139,11 +170,9 @@ export async function getRelatedVideos(videoId: string): Promise<Track[]> {
     const searchData = await searchRes.json();
     const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
     if (!videoIds) return MOCK_TRACKS.slice(0, 5);
-
     const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
     const listRes = await fetch(listUrl);
     const listData = await listRes.json();
-
     return (listData.items || []).map((item: any) => ({
       id: item.id,
       title: normalizeMetadata(item.snippet.title),

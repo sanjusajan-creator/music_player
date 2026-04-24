@@ -119,6 +119,6 @@ main {
 
 /* Specific class to prevent internal pull-to-refresh */
 .no-overscroll {
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: none !important;
   -webkit-overflow-scrolling: touch;
 }
