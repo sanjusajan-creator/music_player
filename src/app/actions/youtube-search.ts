@@ -43,7 +43,8 @@ export async function scrapeYouTubeSearch(query: string): Promise<Track[]> {
         id: videoId,
         title: normalizeMetadata(title),
         artist: normalizeMetadata(artist),
-        thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+        // Use hqdefault for 100% reliability; maxresdefault is often missing for non-HD music
+        thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
         duration: parseDuration(video.lengthText?.simpleText || "0:00")
       });
 

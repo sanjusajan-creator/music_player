@@ -49,7 +49,7 @@ export const YouTubePlayer: React.FC = () => {
       audio.addEventListener('error', () => {
         const err = audio.error;
         // Sovereign Shield: Silence errors when src is invalid or resetting
-        if (!audio.src || audio.src === window.location.href || audio.src === "") return;
+        if (!audio.src || audio.src === window.location.href || audio.src === "" || audio.src.includes('null')) return;
         
         console.error("Vibecraft Audio Engine Error:", 
           err?.code || 'Unknown Code',
@@ -73,7 +73,8 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (!currentTrack) return;
 
-    const isYouTube = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
+    // YouTube IDs are 11 chars and can contain -, _, A-Z, a-z, 0-9
+    const isYouTube = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11;
     const isNative = currentTrack.isLocal || !!currentTrack.previewUrl;
 
     if (isNative && audioRef.current) {
@@ -145,7 +146,7 @@ export const YouTubePlayer: React.FC = () => {
   // Progress & Ad Detection (YouTube only)
   useEffect(() => {
     const interval = setInterval(() => {
-      const isYouTube = currentTrack && !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
+      const isYouTube = currentTrack && !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11;
       if (!playerRef.current || !isPlaying || !isYouTube) return;
 
       try {
@@ -186,7 +187,7 @@ export const YouTubePlayer: React.FC = () => {
 
   if (!currentTrack) return null;
 
-  const isYouTubeTrack = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
+  const isYouTubeTrack = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11;
 
   return (
     <div className="yt-player-hidden">
@@ -200,7 +201,7 @@ export const YouTubePlayer: React.FC = () => {
               controls: 0, 
               rel: 0, 
               modestbranding: 1, 
-              origin: origin
+              origin: origin || undefined
             },
           }}
           onReady={onReady}
