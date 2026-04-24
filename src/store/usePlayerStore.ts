@@ -222,8 +222,8 @@ export const usePlayerStore = create<PlayerState>()(
         return (rehydratedState) => {
           if (rehydratedState) {
             rehydratedState.hasHydrated = true;
-            // STRICT SHIELD: Migration logic to handle accidental legacy "Set" objects from older versions
-            if (rehydratedState.likedTrackIds && !Array.isArray(rehydratedState.likedTrackIds)) {
+            // SOVEREIGN SHIELD: Migration logic to heal legacy corrupted storage models
+            if (!rehydratedState.likedTrackIds || !Array.isArray(rehydratedState.likedTrackIds)) {
               console.log("Oracle: Healing Gold Collection storage model.");
               rehydratedState.likedTrackIds = [];
             }

@@ -41,7 +41,9 @@ export const YouTubePlayer: React.FC = () => {
 
       audio.addEventListener('error', () => {
         const err = audio.error;
-        // Fix for Error logging: Log properties individually for high-fidelity Oracle debugging
+        // SOVEREIGN SHIELD: Don't log error if src is empty or just the page URL
+        if (!audio.src || audio.src === window.location.href) return;
+        
         console.error("Vibecraft Audio Engine Error:", 
           err?.code || 'Unknown Code',
           err?.message || 'Media source error or CORS restriction',
@@ -82,15 +84,15 @@ export const YouTubePlayer: React.FC = () => {
         url = currentTrack.previewUrl;
       }
 
-      if (url && audioRef.current.src !== url) {
+      // SOVEREIGN SHIELD: Only set src if URL is a valid stream
+      if (url && url.length > 5 && audioRef.current.src !== url) {
         audioRef.current.src = url;
         audioRef.current.load();
         
-        // Use high-fidelity wait for metadata before playing
         const handleCanPlay = () => {
           if (isPlaying) {
             audioRef.current?.play().catch(err => {
-              console.warn("Vibecraft: Autoplay block or interruption.", err);
+              console.warn("Vibecraft: Autoplay block.", err);
             });
           }
           audioRef.current?.removeEventListener('canplay', handleCanPlay);
@@ -111,7 +113,7 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     const isNative = currentTrack?.isLocal || !!currentTrack?.previewUrl;
     
-    if (isNative && audioRef.current) {
+    if (isNative && audioRef.current && audioRef.current.src && audioRef.current.src !== window.location.href) {
       if (isPlaying) {
         audioRef.current.play().catch(() => {});
       } else {
@@ -137,7 +139,7 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (seekRequest !== null) {
       const isNative = currentTrack?.isLocal || !!currentTrack?.previewUrl;
-      if (isNative && audioRef.current) {
+      if (isNative && audioRef.current && audioRef.current.src.length > 5) {
         audioRef.current.currentTime = seekRequest;
       } else if (playerRef.current) {
         try { playerRef.current.seekTo(seekRequest, true); } catch (e) {}
