@@ -11,6 +11,7 @@ export interface Track {
   isLocal?: boolean;
   localFile?: File;
   previewUrl?: string; 
+  isSaavn?: boolean;
 }
 
 export interface Playlist {
@@ -130,7 +131,6 @@ export const usePlayerStore = create<PlayerState>()(
       setLikedTracks: (ids) => set({ likedTrackIds: Array.isArray(ids) ? ids : [] }),
       
       toggleLike: (trackId) => set((state) => {
-        // Gold Collection Consistency Fix: Use array methods strictly
         const currentLiked = Array.isArray(state.likedTrackIds) ? state.likedTrackIds : [];
         const next = currentLiked.includes(trackId)
           ? currentLiked.filter(id => id !== trackId)
@@ -209,7 +209,7 @@ export const usePlayerStore = create<PlayerState>()(
       },
     }),
     {
-      name: 'vibecraft-vault-v6',
+      name: 'vibecraft-vault-v7',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 
@@ -224,7 +224,6 @@ export const usePlayerStore = create<PlayerState>()(
         return (rehydratedState) => {
           if (rehydratedState) {
             rehydratedState.hasHydrated = true;
-            // Sovereign Storage Healing Shield
             if (!rehydratedState.likedTrackIds || !Array.isArray(rehydratedState.likedTrackIds)) {
               rehydratedState.likedTrackIds = [];
             }

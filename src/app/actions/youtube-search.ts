@@ -3,75 +3,58 @@
 
 import { Track } from '@/store/usePlayerStore';
 
+const SAAVN_API_BASE = 'https://my-jiosaavn-api.onrender.com';
+
 /**
- * Sovereign YouTube Scraper
- * Fetches real results directly from YouTube without API keys.
+ * Sovereign Saavn Search
+ * Fetches real results from self-hosted JioSaavn API.
  */
-export async function scrapeYouTubeSearch(query: string): Promise<Track[]> {
+export async function searchMusicAction(query: string): Promise<Track[]> {
   try {
-    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
-    const response = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',
-      }
+    const response = await fetch(`${SAAVN_API_BASE}/api/search?query=${encodeURIComponent(query)}`, {
+      next: { revalidate: 3600 } // Cache for 1 hour at edge
     });
 
-    if (!response.ok) throw new Error("YouTube Vault unreachable.");
+    if (!response.ok) throw new Error("Saavn Vault unreachable.");
 
-    const html = await response.text();
-    const dataMatch = html.match(/var ytInitialData = (\{.*?\});/);
+    const data = await response.json();
     
-    if (!dataMatch) throw new Error("Failed to parse Oracle data.");
+    // Extract songs from data.data.songs.results as per requirements
+    const songs = data.data?.songs?.results || [];
 
-    const data = JSON.parse(dataMatch[1]);
-    const results: Track[] = [];
+    const results: Track[] = songs.map((song: any) => ({
+      id: song.id,
+      title: song.title || song.name,
+      artist: song.primaryArtists || 'Unknown Artist',
+      // High quality image at index 2
+      thumbnail: song.image?.[2]?.url || song.image?.[1]?.url || 'https://picsum.photos/seed/music/600/600',
+      duration: parseInt(song.duration) || 0,
+      isSaavn: true
+    }));
 
-    // Navigate the complex YouTube JSON structure (Innertune-style)
-    const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents;
-    const items = contents?.[0]?.itemSectionRenderer?.contents || [];
-
-    for (const item of items) {
-      const video = item.videoRenderer;
-      if (!video) continue;
-
-      const videoId = video.videoId;
-      const title = video.title.runs[0].text;
-      const artist = video.ownerText.runs[0].text;
-      
-      results.push({
-        id: videoId,
-        title: normalizeMetadata(title),
-        artist: normalizeMetadata(artist),
-        // Use hqdefault for 100% reliability; maxresdefault is often missing for non-HD music
-        thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-        duration: parseDuration(video.lengthText?.simpleText || "0:00")
-      });
-
-      if (results.length >= 15) break;
-    }
-
-    return results;
+    return results.slice(0, 15);
   } catch (error) {
-    console.error("Scraper Error:", error);
+    console.error("Saavn Scraper Error:", error);
     return [];
   }
 }
 
-function normalizeMetadata(text: string): string {
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\(Official Video\)/gi, '')
-    .replace(/\(Official Audio\)/gi, '')
-    .replace(/VEVO/gi, '')
-    .trim();
-}
+/**
+ * Sovereign Saavn Playback Fetcher
+ * Extracts the 320kbps download link for a song ID.
+ */
+export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${SAAVN_API_BASE}/api/songs/${id}`);
+    if (!response.ok) return null;
 
-function parseDuration(text: string): number {
-  const parts = text.split(':').map(Number);
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  if (parts.length === 2) return parts[0] * 60 + parts[1];
-  return 0;
+    const data = await response.json();
+    // Extract data.data[0].downloadUrl[4].link as per requirements
+    const downloadUrl = data.data?.[0]?.downloadUrl?.[4]?.link || data.data?.[0]?.downloadUrl?.[3]?.link;
+    
+    return downloadUrl || null;
+  } catch (error) {
+    console.error("Saavn Playback Error:", error);
+    return null;
+  }
 }

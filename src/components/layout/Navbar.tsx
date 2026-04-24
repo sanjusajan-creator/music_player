@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -8,6 +9,7 @@ import { useUser } from "@/firebase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useDebounce } from "@/hooks/use-debounce";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +25,9 @@ export const Navbar: React.FC = () => {
 
   const currentTab = searchParams.get("tab") || "home";
   const [searchValue, setSearchValue] = useState(searchParams.get("q") || "");
+  
+  // Requirement: Debounce search input (300ms)
+  const debouncedSearch = useDebounce(searchValue, 300);
 
   useEffect(() => {
     setSearchValue(searchParams.get("q") || "");
