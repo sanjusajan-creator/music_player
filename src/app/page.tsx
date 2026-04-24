@@ -12,7 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { 
   TrendingUp, Sparkles, Heart, 
-  Loader2, FolderOpen, History, Music2, Plus, Play, Disc, User, ListMusic
+  Loader2, FolderOpen, History, Music2, Plus, Play, Disc, User, ListMusic, Home, Search, Library
 } from 'lucide-react';
 import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -55,6 +55,7 @@ function HomeContent() {
   const auth = useAuth();
   const db = useFirestore();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { setLikedTracks, hasHydrated } = usePlayerStore();
   
   const [isLogin, setIsLogin] = useState(true);
@@ -123,21 +124,21 @@ function HomeContent() {
   );
 
   return (
-    <div className="flex h-[100dvh] w-screen bg-black overflow-hidden select-none">
+    <div className="flex h-[100dvh] w-screen bg-black overflow-hidden select-none relative">
       <Sidebar />
-      <main className="flex-1 flex flex-col min-w-0 bg-black relative">
+      <main className="flex-1 flex flex-col min-w-0 bg-black relative h-full">
         <Navbar />
         <YouTubePlayer />
         
-        <ScrollArea className="flex-1">
-          <div className="p-6 md:p-8 max-w-7xl mx-auto pb-32">
+        <ScrollArea className="flex-1 h-full overflow-y-auto no-scrollbar">
+          <div className="p-4 md:p-8 max-w-7xl mx-auto pb-40">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentTab + searchQuery + detailId}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
               >
                 {currentTab === 'home' && <HomeView />}
                 {currentTab === 'search' && <SearchResultsView query={searchQuery} />}
@@ -148,11 +149,26 @@ function HomeContent() {
             </AnimatePresence>
           </div>
         </ScrollArea>
+
+        {/* Mobile Navigation Bar */}
+        <nav className="md:hidden fixed bottom-24 left-0 right-0 h-16 bg-black/80 backdrop-blur-xl border-t border-white/5 flex items-center justify-around z-50">
+          <MobileNavItem icon={<Home />} label="Home" active={currentTab === 'home'} onClick={() => router.push('/?tab=home')} />
+          <MobileNavItem icon={<Search />} label="Search" active={currentTab === 'search'} onClick={() => router.push('/?tab=search')} />
+          <MobileNavItem icon={<Library />} label="Library" active={currentTab === 'liked'} onClick={() => router.push('/?tab=liked')} />
+        </nav>
+
         <Player />
       </main>
     </div>
   );
 }
+
+const MobileNavItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) => (
+  <button onClick={onClick} className={cn("flex flex-col items-center gap-1 transition-all", active ? "text-primary" : "text-muted-foreground")}>
+    {React.cloneElement(icon as React.ReactElement, { className: 'w-6 h-6' })}
+    <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+  </button>
+);
 
 function HomeView() {
   const greeting = useMemo(() => {
@@ -166,7 +182,7 @@ function HomeView() {
     <div className="space-y-10">
       <section>
         <h2 className="text-3xl font-black text-white mb-6 gold-glow">{greeting}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           <GreetingCard label="Gold Hits" icon={<TrendingUp className="text-primary" />} />
           <GreetingCard label="Liked Songs" icon={<Heart className="text-pink-500 fill-current" />} />
           <GreetingCard label="Magic Mix" icon={<Sparkles className="text-blue-400" />} />
@@ -189,10 +205,10 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
   return (
     <section>
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-2xl font-black text-white hover:text-primary cursor-pointer transition-all uppercase tracking-tighter">{title}</h3>
+        <h3 className="text-xl md:text-2xl font-black text-white hover:text-primary cursor-pointer transition-all uppercase tracking-tighter">{title}</h3>
         <button className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">Show all</button>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {isLoading ? [...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
           songs.slice(0, 5).map((track: any) => (
             <SearchResult key={track.id} track={{
@@ -238,7 +254,7 @@ function SearchResultsView({ query }: { query: string }) {
       {results.songs?.results?.length > 0 && (
         <section>
           <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter gold-glow">Top Songs</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
             {results.songs.results.map((t: any) => (
               <SearchResult key={t.id} track={{
                 id: t.id,
@@ -259,28 +275,6 @@ function SearchResultsView({ query }: { query: string }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
             {results.albums.results.map((a: any) => (
               <CategoryCard key={a.id} label={a.title} image={a.image?.[2]?.url} type="albums" id={a.id} subtitle={a.artist} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {results.artists?.results?.length > 0 && (
-        <section>
-          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter gold-glow">Artists</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
-            {results.artists.results.map((ar: any) => (
-              <CategoryCard key={ar.id} label={ar.title} image={ar.image?.[2]?.url} type="artists" id={ar.id} isCircle />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {results.playlists?.results?.length > 0 && (
-        <section>
-          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter gold-glow">Playlists</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
-            {results.playlists.results.map((p: any) => (
-              <CategoryCard key={p.id} label={p.title} image={p.image?.[2]?.url} type="playlists" id={p.id} />
             ))}
           </div>
         </section>
@@ -311,12 +305,12 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row items-end gap-8 bg-gradient-to-b from-primary/20 to-transparent p-8 rounded-[3rem] border border-primary/5">
-        <img src={data.image?.[2]?.url} className={cn("w-64 h-64 shadow-2xl object-cover gold-border-glow", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
-        <div className="space-y-4 flex-1">
+      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/20 to-transparent p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-primary/5">
+        <img src={data.image?.[2]?.url} className={cn("w-48 h-48 md:w-64 md:h-64 shadow-2xl object-cover gold-border-glow", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
+        <div className="space-y-4 flex-1 text-center md:text-left">
           <p className="text-[10px] font-black uppercase tracking-widest text-primary/60">{type.slice(0, -1)}</p>
-          <h1 className="text-5xl md:text-8xl font-black text-white gold-glow tracking-tighter leading-none">{data.title || data.name}</h1>
-          <div className="flex items-center gap-6 mt-4">
+          <h1 className="text-3xl md:text-6xl lg:text-8xl font-black text-white gold-glow tracking-tighter leading-none">{data.title || data.name}</h1>
+          <div className="flex flex-col md:flex-row items-center gap-6 mt-4">
              <Button onClick={handlePlayAll} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all shadow-[0_0_30px_rgba(212,175,55,0.3)]"><Play className="w-6 h-6 fill-current mr-2" /> Play All</Button>
              <div className="flex flex-col">
                 <span className="text-sm font-black text-white/80">{songs.length} Manifestations</span>
@@ -339,7 +333,7 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
               id: s.id,
               title: s.title || s.name,
               artist: s.primaryArtists || s.artists?.primary?.[0]?.name || data.title,
-              thumbnail: s.image?.[2]?.url || data.image?.[1]?.url,
+              thumbnail: s.image?.[2]?.url || s.image?.[1]?.url,
               album: data.title || data.name,
               isSaavn: true
             }} index={i + 1} />
@@ -358,7 +352,7 @@ function TrackRow({ track, index }: { track: Track, index: number }) {
     <div 
       onClick={() => setCurrentTrack(track)} 
       className={cn(
-        "grid grid-cols-[32px_1fr_1fr_48px] items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer border border-transparent",
+        "grid grid-cols-[32px_1fr_48px] md:grid-cols-[32px_1fr_1fr_48px] items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer border border-transparent",
         isActive && "bg-white/10 border-primary/20"
       )}
     >
@@ -373,7 +367,7 @@ function TrackRow({ track, index }: { track: Track, index: number }) {
           <span className={cn("text-sm font-black text-muted-foreground group-hover:text-primary transition-colors", isActive && "text-primary")}>{index}</span>
         )}
       </div>
-      <div className="flex items-center gap-4 min-w-0">
+      <div className="flex items-center gap-3 md:gap-4 min-w-0">
         <img src={track.thumbnail} className="w-10 h-10 rounded shadow-md object-cover shrink-0" alt="t" />
         <div className="flex flex-col min-w-0">
           <p className={cn("text-sm font-black truncate uppercase tracking-tighter", isActive ? "text-primary" : "text-white")}>{track.title}</p>
@@ -387,9 +381,9 @@ function TrackRow({ track, index }: { track: Track, index: number }) {
 }
 
 const GreetingCard = ({ label, icon }: { label: string, icon: React.ReactNode }) => (
-  <div className="flex items-center gap-4 bg-white/5 hover:bg-white/10 transition-all rounded-md overflow-hidden cursor-pointer group pr-4 h-20 border border-white/5 shadow-lg">
-    <div className="w-20 h-20 bg-white/5 flex items-center justify-center shrink-0 shadow-xl border-r border-white/5">{React.cloneElement(icon as React.ReactElement, { className: 'w-10 h-10' })}</div>
-    <span className="text-sm font-black text-white truncate flex-1 uppercase tracking-tighter">{label}</span>
+  <div className="flex items-center gap-3 md:gap-4 bg-white/5 hover:bg-white/10 transition-all rounded-md overflow-hidden cursor-pointer group pr-4 h-16 md:h-20 border border-white/5 shadow-lg">
+    <div className="w-16 h-16 md:w-20 md:h-20 bg-white/5 flex items-center justify-center shrink-0 shadow-xl border-r border-white/5">{React.cloneElement(icon as React.ReactElement, { className: 'w-8 h-8 md:w-10 md:h-10' })}</div>
+    <span className="text-xs md:text-sm font-black text-white truncate flex-1 uppercase tracking-tighter">{label}</span>
     <button className="w-10 h-10 bg-primary rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl hidden md:flex"><Play className="w-6 h-6 text-black fill-current" /></button>
   </div>
 );
@@ -406,20 +400,20 @@ const CategoryCard = ({ label, image, subtitle, type, id, isCircle }: { label: s
         params.set('id', id);
         router.push(`/?${params.toString()}`);
       }}
-      className="spotify-card flex flex-col gap-4 group"
+      className="spotify-card flex flex-col gap-3 md:gap-4 group"
     >
       <div className={cn("relative aspect-square overflow-hidden shadow-2xl", isCircle ? "rounded-full" : "rounded-xl")}>
         <img src={image} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="c" />
         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
         {!isCircle && (
-          <button className="absolute bottom-3 right-3 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-2xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-            <Play className="fill-black text-black w-6 h-6 ml-1" />
+          <button className="absolute bottom-2 right-2 md:bottom-3 md:right-3 w-10 h-10 md:w-12 md:h-12 bg-primary rounded-full flex items-center justify-center shadow-2xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+            <Play className="fill-black text-black w-5 h-5 md:w-6 md:h-6 ml-1" />
           </button>
         )}
       </div>
       <div className="space-y-1">
-        <p className="text-sm font-black text-white truncate uppercase tracking-tighter gold-glow group-hover:text-primary transition-colors">{label}</p>
-        {subtitle && <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest truncate">{subtitle}</p>}
+        <p className="text-xs md:text-sm font-black text-white truncate uppercase tracking-tighter gold-glow group-hover:text-primary transition-colors">{label}</p>
+        {subtitle && <p className="text-[9px] md:text-[10px] text-muted-foreground font-black uppercase tracking-widest truncate">{subtitle}</p>}
       </div>
     </div>
   );
@@ -434,17 +428,17 @@ function LikedSongsView({ userId }: { userId: string }) {
   const { data: likedDocs } = useCollection(q);
   return (
     <div className="space-y-10">
-      <div className="flex items-end gap-8 bg-gradient-to-b from-indigo-600/30 to-transparent p-8 rounded-[3rem] border border-indigo-500/10">
-        <div className="w-64 h-64 bg-gradient-to-br from-indigo-600 to-indigo-900 rounded-2xl shadow-2xl flex items-center justify-center gold-border-glow">
-          <Heart className="w-32 h-32 text-white fill-current animate-pulse-gold" />
+      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-indigo-600/30 to-transparent p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-indigo-500/10">
+        <div className="w-48 h-48 md:w-64 md:h-64 bg-gradient-to-br from-indigo-600 to-indigo-900 rounded-2xl shadow-2xl flex items-center justify-center gold-border-glow">
+          <Heart className="w-24 h-24 md:w-32 md:h-32 text-white fill-current animate-pulse-gold" />
         </div>
-        <div className="space-y-4">
+        <div className="space-y-4 text-center md:text-left">
           <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Collection</p>
-          <h2 className="text-5xl md:text-8xl font-black text-white gold-glow tracking-tighter leading-none">Liked Songs</h2>
+          <h2 className="text-4xl md:text-8xl font-black text-white gold-glow tracking-tighter leading-none">Liked Songs</h2>
           <p className="text-sm font-black text-white/40 uppercase tracking-widest">{likedDocs?.length || 0} Saved Manifestations</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {likedDocs?.map((doc: any) => (
           <SearchResult key={doc.id} track={{
             id: doc.id,
@@ -491,18 +485,18 @@ function LocalArchivesView() {
 
   return (
     <div className="space-y-12">
-      <header className="flex justify-between items-end bg-gradient-to-b from-orange-500/20 to-transparent p-8 rounded-[3rem] border border-orange-500/10">
-        <div>
-          <h2 className="text-5xl md:text-7xl font-black text-white gold-glow tracking-tighter uppercase leading-none">Local Vault</h2>
+      <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 bg-gradient-to-b from-orange-500/20 to-transparent p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-orange-500/10">
+        <div className="text-center md:text-left">
+          <h2 className="text-4xl md:text-7xl font-black text-white gold-glow tracking-tighter uppercase leading-none">Local Vault</h2>
           <p className="text-[10px] text-orange-400 font-black uppercase tracking-widest mt-4">System archives manifested</p>
         </div>
         <Button onClick={handleSummon} className="bg-orange-500 text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all shadow-[0_0_30px_rgba(249,115,22,0.3)]">Summon Folder</Button>
       </header>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {localTracks.map(t => <SearchResult key={t.id} track={t} />)}
         {localTracks.length === 0 && (
-          <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-white/5 rounded-[3rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-white/5 transition-all group">
-            <FolderOpen className="w-24 h-24 text-muted-foreground/10 group-hover:text-primary/20 transition-colors" />
+          <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-white/5 rounded-[2rem] md:rounded-[3rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-white/5 transition-all group">
+            <FolderOpen className="w-20 h-24 md:w-24 md:h-24 text-muted-foreground/10 group-hover:text-primary/20 transition-colors" />
             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">Click to unlock local vault</p>
           </div>
         )}

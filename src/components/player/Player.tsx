@@ -59,7 +59,8 @@ export const Player: React.FC = () => {
     }, { merge: true });
   };
 
-  const handleToggleMute = () => {
+  const handleToggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (isMuted) {
       setVolume(prevVolume);
       setIsMuted(false);
@@ -70,7 +71,8 @@ export const Player: React.FC = () => {
     }
   };
 
-  const fetchLyrics = async () => {
+  const fetchLyrics = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!currentTrack) return;
     if (lyrics && lyrics.includes(currentTrack.title)) {
       openSheet('lyrics');
@@ -126,25 +128,25 @@ export const Player: React.FC = () => {
               <button onClick={closeOverlays} className="text-white/60 hover:text-white transition-all"><ChevronDown className="w-10 h-10" /></button>
               <div className="flex flex-col items-center">
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Now Manifesting</span>
-                <span className="text-xs font-black uppercase tracking-widest text-primary truncate max-w-[200px]">{currentTrack.album}</span>
+                <span className="text-xs font-black uppercase tracking-widest text-primary truncate max-w-[200px]">{currentTrack.album || "Sovereign Track"}</span>
               </div>
               <button className="text-white/60 hover:text-white transition-all"><Share2 className="w-6 h-6" /></button>
             </div>
 
-            <div className="flex-1 flex flex-col items-center justify-center p-8 gap-12 z-10">
+            <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 md:gap-12 z-10">
               <motion.img 
                 layoutId="player-artwork"
                 src={currentTrack.thumbnail} 
-                className="w-full max-w-md aspect-square rounded-[3rem] shadow-[0_0_80px_rgba(212,175,55,0.15)] gold-border-glow object-cover" 
+                className="w-full max-w-[300px] md:max-w-md aspect-square rounded-[2rem] md:rounded-[3rem] shadow-[0_0_80px_rgba(212,175,55,0.15)] gold-border-glow object-cover" 
                 alt="art" 
               />
               <div className="w-full max-w-xl space-y-2 text-center">
-                <h1 className="text-4xl md:text-6xl font-black text-white gold-glow tracking-tighter uppercase leading-none">{currentTrack.title}</h1>
-                <p className="text-lg font-black text-primary/60 uppercase tracking-[0.2em]">{currentTrack.artist}</p>
+                <h1 className="text-3xl md:text-6xl font-black text-white gold-glow tracking-tighter uppercase leading-none">{currentTrack.title}</h1>
+                <p className="text-sm md:text-lg font-black text-primary/60 uppercase tracking-[0.2em]">{currentTrack.artist}</p>
               </div>
             </div>
 
-            <div className="p-12 w-full max-w-3xl mx-auto space-y-8 z-10">
+            <div className="p-8 md:p-12 w-full max-w-3xl mx-auto space-y-8 z-10">
               <div className="space-y-4">
                 <Slider 
                   value={[progress]} 
@@ -160,15 +162,15 @@ export const Player: React.FC = () => {
               
               <div className="flex items-center justify-between">
                 <button onClick={toggleShuffle} className={cn("transition-all", isShuffle ? "text-primary" : "text-white/40")}><Shuffle className="w-6 h-6" /></button>
-                <div className="flex items-center gap-10">
-                  <button onClick={previousTrack} className="text-white hover:text-primary transition-all"><SkipBack className="w-10 h-10 fill-current" /></button>
+                <div className="flex items-center gap-6 md:gap-10">
+                  <button onClick={previousTrack} className="text-white hover:text-primary transition-all"><SkipBack className="w-8 h-8 md:w-10 md:h-10 fill-current" /></button>
                   <button 
                     onClick={() => setIsPlaying(!isPlaying)}
-                    className="w-24 h-24 bg-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-2xl"
+                    className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-2xl"
                   >
-                    {isPlaying ? <Pause className="w-10 h-10 fill-black text-black" /> : <Play className="w-10 h-10 fill-black text-black ml-1.5" />}
+                    {isPlaying ? <Pause className="w-8 h-8 md:w-10 md:h-10 fill-black text-black" /> : <Play className="w-8 h-8 md:w-10 md:h-10 fill-black text-black ml-1.5" />}
                   </button>
-                  <button onClick={nextTrack} className="text-white hover:text-primary transition-all"><SkipForward className="w-10 h-10 fill-current" /></button>
+                  <button onClick={nextTrack} className="text-white hover:text-primary transition-all"><SkipForward className="w-8 h-8 md:w-10 md:h-10 fill-current" /></button>
                 </div>
                 <button 
                   onClick={() => setRepeatMode(repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none')}
@@ -182,72 +184,72 @@ export const Player: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[60] h-24 bg-black/90 backdrop-blur-xl border-t border-white/5 flex items-center px-6 gap-6 shadow-2xl">
+      <div className="fixed bottom-0 md:bottom-0 left-0 right-0 z-[60] h-20 md:h-24 bg-black/90 backdrop-blur-xl border-t border-white/5 flex items-center px-4 md:px-6 gap-4 md:gap-6 shadow-2xl">
         {/* Track Info (Left) */}
-        <div className="flex-1 flex items-center gap-4 min-w-0">
+        <div className="flex-1 flex items-center gap-3 md:gap-4 min-w-0">
           <div className="relative group shrink-0" onClick={() => router.push(`/?view=full&${searchParams.toString()}`)}>
             <motion.img 
               layoutId="player-artwork"
               src={currentTrack.thumbnail} 
-              className="w-14 h-14 rounded-xl shadow-lg object-cover gold-border-glow" 
+              className="w-12 h-12 md:w-14 md:h-14 rounded-lg shadow-lg object-cover gold-border-glow cursor-pointer" 
               alt="artwork" 
             />
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer rounded-xl">
-              <Maximize2 className="w-5 h-5 text-white" />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer rounded-lg">
+              <Maximize2 className="w-4 h-4 md:w-5 md:h-5 text-white" />
             </div>
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-sm font-black text-white truncate hover:text-primary cursor-pointer tracking-tighter uppercase">{currentTrack.title}</span>
-            <span className="text-[10px] text-muted-foreground truncate font-black hover:text-white transition-all cursor-pointer uppercase tracking-widest">{currentTrack.artist}</span>
+            <span onClick={() => router.push(`/?view=full&${searchParams.toString()}`)} className="text-xs md:text-sm font-black text-white truncate hover:text-primary cursor-pointer tracking-tighter uppercase">{currentTrack.title}</span>
+            <span className="text-[9px] md:text-[10px] text-muted-foreground truncate font-black hover:text-white transition-all cursor-pointer uppercase tracking-widest">{currentTrack.artist}</span>
           </div>
-          <button onClick={handleLike} className="ml-2">
-            <Heart className={cn("w-5 h-5 transition-all", isLiked ? "fill-primary text-primary" : "text-muted-foreground hover:text-white")} />
+          <button onClick={handleLike} className="ml-1 md:ml-2">
+            <Heart className={cn("w-4 h-4 md:w-5 md:h-5 transition-all", isLiked ? "fill-primary text-primary" : "text-muted-foreground hover:text-white")} />
           </button>
         </div>
 
-        {/* Controls (Center) */}
-        <div className="flex-[2] max-w-2xl flex flex-col items-center gap-2">
-          <div className="flex items-center gap-6">
-            <button onClick={toggleShuffle} className={cn("transition-all", isShuffle ? "text-primary" : "text-muted-foreground hover:text-white")}>
+        {/* Controls (Center) - Hidden on smallest mobile if needed, but here responsive */}
+        <div className="flex-[2] max-w-2xl flex flex-col items-center gap-1 md:gap-2">
+          <div className="flex items-center gap-4 md:gap-6">
+            <button onClick={toggleShuffle} className={cn("transition-all hidden md:block", isShuffle ? "text-primary" : "text-muted-foreground hover:text-white")}>
               <Shuffle className="w-4 h-4" />
             </button>
-            <button onClick={previousTrack} className="text-muted-foreground hover:text-white transition-all"><SkipBack className="w-6 h-6 fill-current" /></button>
+            <button onClick={previousTrack} className="text-muted-foreground hover:text-white transition-all"><SkipBack className="w-5 h-5 md:w-6 md:h-6 fill-current" /></button>
             <button 
               onClick={() => setIsPlaying(!isPlaying)}
-              className="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-all active:scale-95 shadow-xl"
+              className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-all active:scale-95 shadow-xl"
             >
-              {isPlaying ? <Pause className="fill-black text-black w-5 h-5" /> : <Play className="fill-black text-black w-5 h-5 ml-0.5" />}
+              {isPlaying ? <Pause className="fill-black text-black w-4 h-4 md:w-5 md:h-5" /> : <Play className="fill-black text-black w-4 h-4 md:w-5 md:h-5 ml-0.5" />}
             </button>
-            <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all"><SkipForward className="fill-current w-6 h-6" /></button>
+            <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all"><SkipForward className="fill-current w-5 h-5 md:w-6 md:h-6" /></button>
             <button 
               onClick={() => setRepeatMode(repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none')}
-              className={cn("transition-all relative", repeatMode !== 'none' ? "text-primary" : "text-muted-foreground hover:text-white")}
+              className={cn("transition-all relative hidden md:block", repeatMode !== 'none' ? "text-primary" : "text-muted-foreground hover:text-white")}
             >
               <Repeat className="w-4 h-4" />
               {repeatMode === 'one' && <span className="absolute -top-1.5 -right-1 text-[8px] font-black">1</span>}
             </button>
           </div>
-          <div className="flex items-center gap-3 w-full px-4">
-            <span className="text-[10px] font-black text-muted-foreground w-10 text-right">{formatTime(progress)}</span>
+          <div className="flex items-center gap-3 w-full px-2 md:px-4">
+            <span className="text-[9px] md:text-[10px] font-black text-muted-foreground w-8 md:w-10 text-right">{formatTime(progress)}</span>
             <Slider 
               value={[progress]} 
               max={duration || 100} 
               onValueChange={(v) => seekTo(v[0])} 
-              className="flex-1 cursor-pointer" 
+              className="flex-1 cursor-pointer h-1" 
             />
-            <span className="text-[10px] font-black text-muted-foreground w-10">{formatTime(duration)}</span>
+            <span className="text-[9px] md:text-[10px] font-black text-muted-foreground w-8 md:w-10">{formatTime(duration)}</span>
           </div>
         </div>
 
-        {/* Utilities (Right) */}
-        <div className="flex-1 flex items-center justify-end gap-5">
+        {/* Utilities (Right) - Desktop only or simplified on mobile */}
+        <div className="flex-1 flex items-center justify-end gap-3 md:gap-5">
           <button onClick={fetchLyrics} className={cn("transition-all", isLyricsSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
-            <Music className="w-5 h-5" />
+            <Music className="w-4 h-4 md:w-5 md:h-5" />
           </button>
-          <button onClick={() => openSheet('queue')} className={cn("transition-all", isQueueSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
+          <button onClick={() => openSheet('queue')} className={cn("transition-all hidden md:block", isQueueSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
             <ListMusic className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2 w-32 ml-2">
+          <div className="flex items-center gap-2 w-24 md:w-32 ml-1 md:ml-2 hidden sm:flex">
             <button onClick={handleToggleMute}>
               {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-primary" /> : <Volume2 className="w-4 h-4 text-muted-foreground hover:text-white" />}
             </button>
@@ -265,7 +267,7 @@ export const Player: React.FC = () => {
 const LyricsSheet = ({ isOpen, lyrics, isLoading, onOpenChange }: { isOpen: boolean, lyrics: string | null, isLoading: boolean, onOpenChange: (open: boolean) => void }) => (
   <Sheet open={isOpen} onOpenChange={onOpenChange}>
     <SheetContent side="right" className="bg-black border-l border-white/10 text-white p-0 w-full sm:max-w-md">
-      <div className="h-full flex flex-col p-8 relative">
+      <div className="h-full flex flex-col p-6 md:p-8 relative">
         <SheetClose className="absolute top-6 right-6 text-muted-foreground hover:text-white"><X className="w-8 h-8" /></SheetClose>
         <SheetHeader className="mb-10 text-center">
           <SheetTitle className="text-primary font-black uppercase tracking-[0.4em] text-2xl gold-glow">The Scroll</SheetTitle>
@@ -274,7 +276,7 @@ const LyricsSheet = ({ isOpen, lyrics, isLoading, onOpenChange }: { isOpen: bool
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-6 py-20"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
           ) : (
-            <p className="text-xl font-black whitespace-pre-wrap leading-[2.5] tracking-wide text-center uppercase text-white/80">{lyrics || "Searching archives..."}</p>
+            <p className="text-lg md:text-xl font-black whitespace-pre-wrap leading-[2.5] tracking-wide text-center uppercase text-white/80">{lyrics || "Searching archives..."}</p>
           )}
         </ScrollArea>
       </div>
@@ -287,7 +289,7 @@ const QueueSheet = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="bg-black border-l border-white/10 text-white p-0 w-full sm:max-w-md">
-        <div className="h-full flex flex-col p-8 relative">
+        <div className="h-full flex flex-col p-6 md:p-8 relative">
           <SheetClose className="absolute top-6 right-6 text-muted-foreground hover:text-white"><X className="w-8 h-8" /></SheetClose>
           <SheetHeader className="mb-8 flex flex-row items-center justify-between">
             <SheetTitle className="text-primary font-black uppercase tracking-[0.4em] text-2xl gold-glow">The Queue</SheetTitle>
@@ -327,7 +329,7 @@ const QueueItem = ({ track, isActive, onRemove }: { track: Track, isActive?: boo
       <p className="text-[9px] font-black text-muted-foreground uppercase truncate tracking-widest">{track.artist}</p>
     </div>
     {!isActive && onRemove && (
-      <button onClick={onRemove} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
+      <button onClick={(e) => { e.stopPropagation(); onRemove(); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
         <X className="w-4 h-4" />
       </button>
     )}

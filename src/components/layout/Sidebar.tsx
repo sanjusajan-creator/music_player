@@ -28,7 +28,8 @@ export const Sidebar = () => {
     router.push(`/?tab=${tab}`);
   };
 
-  const handleCreatePlaylist = () => {
+  const handleCreatePlaylist = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!user || !db) return;
     const colRef = collection(db, 'users', user.uid, 'playlists');
     addDocumentNonBlocking(colRef, {
