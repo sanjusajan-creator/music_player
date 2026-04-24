@@ -99,7 +99,7 @@ function HomeContent() {
 
   if (isUserLoading) return (
     <div className="h-screen w-screen bg-black flex flex-col items-center justify-center">
-      <Loader2 className="animate-spin text-primary w-12 h-12 mb-4" />
+      <Loader2 className="animate-spin text-primary w-12 h-12" />
     </div>
   );
 
@@ -126,13 +126,13 @@ function HomeContent() {
   );
 
   return (
-    <div className="flex h-screen w-screen bg-black overflow-hidden relative">
+    <div className="flex h-screen w-screen bg-black overflow-hidden relative selection:bg-primary/20">
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 bg-black relative h-full">
         <Navbar />
         <YouTubePlayer />
         
-        <ScrollArea className="flex-1 h-full overflow-y-auto no-scrollbar bg-black">
+        <ScrollArea className="flex-1 h-full bg-black">
           <div className="p-4 md:p-8 max-w-7xl mx-auto pb-40">
             <AnimatePresence mode="wait">
               <motion.div
@@ -141,6 +141,7 @@ function HomeContent() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
+                className="bg-black"
               >
                 {currentTab === 'home' && <HomeView />}
                 {currentTab === 'search' && <SearchResultsView query={searchQuery} />}
@@ -154,7 +155,7 @@ function HomeContent() {
         </ScrollArea>
 
         {/* Mobile Navigation Bar */}
-        <nav className="md:hidden fixed bottom-20 left-0 right-0 h-16 bg-black/90 backdrop-blur-xl border-t border-white/5 flex items-center justify-around z-50">
+        <nav className="md:hidden fixed bottom-20 left-0 right-0 h-16 bg-black/95 backdrop-blur-xl border-t border-white/5 flex items-center justify-around z-50">
           <MobileNavItem icon={<Home />} label="Home" active={currentTab === 'home'} onClick={() => router.push('/?tab=home')} />
           <MobileNavItem icon={<Search />} label="Search" active={currentTab === 'search'} onClick={() => router.push('/?tab=search')} />
           <MobileNavItem icon={<Library />} label="Library" active={currentTab === 'liked'} onClick={() => router.push('/?tab=liked')} />
@@ -183,7 +184,7 @@ function HomeView() {
   }, []);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 bg-black">
       <section>
         <h2 className="text-3xl font-black text-white mb-6 gold-glow">{greeting}</h2>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
@@ -207,7 +208,7 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
   const songs = data?.songs?.results || [];
   
   return (
-    <section>
+    <section className="bg-black">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl md:text-2xl font-black text-white hover:text-primary cursor-pointer transition-all uppercase tracking-tighter">{title}</h3>
         <button className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">Show all</button>
@@ -221,8 +222,8 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
               artist: track.primaryArtists || track.artist,
               thumbnail: track.image?.[2]?.url || track.image?.[1]?.url || track.thumbnail,
               album: track.album,
-              isSaavn: track.isSaavn !== undefined ? track.isSaavn : true,
-              isYouTube: !!track.isYouTube
+              isSaavn: true,
+              isYouTube: false
             }} />
           ))
         }
@@ -235,7 +236,7 @@ function SearchResultsView({ query }: { query: string }) {
   const { data: results, isLoading } = useSaavnSearch(query);
   
   if (isLoading) return (
-    <div className="space-y-12">
+    <div className="space-y-12 bg-black">
       {[...Array(3)].map((_, i) => (
         <div key={i} className="space-y-4">
           <div className="h-8 w-48 bg-white/5 animate-pulse rounded-md" />
@@ -248,14 +249,14 @@ function SearchResultsView({ query }: { query: string }) {
   );
 
   if (!results) return (
-    <div className="h-96 flex flex-col items-center justify-center gap-4 text-muted-foreground">
+    <div className="h-96 flex flex-col items-center justify-center gap-4 text-muted-foreground bg-black">
       <Music2 className="w-16 h-16 opacity-20" />
       <p className="text-[10px] font-black uppercase tracking-widest">Search the archives for gold</p>
     </div>
   );
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-12 bg-black">
       {results.songs?.results?.length > 0 && (
         <section>
           <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter gold-glow">Top Songs</h2>
@@ -267,8 +268,8 @@ function SearchResultsView({ query }: { query: string }) {
                 artist: t.primaryArtists || t.artist,
                 thumbnail: (t.image && t.image[2]?.url) || t.thumbnail,
                 album: t.album,
-                isSaavn: t.isSaavn !== undefined ? t.isSaavn : true,
-                isYouTube: !!t.isYouTube
+                isSaavn: true,
+                isYouTube: false
               }} />
             ))}
           </div>
@@ -293,7 +294,7 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
   const { data, isLoading } = useSaavnDetails(type, id);
   const { setQueue } = usePlayerStore();
 
-  if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
+  if (isLoading) return <div className="h-96 flex items-center justify-center bg-black"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
   if (!data) return null;
 
   const songs = data.songs || data.topSongs || [];
@@ -310,12 +311,12 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
   };
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/20 to-transparent p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-primary/5">
+    <div className="space-y-10 animate-in fade-in duration-500 bg-black">
+      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/5">
         <img src={data.image?.[2]?.url} className={cn("w-48 h-48 md:w-64 md:h-64 shadow-2xl object-cover gold-border-glow", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
         <div className="space-y-4 flex-1 text-center md:text-left">
           <p className="text-[10px] font-black uppercase tracking-widest text-primary/60">{type.slice(0, -1)}</p>
-          <h1 className="text-3xl md:text-6xl lg:text-8xl font-black text-white gold-glow tracking-tighter leading-none">{data.title || data.name}</h1>
+          <h1 className="text-3xl md:text-6xl font-black text-white gold-glow tracking-tighter leading-none">{data.title || data.name}</h1>
           <div className="flex flex-col md:flex-row items-center gap-6 mt-4">
              <Button onClick={handlePlayAll} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all shadow-[0_0_30px_rgba(212,175,55,0.3)]"><Play className="w-6 h-6 fill-current mr-2" /> Play All</Button>
              <div className="flex flex-col">
@@ -387,8 +388,8 @@ function TrackRow({ track, index }: { track: Track, index: number }) {
 }
 
 const GreetingCard = ({ label, icon }: { label: string, icon: React.ReactNode }) => (
-  <div className="flex items-center gap-3 md:gap-4 bg-white/5 hover:bg-white/10 transition-all rounded-md overflow-hidden cursor-pointer group pr-4 h-16 md:h-20 border border-white/5 shadow-lg">
-    <div className="w-16 h-16 md:w-20 md:h-20 bg-white/5 flex items-center justify-center shrink-0 shadow-xl border-r border-white/5">{React.cloneElement(icon as React.ReactElement, { className: 'w-8 h-8 md:w-10 md:h-10' })}</div>
+  <div className="flex items-center gap-3 md:gap-4 bg-white/5 hover:bg-white/10 transition-all rounded-md overflow-hidden cursor-pointer group pr-4 h-16 md:h-20 border border-white/5">
+    <div className="w-16 h-16 md:w-20 md:h-20 bg-white/5 flex items-center justify-center shrink-0 border-r border-white/5">{React.cloneElement(icon as React.ReactElement, { className: 'w-8 h-8 md:w-10 md:h-10' })}</div>
     <span className="text-xs md:text-sm font-black text-white truncate flex-1 uppercase tracking-tighter">{label}</span>
     <button className="w-10 h-10 bg-primary rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl hidden md:flex"><Play className="w-6 h-6 text-black fill-current" /></button>
   </div>
@@ -408,7 +409,7 @@ const CategoryCard = ({ label, image, subtitle, type, id, isCircle }: { label: s
       }}
       className="spotify-card flex flex-col gap-3 md:gap-4 group"
     >
-      <div className={cn("relative aspect-square overflow-hidden shadow-2xl", isCircle ? "rounded-full" : "rounded-xl")}>
+      <div className={cn("relative aspect-square overflow-hidden", isCircle ? "rounded-full" : "rounded-xl")}>
         <img src={image} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="c" />
         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
         {!isCircle && (
@@ -433,8 +434,8 @@ function LikedSongsView({ userId }: { userId: string }) {
   }, [userId, db]);
   const { data: likedDocs } = useCollection(q);
   return (
-    <div className="space-y-10">
-      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-indigo-600/30 to-transparent p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-indigo-500/10">
+    <div className="space-y-10 bg-black">
+      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-indigo-600/20 to-transparent p-6 md:p-8 rounded-[2rem] border border-indigo-500/10">
         <div className="w-48 h-48 md:w-64 md:h-64 bg-gradient-to-br from-indigo-600 to-indigo-900 rounded-2xl shadow-2xl flex items-center justify-center gold-border-glow">
           <Heart className="w-24 h-24 md:w-32 md:h-32 text-white fill-current animate-pulse-gold" />
         </div>
@@ -452,7 +453,8 @@ function LikedSongsView({ userId }: { userId: string }) {
             artist: doc.artist,
             thumbnail: doc.thumbnailUrl,
             duration: doc.durationSeconds,
-            album: "Liked Songs"
+            album: "Liked Songs",
+            isSaavn: true
           }} />
         ))}
       </div>
@@ -492,8 +494,8 @@ function LocalArchivesView() {
   };
 
   return (
-    <div className="space-y-12">
-      <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 bg-gradient-to-b from-orange-500/20 to-transparent p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-orange-500/10">
+    <div className="space-y-12 bg-black">
+      <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 bg-gradient-to-b from-orange-500/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-orange-500/10">
         <div className="text-center md:text-left">
           <h2 className="text-4xl md:text-7xl font-black text-white gold-glow tracking-tighter uppercase leading-none">Local Vault</h2>
           <p className="text-[10px] text-orange-400 font-black uppercase tracking-widest mt-4">System archives manifested</p>
@@ -503,7 +505,7 @@ function LocalArchivesView() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {localTracks.map(t => <SearchResult key={t.id} track={t} />)}
         {localTracks.length === 0 && (
-          <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-white/5 rounded-[2rem] md:rounded-[3rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-white/5 transition-all group">
+          <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-white/5 transition-all group">
             <FolderPlus className="w-20 h-24 md:w-24 md:h-24 text-muted-foreground/10 group-hover:text-primary/20 transition-colors" />
             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">Click to unlock local vault</p>
           </div>

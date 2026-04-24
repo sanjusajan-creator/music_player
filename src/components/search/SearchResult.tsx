@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { memo } from 'react';
@@ -69,7 +68,7 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
         <h4 className="font-black text-sm text-white truncate uppercase tracking-tighter leading-none">{track.title}</h4>
         <div className="flex items-center justify-between gap-2 mt-auto pt-1">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate font-black flex-1">{track.artist}</p>
-          <button onClick={handleLike} className="shrink-0">
+          <button onClick={handleLike} className="shrink-0 p-1">
             <Heart className={cn("w-4 h-4 transition-all", isLiked ? "fill-primary text-primary" : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-white")} />
           </button>
         </div>

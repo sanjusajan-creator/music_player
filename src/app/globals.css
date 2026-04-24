@@ -3,17 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 0%; /* Pure AMOLED Black #000000 */
+  --background: 0 0% 0%; /* Absolute AMOLED Black #000000 */
   --foreground: 0 0% 100%;
-  --card: 0 0% 0%; /* Pure Black for AMOLED */
+  --card: 0 0% 0%;
   --card-foreground: 0 0% 100%;
   --popover: 0 0% 0%;
   --popover-foreground: 0 0% 100%;
   --primary: 43 100% 50%; /* AMOLED Gold #FFD700 */
   --primary-foreground: 0 0% 0%;
-  --secondary: 0 0% 4%;
+  --secondary: 0 0% 0%;
   --secondary-foreground: 43 100% 70%;
-  --muted: 0 0% 8%;
+  --muted: 0 0% 0%;
   --muted-foreground: 43 10% 60%;
   --accent: 43 100% 50%;
   --accent-foreground: 0 0% 0%;
@@ -30,13 +30,15 @@
     @apply border-border;
   }
   html, body {
-    @apply bg-black text-white font-body antialiased;
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
     height: 100dvh;
     width: 100vw;
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #000000 !important;
   }
   
   h1, h2, h3, h4, h5, h6, span, p, button, input, div, a, label {
@@ -53,19 +55,24 @@
 }
 
 .glass-header {
-  @apply bg-black/60 backdrop-blur-xl border-b border-primary/10;
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
 }
 
 .spotify-sidebar-item {
-  @apply flex items-center gap-4 px-4 py-3 text-muted-foreground hover:text-primary transition-all rounded-lg cursor-pointer bg-transparent;
+  @apply flex items-center gap-4 px-4 py-3 text-muted-foreground hover:text-primary transition-all rounded-lg cursor-pointer;
+  background-color: transparent !important;
 }
 
 .spotify-sidebar-item.active {
-  @apply text-white bg-white/5;
+  @apply text-white;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .spotify-card {
-  @apply bg-white/5 p-3 md:p-4 rounded-xl hover:bg-white/10 transition-all duration-300 cursor-pointer border border-transparent hover:border-primary/20;
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  @apply p-4 rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer border border-transparent hover:border-primary/20;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -76,10 +83,10 @@
   width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: transparent !important;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-white/10 rounded-full hover:bg-primary/20;
+  @apply bg-primary/20 rounded-full hover:bg-primary/40;
 }
 
 @keyframes pulse-gold {

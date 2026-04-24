@@ -1,8 +1,7 @@
-
 "use client";
 
-import React, { useState } from 'react';
-import { Home, Search, Library, Heart, Plus, ListMusic, Sparkles, FolderOpen, Music2, Trash2, Settings } from 'lucide-react';
+import React from 'react';
+import { Home, Search, Library, Heart, Plus, ListMusic, FolderOpen, Trash2, Settings } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
@@ -26,7 +25,9 @@ export const Sidebar = () => {
   const { data: playlists } = useCollection(playlistsQuery);
 
   const navigate = (tab: string) => {
-    router.push(`/?tab=${tab}`);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.push(`/?${params.toString()}`);
   };
 
   const handleCreatePlaylist = (e: React.MouseEvent) => {
@@ -48,9 +49,9 @@ export const Sidebar = () => {
   };
 
   return (
-    <div className="w-64 h-full bg-black flex flex-col p-2 gap-2 shrink-0 hidden md:flex">
+    <div className="w-64 h-full bg-black flex flex-col p-2 gap-2 shrink-0 hidden md:flex border-r border-white/5">
       {/* Top Section */}
-      <div className="bg-white/5 rounded-xl p-2 space-y-1">
+      <div className="bg-black space-y-1">
         <SidebarItem 
           icon={<Home />} 
           label="Home" 
@@ -72,20 +73,14 @@ export const Sidebar = () => {
       </div>
 
       {/* Library Section */}
-      <div className="bg-white/5 rounded-xl flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="bg-black flex-1 flex flex-col min-h-0 overflow-hidden mt-4">
         <div className="p-4 flex items-center justify-between">
           <button className="flex items-center gap-3 text-muted-foreground hover:text-white transition-all font-black text-sm uppercase tracking-widest">
             <Library className="w-6 h-6" /> Your Library
           </button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10 rounded-full" onClick={handleCreatePlaylist}>
-            <Plus className="w-5 h-5" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/5 rounded-full" onClick={handleCreatePlaylist}>
+            <Plus className="w-5 h-5 text-primary" />
           </Button>
-        </div>
-
-        <div className="px-2 pb-2 flex flex-wrap gap-2">
-          <LibraryBadge label="Playlists" onClick={() => {}} />
-          <LibraryBadge label="Artists" onClick={() => {}} />
-          <LibraryBadge label="Albums" onClick={() => {}} />
         </div>
 
         <ScrollArea className="flex-1 px-2">
@@ -103,7 +98,7 @@ export const Sidebar = () => {
               onClick={() => navigate('local')} 
             />
             
-            <div className="py-2" />
+            <div className="py-4" />
 
             {playlists?.map((p) => (
               <div key={p.id} className="group relative">
@@ -133,19 +128,10 @@ const SidebarItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, 
     onClick={onClick}
     className={cn(
       "spotify-sidebar-item",
-      active && "active text-white"
+      active && "active"
     )}
   >
     {React.cloneElement(icon as React.ReactElement, { className: 'w-6 h-6' })}
     <span className="text-xs uppercase tracking-widest truncate">{label}</span>
   </div>
-);
-
-const LibraryBadge = ({ label, onClick }: { label: string, onClick: () => void }) => (
-  <button 
-    onClick={onClick}
-    className="bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all text-white/80"
-  >
-    {label}
-  </button>
 );
