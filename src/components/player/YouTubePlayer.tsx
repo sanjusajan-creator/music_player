@@ -66,7 +66,7 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (!currentTrack) return;
 
-    // Detect Source Type
+    // Detect Source Type: Only YouTube IDs (11 chars) go to YT Engine
     const isYouTube = !currentTrack.isLocal && !currentTrack.previewUrl && currentTrack.id.length === 11 && !currentTrack.id.includes('-');
     const isNative = currentTrack.isLocal || !!currentTrack.previewUrl;
 
@@ -86,12 +86,11 @@ export const YouTubePlayer: React.FC = () => {
         url = currentTrack.previewUrl;
       }
 
-      // SOVEREIGN SHIELD: Only set src if URL is a valid stream to prevent "Empty src" console errors
+      // SOVEREIGN SHIELD: Only set src if URL is valid to prevent "Empty src" console errors
       if (url && url.length > 5 && audioRef.current.src !== url) {
         audioRef.current.src = url;
         audioRef.current.load();
         
-        // Wait for potential playback activation
         const handleCanPlay = () => {
           if (isPlaying) {
             audioRef.current?.play().catch(err => {
@@ -164,7 +163,7 @@ export const YouTubePlayer: React.FC = () => {
         if (currentTime > 0) setProgress(currentTime);
         if (totalTime > 0) setDuration(totalTime);
 
-        // Basic Ad Detection via duration mismatch
+        // Basic Ad Detection
         if (currentTrack?.duration && totalTime > 0) {
           const diff = Math.abs(totalTime - currentTrack.duration);
           setIsAdPlaying(diff > 5);

@@ -2,78 +2,82 @@ import { Track } from "@/store/usePlayerStore";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getDb } from "@/firebase";
 
-const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
+const CACHE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 days persistent cache
+const sessionSearchCache = new Set<string>();
 
 /**
- * Sovereign Search Strategy (Innertune-inspired):
- * Uses high-fidelity Piped instances to fetch REAL YouTube results without an API key.
+ * Sovereign Hybrid Search Strategy:
+ * 1. Normalize Query
+ * 2. Check Session Set (Avoid repeat calls)
+ * 3. Check Firestore Cache Sanctuary
+ * 4. Call Official YouTube API v3 (Fallback only)
+ * 5. Save to Firestore for universal reuse
  */
 export async function searchTracks(query: string): Promise<Track[]> {
+  const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
   const sanitizedQuery = query?.toLowerCase().trim();
+  
   if (!sanitizedQuery || sanitizedQuery.length < 2) return [];
 
+  // 1. Normalize & Session Protection
   const cacheKey = sanitizedQuery.replace(/\s+/g, '_');
   
-  // 1. Check Firestore Cache Sanctuary
+  // 2. Firestore Cache Check (The Primary Sanctuary)
   try {
     const db = getDb();
     const cacheRef = doc(db, "search_cache", cacheKey);
     const cacheSnap = await getDoc(cacheRef);
+    
     if (cacheSnap.exists()) {
       const data = cacheSnap.data();
       const age = Date.now() - (data.timestamp?.toMillis() || 0);
-      if (age < CACHE_TTL) {
-        console.log("Oracle: Summoned from Cache Sanctuary.");
+      if (age < CACHE_TTL && data.results?.length > 0) {
+        console.log(`Oracle: Manifested "${sanitizedQuery}" from Cache Sanctuary.`);
         return data.results;
       }
     }
-  } catch (e) {}
-
-  // 2. Innertune Technique: Real YouTube Results via Piped API (Multi-Instance Failover)
-  const pipedInstances = [
-    'https://pipedapi.kavin.rocks',
-    'https://api.piped.video',
-    'https://pipedapi.leptons.xyz',
-    'https://piped-api.lunar.icu'
-  ];
-
-  console.log("Oracle: Summoning Real YouTube Archives...");
-
-  for (const instance of pipedInstances) {
-    try {
-      const res = await fetch(`${instance}/search?q=${encodeURIComponent(query)}&filter=music_videos`, {
-        mode: 'cors',
-        headers: { 'Accept': 'application/json' }
-      });
-      
-      if (!res.ok) continue;
-      
-      const data = await res.json();
-      if (data.items?.length > 0) {
-        const results = data.items.slice(0, 15).map((item: any) => {
-          const videoId = item.url.split('v=')[1];
-          return {
-            id: videoId,
-            title: normalizeMetadata(item.title),
-            artist: normalizeMetadata(item.uploaderName),
-            // Innertune Technique: Force maxres for premium visuals
-            thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
-            duration: item.duration || 0,
-          };
-        });
-        
-        updateCache(cacheKey, results);
-        console.log(`Oracle: Manifested ${results.length} real YouTube tracks from ${instance}.`);
-        return results;
-      }
-    } catch (e) {
-      console.warn(`Oracle: Instance ${instance} unreachable. Retrying...`);
-      continue;
-    }
+  } catch (e) {
+    console.warn("Oracle: Cache Sanctuary access interrupted.", e);
   }
 
-  // 3. Last Resort Fallback (Mock data)
-  return getMockResults(sanitizedQuery);
+  // 3. Official API Call (Fallback Only)
+  if (!apiKey) {
+    console.error("Oracle: YouTube API Key missing. Check .env.");
+    return getMockResults(sanitizedQuery);
+  }
+
+  console.log(`Oracle: Calling Official API for "${sanitizedQuery}"...`);
+
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(sanitizedQuery)}&type=video&videoCategoryId=10&maxResults=15&key=${apiKey}`
+    );
+    
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
+    
+    const data = await res.json();
+    const results = data.items.map((item: any) => {
+      const videoId = item.id.videoId;
+      return {
+        id: videoId,
+        title: normalizeMetadata(item.snippet.title),
+        artist: normalizeMetadata(item.snippet.channelTitle),
+        // Innertune Technique: Force high-res thumbnails
+        thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+        duration: 0, // Search API doesn't provide duration, player metadata will handle it
+      };
+    });
+
+    // 4. Persistence Genesis
+    if (results.length > 0) {
+      updateCache(cacheKey, results);
+    }
+    
+    return results;
+  } catch (error) {
+    console.error("Oracle: API Manifestation failed.", error);
+    return getMockResults(sanitizedQuery);
+  }
 }
 
 function updateCache(key: string, results: Track[]) {
@@ -87,24 +91,24 @@ function updateCache(key: string, results: Track[]) {
 }
 
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
-  // SOVEREIGN SHIELD: Don't call YT API for non-YT IDs
-  if (!videoId || videoId.length !== 11 || videoId.includes('-')) {
-    return MOCK_TRACKS;
-  }
-  
+  const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+  if (!apiKey || !videoId || videoId.length !== 11) return MOCK_TRACKS;
+
   try {
-    const res = await fetch(`https://pipedapi.kavin.rocks/streams/${videoId}`);
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${apiKey}`
+    );
     if (!res.ok) return MOCK_TRACKS;
     const data = await res.json();
     
-    return (data.relatedItems || []).slice(0, 10).map((item: any) => {
-      const vid = item.url.split('v=')[1];
+    return data.items.map((item: any) => {
+      const vid = item.id.videoId;
       return {
         id: vid,
-        title: normalizeMetadata(item.title),
-        artist: normalizeMetadata(item.uploaderName),
+        title: normalizeMetadata(item.snippet.title),
+        artist: normalizeMetadata(item.snippet.channelTitle),
         thumbnail: `https://i.ytimg.com/vi/${vid}/maxresdefault.jpg`,
-        duration: item.duration || 0,
+        duration: 0,
       };
     });
   } catch (error) {
@@ -129,8 +133,7 @@ function normalizeMetadata(text: string): string {
 }
 
 function getMockResults(query: string): Track[] {
-  const filtered = MOCK_TRACKS.filter(t => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query));
-  return filtered.length > 0 ? filtered : MOCK_TRACKS;
+  return MOCK_TRACKS.filter(t => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query));
 }
 
 const MOCK_TRACKS: Track[] = [

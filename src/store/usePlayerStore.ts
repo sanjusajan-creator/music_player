@@ -207,7 +207,7 @@ export const usePlayerStore = create<PlayerState>()(
       },
     }),
     {
-      name: 'vibecraft-spotify-v3',
+      name: 'vibecraft-spotify-v4',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 
@@ -222,7 +222,7 @@ export const usePlayerStore = create<PlayerState>()(
         return (rehydratedState) => {
           if (rehydratedState) {
             rehydratedState.hasHydrated = true;
-            // SOVEREIGN SHIELD: Migration logic to heal legacy corrupted storage models (e.g. from Sets or nulls)
+            // Sovereign Shield: Migration logic to heal legacy corrupted storage models
             if (!rehydratedState.likedTrackIds || !Array.isArray(rehydratedState.likedTrackIds)) {
               console.log("Oracle: Healing Gold Collection storage model.");
               rehydratedState.likedTrackIds = [];
