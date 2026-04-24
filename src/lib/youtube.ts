@@ -1,7 +1,7 @@
 import { Track } from "@/store/usePlayerStore";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getDb } from "@/firebase";
-import { searchMusicAction } from "@/app/actions/youtube-search";
+import { searchAllAction } from "@/app/actions/youtube-search";
 
 const CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30-day cache sanctuary
 const sessionSearchCache = new Set<string>();
@@ -44,7 +44,8 @@ export async function searchTracks(query: string): Promise<Track[]> {
   console.log(`Oracle: Summoning Saavn Archives for "${sanitizedQuery}"...`);
   try {
     // Strategy #10: Call the Sovereign Server Action
-    const results = await searchMusicAction(sanitizedQuery);
+    const result = await searchAllAction(sanitizedQuery);
+    const results = result?.songs?.results || [];
 
     if (results.length > 0) {
       updateCache(cacheKey, results);

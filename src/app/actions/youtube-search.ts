@@ -15,14 +15,17 @@ const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
  */
 function parseQuery(query: string) {
   const lowerQuery = query.toLowerCase();
-  return {
-    ytMode: lowerQuery.includes(":yt"),
-    lyricMode: lowerQuery.includes(":lyrics"),
-    cleanQuery: query
-      .replace(/:yt/gi, "")
-      .replace(/:lyrics/gi, "")
-      .trim()
-  };
+  // Support both :yt and yt keywords for robustness
+  const ytMode = lowerQuery.includes(":yt") || lowerQuery.includes("yt ");
+  const lyricMode = lowerQuery.includes(":lyrics");
+  
+  const cleanQuery = query
+    .replace(/:yt/gi, "")
+    .replace(/:lyrics/gi, "")
+    .replace(/^yt\s+/gi, "")
+    .trim();
+
+  return { ytMode, lyricMode, cleanQuery };
 }
 
 /**
@@ -34,12 +37,16 @@ export async function searchAllAction(query: string) {
   try {
     const { ytMode, lyricMode, cleanQuery } = parseQuery(query);
 
-    if (!cleanQuery) return null;
+    // If no query and no ytMode, return empty
+    if (!cleanQuery && !ytMode) return null;
 
     // Parallel Summoning with Sovereign Fault-Tolerance
-    const saavnPromise = fetchSaavn(cleanQuery).catch(() => ({ songs: [] }));
-    const gaanaPromise = fetchGaana(cleanQuery).catch(() => ({ songs: [], albums: [], artists: [], playlists: [] }));
-    const youtubePromise = ytMode ? fetchYouTube(cleanQuery).catch(() => []) : Promise.resolve([]);
+    const saavnPromise = cleanQuery ? fetchSaavn(cleanQuery).catch(() => ({ songs: [] })) : Promise.resolve({ songs: [] });
+    const gaanaPromise = cleanQuery ? fetchGaana(cleanQuery).catch(() => ({ songs: [], albums: [], artists: [], playlists: [] })) : Promise.resolve({ songs: [], albums: [], artists: [], playlists: [] });
+    
+    // YouTube Summoning: If ytMode is true and cleanQuery is empty, fetch trending.
+    const youtubeQuery = cleanQuery || "Trending Music India";
+    const youtubePromise = ytMode ? fetchYouTube(youtubeQuery).catch(() => []) : Promise.resolve([]);
 
     const [saavnData, gaanaData, ytResults] = await Promise.all([
       saavnPromise,
@@ -94,7 +101,7 @@ async function fetchSaavn(query: string) {
       artist: track.primaryArtists || "Unknown Artist",
       thumbnail: track.image?.[2]?.url || track.image?.[1]?.url,
       album: track.album || "Saavn Vault",
-      url: track.url, // Store the web link for lyrics fallback
+      url: track.url,
       source: 'jiosaavn' as const,
       isSaavn: true,
       isIndiaContent: true,
@@ -109,7 +116,7 @@ async function fetchSaavn(query: string) {
 
 async function fetchGaana(query: string) {
   try {
-    const res = await fetch(`${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}&country=IN`, {
+    const res = await fetch(`${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}`, {
       next: { revalidate: 3600 }
     });
     if (!res.ok) return { songs: [], albums: [], artists: [], playlists: [] };
@@ -186,15 +193,18 @@ async function fetchYouTube(query: string) {
     if (!res.ok) return [];
     const data = await res.json();
     
-    return (data || []).map((v: any) => ({
-      id: v.videoId,
-      videoId: v.videoId,
+    // RapidAPI response can be an array directly or inside a results property
+    const items = Array.isArray(data) ? data : (data.results || []);
+
+    return items.map((v: any) => ({
+      id: v.videoId || v.id,
+      videoId: v.videoId || v.id,
       title: v.title,
       artist: v.channelTitle || "YouTube Discovery",
       thumbnail: v.thumbnail?.[0]?.url || v.thumbnail || "https://via.placeholder.com/150",
       source: 'youtube' as const,
       isYouTube: true,
-      url: `https://www.youtube.com/watch?v=${v.videoId}`,
+      url: `https://www.youtube.com/watch?v=${v.videoId || v.id}`,
       isIndiaContent: true
     }));
   } catch (e) {
@@ -227,30 +237,21 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
     if (!song || !song.downloadUrl) return null;
     
     const links = song.downloadUrl;
-    // Respect the highest fidelity link available
     return links[links.length - 1]?.url || links[0]?.url || null;
   } catch (error) {
     return null;
   }
 }
 
-/**
- * Sovereign Lyrics Oracle
- * Fetches archived lyrics from JioSaavn.
- * Hardened logic: Does not rely on lyricsId. Retries with web link for robustness.
- */
 export async function getLyricsAction(songId: string, songUrl?: string) {
   try {
-    // Step 1: Fetch by Sovereign ID
     let res = await fetch(`${SAAVN_API_BASE}/api/songs/${songId}`);
     if (!res.ok) return null;
     let data = await res.json();
     let song = data?.data?.[0];
 
-    // Priority 1: Direct Manifestation from ID detail
     if (song?.lyrics) return song.lyrics;
 
-    // Priority 2: Fallback to Sovereign Link (Website URL)
     if (songUrl || song?.url) {
       const urlToFetch = songUrl || song?.url;
       res = await fetch(`${SAAVN_API_BASE}/api/songs?link=${encodeURIComponent(urlToFetch)}`);

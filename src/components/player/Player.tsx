@@ -245,9 +245,7 @@ export const Player: React.FC = () => {
                 {isPlaying ? <Pause className="fill-black text-black w-4 h-4 md:w-5 md:h-5" /> : <Play className="fill-black text-black w-4 h-4 md:w-5 md:h-5 ml-0.5" />}
               </button>
               <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all"><SkipForward className="fill-current w-5 h-5 md:w-6 md:h-6" /></button>
-              <div className="hidden md:block">
-                <SleepTimerButton />
-              </div>
+              <SleepTimerButton />
             </div>
             {/* PROGRESS BAR: Hidden on mobile mini-player */}
             <div className="flex items-center gap-3 w-full px-2 hidden md:flex">
@@ -271,11 +269,11 @@ export const Player: React.FC = () => {
 
         <div className="flex-1 flex items-center justify-end gap-3 md:gap-5">
           {!currentTrack.isYouTube && (
-            <button onClick={fetchLyrics} className={cn("transition-all", isLyricsSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
+            <button onClick={fetchLyrics} title="Lyrics" className={cn("transition-all", isLyricsSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
               <Music className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           )}
-          <button onClick={() => openSheet('queue')} className={cn("transition-all", isQueueSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
+          <button onClick={() => openSheet('queue')} title="Queue" className={cn("transition-all", isQueueSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
             <ListMusic className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 w-24 md:w-32 ml-2 hidden sm:flex">
@@ -298,18 +296,18 @@ const SleepTimerButton = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className={cn("transition-all relative", sleepTimer !== null ? "text-primary" : "text-white/40")}>
-          <Moon className="w-6 h-6" />
-          {sleepTimer !== null && <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />}
+        <button title="Sleep Timer" className={cn("transition-all relative p-2", sleepTimer !== null ? "text-primary" : "text-white/40")}>
+          <Moon className="w-5 h-5 md:w-6 md:h-6" />
+          {sleepTimer !== null && <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="bg-neutral-900 border-primary/20 text-white font-black uppercase text-[10px]">
-        <DropdownMenuItem onClick={() => setSleepTimer(15)} className="focus:bg-primary/10">15 Minutes</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setSleepTimer(30)} className="focus:bg-primary/10">30 Minutes</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setSleepTimer(45)} className="focus:bg-primary/10">45 Minutes</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setSleepTimer(60)} className="focus:bg-primary/10">60 Minutes</DropdownMenuItem>
+      <DropdownMenuContent className="bg-neutral-900 border-primary/20 text-white font-black uppercase text-[10px] z-[120]">
+        <DropdownMenuItem onClick={() => setSleepTimer(15)} className="focus:bg-primary/10 cursor-pointer">15 Minutes</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSleepTimer(30)} className="focus:bg-primary/10 cursor-pointer">30 Minutes</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSleepTimer(45)} className="focus:bg-primary/10 cursor-pointer">45 Minutes</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSleepTimer(60)} className="focus:bg-primary/10 cursor-pointer">60 Minutes</DropdownMenuItem>
         {sleepTimer !== null && (
-          <DropdownMenuItem onClick={() => setSleepTimer(null)} className="text-red-500 focus:bg-red-500/10">Stop Timer</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setSleepTimer(null)} className="text-red-500 focus:bg-red-500/10 cursor-pointer">Stop Timer</DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

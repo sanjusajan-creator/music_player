@@ -209,7 +209,6 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
 
 function SearchResultsView({ query }: { query: string }) {
   const { data: results, isLoading } = useSaavnSearch(query);
-  const ytMode = query.toLowerCase().includes(":yt");
   
   if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
 
@@ -219,6 +218,8 @@ function SearchResultsView({ query }: { query: string }) {
       <p className="text-[10px] font-black uppercase tracking-widest">Search the archives for gold</p>
     </div>
   );
+
+  const ytMode = results.ytMode;
 
   return (
     <div className="space-y-12 pb-20">
@@ -247,14 +248,18 @@ function SearchResultsView({ query }: { query: string }) {
       )}
 
       {/* 🎬 Videos (YouTube fallback - ONLY IF :yt) */}
-      {ytMode && results.videos?.results?.length > 0 && (
+      {ytMode && (
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">YouTube Discovery (IN)</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.videos.results.map((v: any, i: number) => (
-              <SearchResult key={`video-${v.id}-${i}`} track={v} results={results.videos.results} index={i} />
-            ))}
-          </div>
+          {results.videos?.results?.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+              {results.videos.results.map((v: any, i: number) => (
+                <SearchResult key={`video-${v.id}-${i}`} track={v} results={results.videos.results} index={i} />
+              ))}
+            </div>
+          ) : (
+             <div className="py-20 text-center border border-dashed border-primary/20 rounded-3xl text-xs font-black uppercase tracking-widest text-primary/40">No videos manifested in this region.</div>
+          )}
         </section>
       )}
     </div>
@@ -360,7 +365,7 @@ function LikedSongsView({ userId }: { userId: string }) {
   const { data: likedDocs } = useCollection(q);
 
   const likedTracks = useMemo(() => {
-    return (likedDocs || []).map(doc => ({
+    return (likedDocs || []).map((doc, i) => ({
       id: doc.id,
       title: doc.title,
       artist: doc.artist,
