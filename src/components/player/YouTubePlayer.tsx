@@ -1,10 +1,13 @@
-
 "use client";
 
 import React, { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { getSaavnPlaybackUrl } from '@/app/actions/youtube-search';
 
+/**
+ * Vibecraft Sovereign Audio Engine
+ * Pure HTML5 Native Audio implementation for Saavn and Local Archives.
+ */
 export const YouTubePlayer: React.FC = () => {
   const { 
     currentTrack, 
@@ -25,13 +28,18 @@ export const YouTubePlayer: React.FC = () => {
   useEffect(() => {
     if (!audioRef.current) {
       const audio = new Audio();
+      audio.preload = "auto";
       
       audio.addEventListener('timeupdate', () => {
-        if (audioRef.current) setProgress(audioRef.current.currentTime);
+        if (audioRef.current && !isNaN(audioRef.current.currentTime)) {
+          setProgress(audioRef.current.currentTime);
+        }
       });
       
       audio.addEventListener('loadedmetadata', () => {
-        if (audioRef.current) setDuration(audioRef.current.duration);
+        if (audioRef.current && !isNaN(audioRef.current.duration)) {
+          setDuration(audioRef.current.duration);
+        }
       });
       
       audio.addEventListener('ended', () => {
@@ -43,12 +51,19 @@ export const YouTubePlayer: React.FC = () => {
         setIsBuffering(false);
         setIsPlaying(true);
       });
-      audio.addEventListener('pause', () => setIsPlaying(false));
+      
+      audio.addEventListener('pause', () => {
+        // Only update store if the pause wasn't triggered by a track change
+        if (loadingId.current === currentTrack?.id) {
+           setIsPlaying(false);
+        }
+      });
 
-      audio.addEventListener('error', () => {
+      audio.addEventListener('error', (e) => {
         const err = audio.error;
-        if (!audio.src || audio.src === window.location.href || audio.src === "" || audio.src.includes('null')) return;
-        console.error("Vibecraft Sovereign Audio Error:", err?.message);
+        if (!audio.src || audio.src === window.location.href || audio.src === "") return;
+        console.error("Vibecraft Sovereign Audio Error:", err?.message || "Source Manifestation Failed", e);
+        setIsBuffering(false);
       });
 
       audioRef.current = audio;
@@ -58,60 +73,99 @@ export const YouTubePlayer: React.FC = () => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
+        audioRef.current = null;
       }
     };
-  }, [nextTrack, setProgress, setDuration, setIsBuffering, setIsPlaying]);
+  }, []);
 
   // Handle Track Source Switching (Saavn + Local)
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
     
-    // Prevent redundant loads
+    // Prevent redundant loads for the same manifestation
     if (loadingId.current === currentTrack.id) return;
-    loadingId.current = currentTrack.id;
-
+    
     const initializePlayback = async () => {
+      loadingId.current = currentTrack.id;
       let url = "";
 
-      if (currentTrack.isLocal && currentTrack.localFile) {
-        url = URL.createObjectURL(currentTrack.localFile);
-      } else if (currentTrack.isSaavn) {
-        setIsBuffering(true);
-        url = await getSaavnPlaybackUrl(currentTrack.id) || "";
-      }
+      try {
+        if (currentTrack.isLocal && currentTrack.localFile) {
+          url = URL.createObjectURL(currentTrack.localFile);
+        } else if (currentTrack.isSaavn) {
+          setIsBuffering(true);
+          const manifestedUrl = await getSaavnPlaybackUrl(currentTrack.id);
+          if (manifestedUrl) {
+            url = manifestedUrl;
+          } else {
+            throw new Error("Saavn Vault returned no stream.");
+          }
+        }
 
-      if (url && audioRef.current) {
-        audioRef.current.src = url;
-        audioRef.current.load();
-        if (isPlaying) audioRef.current.play().catch(() => {});
+        if (url && audioRef.current) {
+          // Pause existing playback
+          audioRef.current.pause();
+          audioRef.current.src = url;
+          audioRef.current.load();
+          
+          // Only play if the global state is set to playing
+          if (isPlaying) {
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(error => {
+                console.warn("Playback blocked by browser policy. Interaction required.", error);
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Sovereign Initialization Error:", error);
+        setIsBuffering(false);
       }
     };
 
     initializePlayback();
+
+    // Cleanup object URL for local tracks
+    return () => {
+      if (currentTrack.isLocal && url) {
+        URL.revokeObjectURL(url);
+      }
+    };
   }, [currentTrack?.id]);
 
-  // Handle Global Play/Pause
+  // Handle Global Play/Pause from Store
   useEffect(() => {
     if (!audioRef.current || !audioRef.current.src || audioRef.current.src === window.location.href) return;
     
     if (isPlaying) {
-      audioRef.current.play().catch(() => {});
+      if (audioRef.current.paused) {
+        audioRef.current.play().catch(() => {});
+      }
     } else {
-      audioRef.current.pause();
+      if (!audioRef.current.paused) {
+        audioRef.current.pause();
+      }
     }
   }, [isPlaying]);
 
   // Handle Volume
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume / 100;
+    if (audioRef.current) {
+      audioRef.current.volume = volume / 100;
+    }
   }, [volume]);
 
-  // Handle Seek
+  // Handle Seek Requests
   useEffect(() => {
     if (seekRequest !== null && audioRef.current && audioRef.current.src) {
       audioRef.current.currentTime = seekRequest;
     }
   }, [seekRequest]);
 
-  return <div id="vibecraft-sovereign-audio-engine" className="hidden" />;
+  return (
+    <div id="vibecraft-sovereign-audio-engine" className="hidden">
+      <p className="sr-only">Sovereign Audio Engine Active</p>
+    </div>
+  );
 };

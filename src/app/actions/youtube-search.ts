@@ -1,4 +1,3 @@
-
 'use server';
 
 import { Track } from '@/store/usePlayerStore';
@@ -19,7 +18,7 @@ export async function searchMusicAction(query: string): Promise<Track[]> {
 
     const data = await response.json();
     
-    // Extract songs from data.data.songs.results as per requirements
+    // Extract songs from data.data.songs.results
     const songs = data.data?.songs?.results || [];
 
     const results: Track[] = songs.map((song: any) => ({
@@ -49,8 +48,12 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
     if (!response.ok) return null;
 
     const data = await response.json();
-    // Extract data.data[0].downloadUrl[4].link as per requirements
-    const downloadUrl = data.data?.[0]?.downloadUrl?.[4]?.link || data.data?.[0]?.downloadUrl?.[3]?.link;
+    // Saavn API detail returns an array of songs in data.data
+    const songData = data.data?.[0];
+    if (!songData) return null;
+
+    // Prioritize 320kbps (index 4), fallback to 160kbps (index 3)
+    const downloadUrl = songData.downloadUrl?.[4]?.link || songData.downloadUrl?.[3]?.link || songData.downloadUrl?.[2]?.link;
     
     return downloadUrl || null;
   } catch (error) {
