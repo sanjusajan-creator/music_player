@@ -163,8 +163,8 @@ export const Player: React.FC = () => {
 
   if (!currentTrack || !hasHydrated) return null;
 
-  // FIX: likedTrackIds is an Array now to support JSON serialization
-  const isLiked = likedTrackIds.includes(currentTrack.id);
+  // FIX: likedTrackIds is an Array now to support JSON serialization. Use .includes()
+  const isLiked = Array.isArray(likedTrackIds) && likedTrackIds.includes(currentTrack.id);
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();

@@ -44,8 +44,8 @@ export const YouTubePlayer: React.FC = () => {
         const err = audio.error;
         // Fix for Error logging: Extract actual data from the non-enumerable error object
         console.error("Vibecraft Audio Engine Error:", {
-          code: err?.code,
-          message: err?.message,
+          code: err?.code || 'Unknown',
+          message: err?.message || 'Source unreachable or CORS restricted',
           src: audio.src
         });
       });

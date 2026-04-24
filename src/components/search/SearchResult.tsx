@@ -21,7 +21,8 @@ export const SearchResult = memo(({ track }: SearchResultProps) => {
   const likedTrackIds = usePlayerStore(s => s.likedTrackIds);
   const toggleLike = usePlayerStore(s => s.toggleLike);
   
-  const isLiked = likedTrackIds.includes(track.id);
+  // Use .includes() for array-based persistence
+  const isLiked = Array.isArray(likedTrackIds) && likedTrackIds.includes(track.id);
 
   const handleAddToQueue = (e: React.MouseEvent) => {
     e.stopPropagation();
