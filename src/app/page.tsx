@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
@@ -13,7 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { 
   TrendingUp, Sparkles, Heart, 
-  Loader2, UserPlus, History, FolderOpen, Music2, Plus, Play, Disc, User, ListMusic
+  Loader2, FolderOpen, History, Music2, Plus, Play, Disc, User, ListMusic
 } from 'lucide-react';
 import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -24,6 +23,7 @@ import { toast } from '@/hooks/use-toast';
 import { usePlayerStore, Track } from '@/store/usePlayerStore';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,7 +67,6 @@ function HomeContent() {
   const detailType = searchParams.get('type') as any;
   const detailId = searchParams.get('id');
 
-  // Gold Collection Synchronization
   useEffect(() => {
     if (user && db && hasHydrated) {
       const syncLiked = async () => {
@@ -106,10 +105,10 @@ function HomeContent() {
       <div className="w-full max-w-md space-y-12 animate-in fade-in zoom-in duration-700">
         <header>
           <h1 className="text-6xl font-black text-primary gold-glow tracking-tighter uppercase leading-none">VIBECRAFT</h1>
-          <p className="text-primary/40 uppercase tracking-[0.5em] text-[10px] font-black mt-4">Sovereign Saavn Sanctuary</p>
+          <p className="text-primary/40 uppercase tracking-[0.5em] text-[10px] font-black mt-4">Premium Gold Sanctuary</p>
         </header>
 
-        <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-8 rounded-[2rem] space-y-6 backdrop-blur-xl">
+        <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-8 rounded-[2rem] space-y-6 backdrop-blur-xl shadow-2xl">
           <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-black/60 border-primary/20 h-14 rounded-xl text-primary font-black placeholder:text-primary/20" />
           <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-black/60 border-primary/20 h-14 rounded-xl text-primary font-black placeholder:text-primary/20" />
           <Button type="submit" disabled={isAuthLoading} className="w-full bg-primary text-black font-black h-14 rounded-xl text-lg hover:scale-105 transition-all shadow-[0_0_30px_rgba(212,175,55,0.2)] uppercase tracking-widest">
@@ -130,17 +129,25 @@ function HomeContent() {
         <Navbar />
         <YouTubePlayer />
         
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-32">
-          <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-10">
-            
-            {currentTab === 'home' && <HomeView />}
-            {currentTab === 'search' && <SearchResultsView query={searchQuery} />}
-            {currentTab === 'liked' && <LikedSongsView userId={user.uid} />}
-            {currentTab === 'local' && <LocalArchivesView />}
-            {currentTab === 'detail' && detailType && detailId && <DetailView type={detailType} id={detailId} />}
-
+        <ScrollArea className="flex-1">
+          <div className="p-6 md:p-8 max-w-7xl mx-auto pb-32">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentTab + searchQuery + detailId}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {currentTab === 'home' && <HomeView />}
+                {currentTab === 'search' && <SearchResultsView query={searchQuery} />}
+                {currentTab === 'liked' && <LikedSongsView userId={user.uid} />}
+                {currentTab === 'local' && <LocalArchivesView />}
+                {currentTab === 'detail' && detailType && detailId && <DetailView type={detailType} id={detailId} />}
+              </motion.div>
+            </AnimatePresence>
           </div>
-        </div>
+        </ScrollArea>
         <Player />
       </main>
     </div>
@@ -168,8 +175,9 @@ function HomeView() {
         </div>
       </section>
 
-      <SectionLayout title="New Releases" query="Latest Bollywood" />
-      <SectionLayout title="Trending Today" query="Trending Music India" />
+      <SectionLayout title="Fresh Manifestations" query="Latest Hits" />
+      <SectionLayout title="Gold Trending" query="Trending Music" />
+      <SectionLayout title="Melodic Sanctuaries" query="Relaxing Music" />
     </div>
   );
 }
@@ -181,10 +189,10 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
   return (
     <section>
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-black text-white hover:underline cursor-pointer transition-all uppercase tracking-tighter">{title}</h3>
+        <h3 className="text-2xl font-black text-white hover:text-primary cursor-pointer transition-all uppercase tracking-tighter">{title}</h3>
         <button className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">Show all</button>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
         {isLoading ? [...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
           songs.slice(0, 5).map((track: any) => (
             <SearchResult key={track.id} track={{
@@ -218,13 +226,18 @@ function SearchResultsView({ query }: { query: string }) {
     </div>
   );
 
-  if (!results) return null;
+  if (!results) return (
+    <div className="h-96 flex flex-col items-center justify-center gap-4 text-muted-foreground">
+      <Music2 className="w-16 h-16 opacity-20" />
+      <p className="text-[10px] font-black uppercase tracking-widest">Search the archives for gold</p>
+    </div>
+  );
 
   return (
     <div className="space-y-12">
       {results.songs?.results?.length > 0 && (
         <section>
-          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter">Songs</h2>
+          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter gold-glow">Top Songs</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
             {results.songs.results.map((t: any) => (
               <SearchResult key={t.id} track={{
@@ -242,10 +255,10 @@ function SearchResultsView({ query }: { query: string }) {
 
       {results.albums?.results?.length > 0 && (
         <section>
-          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter">Albums</h2>
+          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter gold-glow">Albums</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
             {results.albums.results.map((a: any) => (
-              <CategoryCard key={a.id} label={a.title} image={a.image?.[2]?.url} type="albums" id={a.id} />
+              <CategoryCard key={a.id} label={a.title} image={a.image?.[2]?.url} type="albums" id={a.id} subtitle={a.artist} />
             ))}
           </div>
         </section>
@@ -253,7 +266,7 @@ function SearchResultsView({ query }: { query: string }) {
 
       {results.artists?.results?.length > 0 && (
         <section>
-          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter">Artists</h2>
+          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter gold-glow">Artists</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
             {results.artists.results.map((ar: any) => (
               <CategoryCard key={ar.id} label={ar.title} image={ar.image?.[2]?.url} type="artists" id={ar.id} isCircle />
@@ -264,7 +277,7 @@ function SearchResultsView({ query }: { query: string }) {
 
       {results.playlists?.results?.length > 0 && (
         <section>
-          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter">Playlists</h2>
+          <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter gold-glow">Playlists</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
             {results.playlists.results.map((p: any) => (
               <CategoryCard key={p.id} label={p.title} image={p.image?.[2]?.url} type="playlists" id={p.id} />
@@ -288,8 +301,8 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
     const queue = songs.map((s: any) => ({
       id: s.id,
       title: s.title || s.name,
-      artist: s.primaryArtists || s.artists?.primary?.[0]?.name,
-      thumbnail: s.image?.[2]?.url,
+      artist: s.primaryArtists || s.artists?.primary?.[0]?.name || data.title,
+      thumbnail: s.image?.[2]?.url || data.image?.[2]?.url,
       album: data.title || data.name,
       isSaavn: true
     }));
@@ -298,26 +311,35 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row items-end gap-8 bg-gradient-to-b from-primary/10 to-transparent p-8 rounded-[3rem]">
-        <img src={data.image?.[2]?.url} className={cn("w-64 h-64 shadow-2xl object-cover", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
-        <div className="space-y-4">
+      <div className="flex flex-col md:flex-row items-end gap-8 bg-gradient-to-b from-primary/20 to-transparent p-8 rounded-[3rem] border border-primary/5">
+        <img src={data.image?.[2]?.url} className={cn("w-64 h-64 shadow-2xl object-cover gold-border-glow", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
+        <div className="space-y-4 flex-1">
           <p className="text-[10px] font-black uppercase tracking-widest text-primary/60">{type.slice(0, -1)}</p>
-          <h1 className="text-5xl md:text-7xl font-black text-white gold-glow tracking-tighter">{data.title || data.name}</h1>
-          <div className="flex items-center gap-4">
-             <Button onClick={handlePlayAll} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-8 h-12 hover:scale-105 transition-all"><Play className="w-5 h-5 fill-current mr-2" /> Play All</Button>
+          <h1 className="text-5xl md:text-8xl font-black text-white gold-glow tracking-tighter leading-none">{data.title || data.name}</h1>
+          <div className="flex items-center gap-6 mt-4">
+             <Button onClick={handlePlayAll} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all shadow-[0_0_30px_rgba(212,175,55,0.3)]"><Play className="w-6 h-6 fill-current mr-2" /> Play All</Button>
+             <div className="flex flex-col">
+                <span className="text-sm font-black text-white/80">{songs.length} Manifestations</span>
+                <span className="text-[10px] uppercase font-black text-muted-foreground">{data.year || data.language || "Public Archive"}</span>
+             </div>
           </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-xl font-black text-white uppercase tracking-widest">Manifestations</h2>
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-[32px_1fr_1fr_48px] px-4 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-white/5">
+          <span>#</span>
+          <span>Title</span>
+          <span className="hidden md:block">Album</span>
+          <span></span>
+        </div>
+        <div className="flex flex-col gap-1">
           {songs.map((s: any, i: number) => (
             <TrackRow key={s.id} track={{
               id: s.id,
               title: s.title || s.name,
-              artist: s.primaryArtists || s.artists?.primary?.[0]?.name,
-              thumbnail: s.image?.[2]?.url,
+              artist: s.primaryArtists || s.artists?.primary?.[0]?.name || data.title,
+              thumbnail: s.image?.[2]?.url || data.image?.[1]?.url,
               album: data.title || data.name,
               isSaavn: true
             }} index={i + 1} />
@@ -329,30 +351,50 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
 }
 
 function TrackRow({ track, index }: { track: Track, index: number }) {
-  const { setCurrentTrack } = usePlayerStore();
+  const { setCurrentTrack, currentTrack, isPlaying } = usePlayerStore();
+  const isActive = currentTrack?.id === track.id;
+  
   return (
-    <div onClick={() => setCurrentTrack(track)} className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer">
-      <span className="w-8 text-sm font-black text-muted-foreground group-hover:text-primary transition-colors text-center">{index}</span>
-      <img src={track.thumbnail} className="w-10 h-10 rounded shadow-md object-cover" alt="t" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-black text-white truncate uppercase tracking-tighter">{track.title}</p>
-        <p className="text-[10px] text-muted-foreground font-black truncate uppercase tracking-widest">{track.artist}</p>
+    <div 
+      onClick={() => setCurrentTrack(track)} 
+      className={cn(
+        "grid grid-cols-[32px_1fr_1fr_48px] items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer border border-transparent",
+        isActive && "bg-white/10 border-primary/20"
+      )}
+    >
+      <div className="flex items-center justify-center">
+        {isActive && isPlaying ? (
+          <div className="flex items-end gap-0.5 h-3">
+             <div className="w-0.5 h-full bg-primary animate-bounce" style={{ animationDelay: '0s' }} />
+             <div className="w-0.5 h-2/3 bg-primary animate-bounce" style={{ animationDelay: '0.2s' }} />
+             <div className="w-0.5 h-1/2 bg-primary animate-bounce" style={{ animationDelay: '0.4s' }} />
+          </div>
+        ) : (
+          <span className={cn("text-sm font-black text-muted-foreground group-hover:text-primary transition-colors", isActive && "text-primary")}>{index}</span>
+        )}
       </div>
-      <p className="text-[10px] text-muted-foreground font-black hidden md:block uppercase tracking-widest w-40 truncate">{track.album}</p>
-      <button className="opacity-0 group-hover:opacity-100 transition-all text-primary"><Play className="w-5 h-5 fill-current" /></button>
+      <div className="flex items-center gap-4 min-w-0">
+        <img src={track.thumbnail} className="w-10 h-10 rounded shadow-md object-cover shrink-0" alt="t" />
+        <div className="flex flex-col min-w-0">
+          <p className={cn("text-sm font-black truncate uppercase tracking-tighter", isActive ? "text-primary" : "text-white")}>{track.title}</p>
+          <p className="text-[10px] text-muted-foreground font-black truncate uppercase tracking-widest">{track.artist}</p>
+        </div>
+      </div>
+      <p className="text-[10px] text-muted-foreground font-black hidden md:block uppercase tracking-widest truncate">{track.album}</p>
+      <button className="opacity-0 group-hover:opacity-100 transition-all text-primary flex justify-center"><Play className="w-5 h-5 fill-current" /></button>
     </div>
   );
 }
 
 const GreetingCard = ({ label, icon }: { label: string, icon: React.ReactNode }) => (
-  <div className="flex items-center gap-4 bg-white/5 hover:bg-white/10 transition-all rounded-md overflow-hidden cursor-pointer group pr-4 h-20 border border-white/5">
-    <div className="w-20 h-20 bg-white/5 flex items-center justify-center shrink-0 shadow-xl">{React.cloneElement(icon as React.ReactElement, { className: 'w-10 h-10' })}</div>
+  <div className="flex items-center gap-4 bg-white/5 hover:bg-white/10 transition-all rounded-md overflow-hidden cursor-pointer group pr-4 h-20 border border-white/5 shadow-lg">
+    <div className="w-20 h-20 bg-white/5 flex items-center justify-center shrink-0 shadow-xl border-r border-white/5">{React.cloneElement(icon as React.ReactElement, { className: 'w-10 h-10' })}</div>
     <span className="text-sm font-black text-white truncate flex-1 uppercase tracking-tighter">{label}</span>
-    <button className="w-10 h-10 bg-primary rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl hidden md:flex"><Plus className="w-6 h-6 text-black" /></button>
+    <button className="w-10 h-10 bg-primary rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl hidden md:flex"><Play className="w-6 h-6 text-black fill-current" /></button>
   </div>
 );
 
-const CategoryCard = ({ label, image, color = "bg-white/5", type, id, isCircle }: { label: string, image?: string, color?: string, type: string, id: string, isCircle?: boolean }) => {
+const CategoryCard = ({ label, image, subtitle, type, id, isCircle }: { label: string, image?: string, subtitle?: string, type: string, id: string, isCircle?: boolean }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   return (
@@ -364,11 +406,21 @@ const CategoryCard = ({ label, image, color = "bg-white/5", type, id, isCircle }
         params.set('id', id);
         router.push(`/?${params.toString()}`);
       }}
-      className={cn(color, "aspect-square rounded-xl p-4 relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all group border border-white/5")}
+      className="spotify-card flex flex-col gap-4 group"
     >
-      <img src={image} className={cn("absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all", isCircle ? "rounded-full p-4" : "")} alt="c" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-      <span className="absolute bottom-4 left-4 right-4 text-lg font-black text-white tracking-tighter uppercase leading-tight">{label}</span>
+      <div className={cn("relative aspect-square overflow-hidden shadow-2xl", isCircle ? "rounded-full" : "rounded-xl")}>
+        <img src={image} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="c" />
+        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+        {!isCircle && (
+          <button className="absolute bottom-3 right-3 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-2xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+            <Play className="fill-black text-black w-6 h-6 ml-1" />
+          </button>
+        )}
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-black text-white truncate uppercase tracking-tighter gold-glow group-hover:text-primary transition-colors">{label}</p>
+        {subtitle && <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest truncate">{subtitle}</p>}
+      </div>
     </div>
   );
 };
@@ -382,13 +434,14 @@ function LikedSongsView({ userId }: { userId: string }) {
   const { data: likedDocs } = useCollection(q);
   return (
     <div className="space-y-10">
-      <div className="flex items-end gap-6 bg-gradient-to-b from-primary/20 to-transparent p-8 rounded-[2rem]">
-        <div className="w-48 h-48 bg-gradient-to-br from-indigo-600 to-primary rounded-xl shadow-2xl flex items-center justify-center">
-          <Heart className="w-24 h-24 text-white fill-current" />
+      <div className="flex items-end gap-8 bg-gradient-to-b from-indigo-600/30 to-transparent p-8 rounded-[3rem] border border-indigo-500/10">
+        <div className="w-64 h-64 bg-gradient-to-br from-indigo-600 to-indigo-900 rounded-2xl shadow-2xl flex items-center justify-center gold-border-glow">
+          <Heart className="w-32 h-32 text-white fill-current animate-pulse-gold" />
         </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-white mb-2">Playlist</p>
-          <h2 className="text-6xl md:text-8xl font-black text-white gold-glow tracking-tighter">Liked Songs</h2>
+        <div className="space-y-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Collection</p>
+          <h2 className="text-5xl md:text-8xl font-black text-white gold-glow tracking-tighter leading-none">Liked Songs</h2>
+          <p className="text-sm font-black text-white/40 uppercase tracking-widest">{likedDocs?.length || 0} Saved Manifestations</p>
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
@@ -438,19 +491,19 @@ function LocalArchivesView() {
 
   return (
     <div className="space-y-12">
-      <header className="flex justify-between items-end">
+      <header className="flex justify-between items-end bg-gradient-to-b from-orange-500/20 to-transparent p-8 rounded-[3rem] border border-orange-500/10">
         <div>
-          <h2 className="text-3xl font-black text-white gold-glow">Local Archives</h2>
-          <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Manifest system archives</p>
+          <h2 className="text-5xl md:text-7xl font-black text-white gold-glow tracking-tighter uppercase leading-none">Local Vault</h2>
+          <p className="text-[10px] text-orange-400 font-black uppercase tracking-widest mt-4">System archives manifested</p>
         </div>
-        <Button onClick={handleSummon} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-8">Add Folder</Button>
+        <Button onClick={handleSummon} className="bg-orange-500 text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all shadow-[0_0_30px_rgba(249,115,22,0.3)]">Summon Folder</Button>
       </header>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
         {localTracks.map(t => <SearchResult key={t.id} track={t} />)}
         {localTracks.length === 0 && (
-          <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-white/5 transition-all">
-            <Music2 className="w-16 h-16 text-muted-foreground/20" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Click to summon local folder</p>
+          <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-white/5 rounded-[3rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-white/5 transition-all group">
+            <FolderOpen className="w-24 h-24 text-muted-foreground/10 group-hover:text-primary/20 transition-colors" />
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">Click to unlock local vault</p>
           </div>
         )}
       </div>

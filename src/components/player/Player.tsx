@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, 
   Heart, Maximize2, Music, Loader2, Shuffle, Repeat, 
-  VolumeX, ListMusic, Trash2, X, Share2, Moon, Clock
+  VolumeX, ListMusic, Trash2, X, Share2, Moon, Clock, ChevronUp
 } from 'lucide-react';
 import { usePlayerStore, Track } from '@/store/usePlayerStore';
 import { Slider } from '@/components/ui/slider';
@@ -23,7 +23,7 @@ export const Player: React.FC = () => {
   const searchParams = useSearchParams();
   const { 
     currentTrack, isPlaying, setIsPlaying, nextTrack, previousTrack, 
-    progress, duration, volume, setVolume, isAdPlaying, likedTrackIds, toggleLike, seekTo,
+    progress, duration, volume, setVolume, likedTrackIds, toggleLike, seekTo,
     isShuffle, toggleShuffle, repeatMode, setRepeatMode, hasHydrated,
     queue, clearQueue
   } = usePlayerStore();
@@ -40,7 +40,6 @@ export const Player: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(80);
 
-  // Sync Global Like Status
   const isLiked = currentTrack ? likedTrackIds.includes(currentTrack.id) : false;
 
   const handleLike = (e: React.MouseEvent) => {
@@ -72,7 +71,8 @@ export const Player: React.FC = () => {
   };
 
   const fetchLyrics = async () => {
-    if (!currentTrack || lyrics) {
+    if (!currentTrack) return;
+    if (lyrics && lyrics.includes(currentTrack.title)) {
       openSheet('lyrics');
       return;
     }
@@ -111,79 +111,154 @@ export const Player: React.FC = () => {
   if (!currentTrack || !hasHydrated) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] h-24 bg-black border-t border-white/5 flex items-center px-4 gap-4">
-      {/* Track Info (Left) */}
-      <div className="flex-1 flex items-center gap-4 min-w-0">
-        <div className="relative group shrink-0" onClick={() => router.push(`/?view=full&${searchParams.toString()}`)}>
-          <img src={currentTrack.thumbnail} className="w-14 h-14 rounded-md shadow-lg object-cover" alt="artwork" />
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer">
-            <Maximize2 className="w-5 h-5 text-white" />
+    <>
+      <AnimatePresence>
+        {isFullPlayer && (
+          <motion.div 
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[100] bg-black flex flex-col"
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-black pointer-events-none" />
+            <div className="p-8 flex items-center justify-between z-10">
+              <button onClick={closeOverlays} className="text-white/60 hover:text-white transition-all"><ChevronDown className="w-10 h-10" /></button>
+              <div className="flex flex-col items-center">
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Now Manifesting</span>
+                <span className="text-xs font-black uppercase tracking-widest text-primary truncate max-w-[200px]">{currentTrack.album}</span>
+              </div>
+              <button className="text-white/60 hover:text-white transition-all"><Share2 className="w-6 h-6" /></button>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center justify-center p-8 gap-12 z-10">
+              <motion.img 
+                layoutId="player-artwork"
+                src={currentTrack.thumbnail} 
+                className="w-full max-w-md aspect-square rounded-[3rem] shadow-[0_0_80px_rgba(212,175,55,0.15)] gold-border-glow object-cover" 
+                alt="art" 
+              />
+              <div className="w-full max-w-xl space-y-2 text-center">
+                <h1 className="text-4xl md:text-6xl font-black text-white gold-glow tracking-tighter uppercase leading-none">{currentTrack.title}</h1>
+                <p className="text-lg font-black text-primary/60 uppercase tracking-[0.2em]">{currentTrack.artist}</p>
+              </div>
+            </div>
+
+            <div className="p-12 w-full max-w-3xl mx-auto space-y-8 z-10">
+              <div className="space-y-4">
+                <Slider 
+                  value={[progress]} 
+                  max={duration || 100} 
+                  onValueChange={(v) => seekTo(v[0])} 
+                  className="h-2" 
+                />
+                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/40">
+                  <span>{formatTime(progress)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <button onClick={toggleShuffle} className={cn("transition-all", isShuffle ? "text-primary" : "text-white/40")}><Shuffle className="w-6 h-6" /></button>
+                <div className="flex items-center gap-10">
+                  <button onClick={previousTrack} className="text-white hover:text-primary transition-all"><SkipBack className="w-10 h-10 fill-current" /></button>
+                  <button 
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="w-24 h-24 bg-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-2xl"
+                  >
+                    {isPlaying ? <Pause className="w-10 h-10 fill-black text-black" /> : <Play className="w-10 h-10 fill-black text-black ml-1.5" />}
+                  </button>
+                  <button onClick={nextTrack} className="text-white hover:text-primary transition-all"><SkipForward className="w-10 h-10 fill-current" /></button>
+                </div>
+                <button 
+                  onClick={() => setRepeatMode(repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none')}
+                  className={cn("transition-all relative", repeatMode !== 'none' ? "text-primary" : "text-white/40")}
+                >
+                  <Repeat className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="fixed bottom-0 left-0 right-0 z-[60] h-24 bg-black/90 backdrop-blur-xl border-t border-white/5 flex items-center px-6 gap-6 shadow-2xl">
+        {/* Track Info (Left) */}
+        <div className="flex-1 flex items-center gap-4 min-w-0">
+          <div className="relative group shrink-0" onClick={() => router.push(`/?view=full&${searchParams.toString()}`)}>
+            <motion.img 
+              layoutId="player-artwork"
+              src={currentTrack.thumbnail} 
+              className="w-14 h-14 rounded-xl shadow-lg object-cover gold-border-glow" 
+              alt="artwork" 
+            />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer rounded-xl">
+              <Maximize2 className="w-5 h-5 text-white" />
+            </div>
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-black text-white truncate hover:text-primary cursor-pointer tracking-tighter uppercase">{currentTrack.title}</span>
+            <span className="text-[10px] text-muted-foreground truncate font-black hover:text-white transition-all cursor-pointer uppercase tracking-widest">{currentTrack.artist}</span>
+          </div>
+          <button onClick={handleLike} className="ml-2">
+            <Heart className={cn("w-5 h-5 transition-all", isLiked ? "fill-primary text-primary" : "text-muted-foreground hover:text-white")} />
+          </button>
+        </div>
+
+        {/* Controls (Center) */}
+        <div className="flex-[2] max-w-2xl flex flex-col items-center gap-2">
+          <div className="flex items-center gap-6">
+            <button onClick={toggleShuffle} className={cn("transition-all", isShuffle ? "text-primary" : "text-muted-foreground hover:text-white")}>
+              <Shuffle className="w-4 h-4" />
+            </button>
+            <button onClick={previousTrack} className="text-muted-foreground hover:text-white transition-all"><SkipBack className="w-6 h-6 fill-current" /></button>
+            <button 
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-all active:scale-95 shadow-xl"
+            >
+              {isPlaying ? <Pause className="fill-black text-black w-5 h-5" /> : <Play className="fill-black text-black w-5 h-5 ml-0.5" />}
+            </button>
+            <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all"><SkipForward className="fill-current w-6 h-6" /></button>
+            <button 
+              onClick={() => setRepeatMode(repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none')}
+              className={cn("transition-all relative", repeatMode !== 'none' ? "text-primary" : "text-muted-foreground hover:text-white")}
+            >
+              <Repeat className="w-4 h-4" />
+              {repeatMode === 'one' && <span className="absolute -top-1.5 -right-1 text-[8px] font-black">1</span>}
+            </button>
+          </div>
+          <div className="flex items-center gap-3 w-full px-4">
+            <span className="text-[10px] font-black text-muted-foreground w-10 text-right">{formatTime(progress)}</span>
+            <Slider 
+              value={[progress]} 
+              max={duration || 100} 
+              onValueChange={(v) => seekTo(v[0])} 
+              className="flex-1 cursor-pointer" 
+            />
+            <span className="text-[10px] font-black text-muted-foreground w-10">{formatTime(duration)}</span>
           </div>
         </div>
-        <div className="flex flex-col min-w-0">
-          <span className="text-sm font-black text-white truncate hover:underline cursor-pointer tracking-tighter">{currentTrack.title}</span>
-          <span className="text-[10px] text-muted-foreground truncate font-black hover:text-white transition-all cursor-pointer uppercase tracking-widest">{currentTrack.artist}</span>
-        </div>
-        <button onClick={handleLike} className="ml-2">
-          <Heart className={cn("w-5 h-5 transition-all", isLiked ? "fill-primary text-primary" : "text-muted-foreground hover:text-white")} />
-        </button>
-      </div>
 
-      {/* Controls (Center) */}
-      <div className="flex-[2] max-w-2xl flex flex-col items-center gap-1">
-        <div className="flex items-center gap-6">
-          <button onClick={() => toggleShuffle()} className={cn("transition-all", isShuffle ? "text-primary" : "text-muted-foreground hover:text-white")}>
-            <Shuffle className="w-4 h-4" />
+        {/* Utilities (Right) */}
+        <div className="flex-1 flex items-center justify-end gap-5">
+          <button onClick={fetchLyrics} className={cn("transition-all", isLyricsSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
+            <Music className="w-5 h-5" />
           </button>
-          <button onClick={previousTrack} className="text-muted-foreground hover:text-white transition-all"><SkipBack className="w-6 h-6 fill-current" /></button>
-          <button 
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:scale-105 transition-all active:scale-95"
-          >
-            {isPlaying ? <Pause className="fill-black text-black w-5 h-5" /> : <Play className="fill-black text-black w-5 h-5 ml-0.5" />}
+          <button onClick={() => openSheet('queue')} className={cn("transition-all", isQueueSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
+            <ListMusic className="w-5 h-5" />
           </button>
-          <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all"><SkipForward className="fill-current w-6 h-6" /></button>
-          <button 
-            onClick={() => setRepeatMode(repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none')}
-            className={cn("transition-all relative", repeatMode !== 'none' ? "text-primary" : "text-muted-foreground hover:text-white")}
-          >
-            <Repeat className="w-4 h-4" />
-            {repeatMode === 'one' && <span className="absolute -top-1 right-0 text-[8px] font-black">1</span>}
-          </button>
-        </div>
-        <div className="flex items-center gap-3 w-full px-4">
-          <span className="text-[10px] font-black text-muted-foreground w-10 text-right">{formatTime(progress)}</span>
-          <Slider 
-            value={[progress]} 
-            max={duration || 100} 
-            step={1}
-            onValueChange={(v) => seekTo(v[0])} 
-            className="flex-1 cursor-pointer h-1" 
-          />
-          <span className="text-[10px] font-black text-muted-foreground w-10">{formatTime(duration)}</span>
+          <div className="flex items-center gap-2 w-32 ml-2">
+            <button onClick={handleToggleMute}>
+              {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-primary" /> : <Volume2 className="w-4 h-4 text-muted-foreground hover:text-white" />}
+            </button>
+            <Slider value={[volume]} max={100} onValueChange={(v) => { setVolume(v[0]); if(v[0]>0) setIsMuted(false); }} className="h-1" />
+          </div>
         </div>
       </div>
 
-      {/* Utilities (Right) */}
-      <div className="flex-1 flex items-center justify-end gap-4">
-        <button onClick={fetchLyrics} className={cn("transition-all", isLyricsSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
-          <Music className="w-5 h-5" />
-        </button>
-        <button onClick={() => openSheet('queue')} className={cn("transition-all", isQueueSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
-          <ListMusic className="w-5 h-5" />
-        </button>
-        <div className="flex items-center gap-2 w-32 ml-4">
-          <button onClick={handleToggleMute}>
-            {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-primary" /> : <Volume2 className="w-4 h-4 text-muted-foreground hover:text-white" />}
-          </button>
-          <Slider value={[volume]} max={100} onValueChange={(v) => { setVolume(v[0]); if(v[0]>0) setIsMuted(false); }} className="h-1" />
-        </div>
-      </div>
-
-      {/* Sheets Integration */}
       <LyricsSheet isOpen={isLyricsSheetOpen} lyrics={lyrics} isLoading={isLoadingLyrics} onOpenChange={(o) => !o && closeOverlays()} />
       <QueueSheet isOpen={isQueueSheetOpen} onOpenChange={(o) => !o && closeOverlays()} />
-    </div>
+    </>
   );
 };
 
@@ -199,7 +274,7 @@ const LyricsSheet = ({ isOpen, lyrics, isLoading, onOpenChange }: { isOpen: bool
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-6 py-20"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
           ) : (
-            <p className="text-xl font-black whitespace-pre-wrap leading-[2.5] tracking-wide text-center uppercase">{lyrics || "Searching archives..."}</p>
+            <p className="text-xl font-black whitespace-pre-wrap leading-[2.5] tracking-wide text-center uppercase text-white/80">{lyrics || "Searching archives..."}</p>
           )}
         </ScrollArea>
       </div>
@@ -245,10 +320,10 @@ const QueueSheet = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (
 };
 
 const QueueItem = ({ track, isActive, onRemove }: { track: Track, isActive?: boolean, onRemove?: () => void }) => (
-  <div className={cn("flex items-center gap-4 group p-2 rounded-lg transition-all", isActive ? "bg-white/10" : "hover:bg-white/5")}>
+  <div className={cn("flex items-center gap-4 group p-2 rounded-xl transition-all", isActive ? "bg-white/10 border border-primary/20" : "hover:bg-white/5 border border-transparent")}>
     <img src={track.thumbnail} className="w-10 h-10 rounded shadow-md object-cover" alt="track" />
     <div className="flex-1 min-w-0">
-      <p className={cn("text-xs font-black truncate", isActive ? "text-primary" : "text-white")}>{track.title}</p>
+      <p className={cn("text-xs font-black truncate uppercase tracking-tighter", isActive ? "text-primary" : "text-white")}>{track.title}</p>
       <p className="text-[9px] font-black text-muted-foreground uppercase truncate tracking-widest">{track.artist}</p>
     </div>
     {!isActive && onRemove && (

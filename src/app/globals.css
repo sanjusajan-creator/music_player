@@ -9,7 +9,7 @@
   --card-foreground: 0 0% 100%;
   --popover: 0 0% 5%;
   --popover-foreground: 0 0% 100%;
-  --primary: 43 100% 50%; /* AMOLED Gold */
+  --primary: 43 100% 50%; /* AMOLED Gold #FFD700 */
   --primary-foreground: 0 0% 0%;
   --secondary: 0 0% 8%;
   --secondary-foreground: 43 100% 70%;
@@ -48,7 +48,18 @@
   }
 }
 
-/* Spotify Desktop Classes */
+.gold-glow {
+  text-shadow: 0 0 20px hsla(43, 100% , 50%, 0.4);
+}
+
+.gold-border-glow {
+  box-shadow: 0 0 15px hsla(43, 100% , 50%, 0.2);
+}
+
+.glass-header {
+  @apply bg-black/60 backdrop-blur-xl border-b border-primary/10;
+}
+
 .spotify-sidebar-item {
   @apply flex items-center gap-4 px-4 py-3 text-muted-foreground hover:text-primary transition-all rounded-lg cursor-pointer;
 }
@@ -59,14 +70,6 @@
 
 .spotify-card {
   @apply bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300 cursor-pointer border border-transparent hover:border-primary/20;
-}
-
-.gold-glow {
-  text-shadow: 0 0 20px hsla(43, 100% , 50%, 0.4);
-}
-
-.glass-header {
-  @apply bg-black/60 backdrop-blur-xl border-b border-primary/10;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -83,15 +86,6 @@
   @apply bg-white/10 rounded-full hover:bg-primary/20;
 }
 
-.yt-player-hidden {
-  position: absolute;
-  top: -1000px;
-  left: -1000px;
-  width: 1px;
-  height: 1px;
-  pointer-events: none;
-}
-
 @keyframes pulse-gold {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.8; transform: scale(1.02); }
@@ -99,9 +93,4 @@
 
 .animate-pulse-gold {
   animation: pulse-gold 3s infinite ease-in-out;
-}
-
-/* Gold Range/Slider Fixes */
-[data-radix-collection-item] {
-  @apply font-black;
 }
