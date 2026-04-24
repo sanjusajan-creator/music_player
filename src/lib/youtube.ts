@@ -6,11 +6,11 @@ const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours persistent cache
 
 /**
- * Multi-Provider Search Strategy:
- * 1. iTunes API (Public, CORS-friendly)
- * 2. Deezer API (Via Proxy or Direct)
- * 3. MusicBrainz
- * 4. YouTube (Fallback)
+ * Multi-Provider Search Strategy (Sovereignty Architecture):
+ * 1. iTunes API (Public, No Key needed, CORS-friendly)
+ * 2. Deezer API (Via Proxy, deep international archive)
+ * 3. YouTube (Fallback/Quota-aware)
+ * 4. Cosmic Archive (Mock fallback for Error 403)
  */
 export async function searchTracks(query: string): Promise<Track[]> {
   const sanitizedQuery = query?.toLowerCase().trim();
@@ -31,7 +31,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     }
   } catch (e) {}
 
-  // 2. Try iTunes Search API (Very fast, reliable, no key needed)
+  // 2. Try iTunes Search API (High reliability, No Key needed)
   try {
     const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`;
     const itunesRes = await fetch(itunesUrl);
@@ -51,7 +51,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
     console.warn("iTunes Sanctuary unavailable, proceeding to Deezer...");
   }
 
-  // 3. Try Deezer Search API
+  // 3. Try Deezer Search API (Via allorigins proxy to avoid CORS constraints)
   try {
     const deezerUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.deezer.com/search?q=${query}&limit=15`)}`;
     const deezerRes = await fetch(deezerUrl);
@@ -72,35 +72,39 @@ export async function searchTracks(query: string): Promise<Track[]> {
     console.warn("Deezer Sanctuary unavailable, proceeding to YouTube...");
   }
 
-  // 4. Final Fallback: YouTube API (Only if key is present and not exceeded)
+  // 4. YouTube API (With explicit Quota 403 handling)
   if (YOUTUBE_API_KEY) {
     try {
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' music')}&type=video&maxResults=15&key=${YOUTUBE_API_KEY}`;
       const searchRes = await fetch(searchUrl);
       
-      if (searchRes.status !== 403 && searchRes.status !== 429) {
-        const searchData = await searchRes.json();
-        const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
-        
-        if (videoIds) {
-          const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
-          const listRes = await fetch(listUrl);
-          const listData = await listRes.json();
-          const results = (listData.items || []).map((item: any) => ({
-            id: item.id,
-            title: normalizeMetadata(item.snippet.title),
-            artist: normalizeMetadata(item.snippet.channelTitle),
-            thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
-            duration: parseISO8601Duration(item.contentDetails.duration),
-          }));
-          updateCache(cacheKey, results);
-          return results;
-        }
+      if (searchRes.status === 403 || searchRes.status === 429) {
+          throw new Error("QUOTA_EXCEEDED");
       }
-    } catch (error) {}
+
+      const searchData = await searchRes.json();
+      const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',') || '';
+      
+      if (videoIds) {
+        const listUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
+        const listRes = await fetch(listUrl);
+        const listData = await listRes.json();
+        const results = (listData.items || []).map((item: any) => ({
+          id: item.id,
+          title: normalizeMetadata(item.snippet.title),
+          artist: normalizeMetadata(item.snippet.channelTitle),
+          thumbnail: item.snippet.thumbnails.maxres?.url || item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default.url,
+          duration: parseISO8601Duration(item.contentDetails.duration),
+        }));
+        updateCache(cacheKey, results);
+        return results;
+      }
+    } catch (error) {
+        console.warn("YouTube Sanctuary quota exceeded or unavailable. Manifesting Cosmic Archive.");
+    }
   }
 
-  // 5. Hard Fallback: Mock Archive (Ensures the Oracle is never silent)
+  // 5. Final Fallback: Cosmic Archive (Ensures the Oracle is NEVER silent)
   return getMockResults(sanitizedQuery);
 }
 
@@ -116,7 +120,6 @@ function updateCache(key: string, results: Track[]) {
 
 export async function getRelatedVideos(videoId: string): Promise<Track[]> {
   if (!videoId || videoId.startsWith('local-')) return [];
-  // For related videos, we stick to the provided ID context
   if (!YOUTUBE_API_KEY) return MOCK_TRACKS.slice(0, 5);
 
   try {
@@ -177,5 +180,10 @@ const MOCK_TRACKS: Track[] = [
   { id: 'L_jWHffIx5E', title: 'Smells Like Teen Spirit', artist: 'Nirvana', thumbnail: 'https://picsum.photos/seed/nirvana/600/600', duration: 301 },
   { id: 'hTWKbfoikeg', title: 'Midnight Gold', artist: 'Lux Record', thumbnail: 'https://picsum.photos/seed/gold/600/600', duration: 185 },
   { id: 'YQHsXMglC9A', title: 'Hello', artist: 'Adele', thumbnail: 'https://picsum.photos/seed/adele/600/600', duration: 367 },
-  { id: 'JGwWNGJdvx8', title: 'Shape of You', artist: 'Ed Sheeran', thumbnail: 'https://picsum.photos/seed/ed/600/600', duration: 233 }
+  { id: 'JGwWNGJdvx8', title: 'Shape of You', artist: 'Ed Sheeran', thumbnail: 'https://picsum.photos/seed/ed/600/600', duration: 233 },
+  { id: '9bZkp7q19f0', title: 'Gangnam Style', artist: 'PSY', thumbnail: 'https://picsum.photos/seed/psy/600/600', duration: 252 },
+  { id: 'fRh_vgS2dFE', title: 'Sorry', artist: 'Justin Bieber', thumbnail: 'https://picsum.photos/seed/bieber/600/600', duration: 200 },
+  { id: 'kJQP7kiw5Fk', title: 'Despacito', artist: 'Luis Fonsi', thumbnail: 'https://picsum.photos/seed/fonsi/600/600', duration: 228 },
+  { id: '7wtfhZwyrAY', title: 'Uptown Funk', artist: 'Mark Ronson', thumbnail: 'https://picsum.photos/seed/bruno/600/600', duration: 270 },
+  { id: 'OPf0YbXqDm0', title: 'Mark My Words', artist: 'Bieber', thumbnail: 'https://picsum.photos/seed/words/600/600', duration: 134 }
 ];
