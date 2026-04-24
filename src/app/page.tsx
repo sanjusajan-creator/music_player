@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
@@ -14,7 +13,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { 
   TrendingUp, Sparkles, Heart, 
-  Loader2, FolderOpen, History, Music2, Plus, Play, Disc, User, ListMusic, Home, Search, Library, Settings as SettingsIcon
+  Loader2, FolderOpen, History, Music2, FolderPlus, Play, 
+  Disc, User, ListMusic, Home, Search, Library, Settings as SettingsIcon, Clock
 } from 'lucide-react';
 import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -40,7 +40,7 @@ export default function AppWrapper() {
   return (
     <QueryClientProvider client={queryClient}>
       <Suspense fallback={
-        <div className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center">
+        <div className="h-screen w-screen bg-black flex flex-col items-center justify-center">
           <Loader2 className="animate-spin text-primary w-12 h-12 mb-4" />
           <p className="text-primary/40 font-black uppercase tracking-[0.3em] text-[10px]">Manifesting Sanctuary...</p>
         </div>
@@ -98,13 +98,13 @@ function HomeContent() {
   };
 
   if (isUserLoading) return (
-    <div className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center">
+    <div className="h-screen w-screen bg-black flex flex-col items-center justify-center">
       <Loader2 className="animate-spin text-primary w-12 h-12 mb-4" />
     </div>
   );
 
   if (!user) return (
-    <main className="min-h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+    <main className="min-h-screen w-screen bg-black flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
       <div className="w-full max-w-md space-y-12 animate-in fade-in zoom-in duration-700">
         <header>
           <h1 className="text-6xl font-black text-primary gold-glow tracking-tighter uppercase leading-none">VIBECRAFT</h1>
@@ -112,8 +112,8 @@ function HomeContent() {
         </header>
 
         <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-8 rounded-[2rem] space-y-6 backdrop-blur-xl shadow-2xl">
-          <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-black/60 border-primary/20 h-14 rounded-xl text-primary font-black placeholder:text-primary/20" />
-          <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-black/60 border-primary/20 h-14 rounded-xl text-primary font-black placeholder:text-primary/20" />
+          <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-black border-primary/20 h-14 rounded-xl text-primary font-black placeholder:text-primary/20" />
+          <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-black border-primary/20 h-14 rounded-xl text-primary font-black placeholder:text-primary/20" />
           <Button type="submit" disabled={isAuthLoading} className="w-full bg-primary text-black font-black h-14 rounded-xl text-lg hover:scale-105 transition-all shadow-[0_0_30px_rgba(212,175,55,0.2)] uppercase tracking-widest">
             {isAuthLoading ? <Loader2 className="animate-spin" /> : (isLogin ? "Enter Sanctuary" : "Create Archive")}
           </Button>
@@ -126,13 +126,13 @@ function HomeContent() {
   );
 
   return (
-    <div className="flex h-[100dvh] w-screen bg-black overflow-hidden select-none relative">
+    <div className="flex h-screen w-screen bg-black overflow-hidden relative">
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 bg-black relative h-full">
         <Navbar />
         <YouTubePlayer />
         
-        <ScrollArea className="flex-1 h-full overflow-y-auto no-scrollbar">
+        <ScrollArea className="flex-1 h-full overflow-y-auto no-scrollbar bg-black">
           <div className="p-4 md:p-8 max-w-7xl mx-auto pb-40">
             <AnimatePresence mode="wait">
               <motion.div
@@ -154,7 +154,7 @@ function HomeContent() {
         </ScrollArea>
 
         {/* Mobile Navigation Bar */}
-        <nav className="md:hidden fixed bottom-24 left-0 right-0 h-16 bg-black/80 backdrop-blur-xl border-t border-white/5 flex items-center justify-around z-50">
+        <nav className="md:hidden fixed bottom-20 left-0 right-0 h-16 bg-black/90 backdrop-blur-xl border-t border-white/5 flex items-center justify-around z-50">
           <MobileNavItem icon={<Home />} label="Home" active={currentTab === 'home'} onClick={() => router.push('/?tab=home')} />
           <MobileNavItem icon={<Search />} label="Search" active={currentTab === 'search'} onClick={() => router.push('/?tab=search')} />
           <MobileNavItem icon={<Library />} label="Library" active={currentTab === 'liked'} onClick={() => router.push('/?tab=liked')} />
@@ -191,7 +191,7 @@ function HomeView() {
           <GreetingCard label="Liked Songs" icon={<Heart className="text-pink-500 fill-current" />} />
           <GreetingCard label="Magic Mix" icon={<Sparkles className="text-blue-400" />} />
           <GreetingCard label="Local Vault" icon={<FolderOpen className="text-orange-400" />} />
-          <GreetingCard label="History" icon={<History className="text-green-400" />} />
+          <GreetingCard label="History" icon={<Clock className="text-green-400" />} />
         </div>
       </section>
 
@@ -466,24 +466,26 @@ function LocalArchivesView() {
 
   const handleSummon = async () => {
     if ('showDirectoryPicker' in window) {
-      const handle = await (window as any).showDirectoryPicker();
-      const tracks: Track[] = [];
-      for await (const entry of handle.values()) {
-        if (entry.kind === 'file') {
-          const file = await entry.getFile();
-          if (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|m4a|ogg)$/i)) {
-            tracks.push({
-              id: `local-${Math.random().toString(36).substr(2, 9)}`,
-              title: file.name.replace(/\.[^/.]+$/, ""),
-              artist: "Local Archive",
-              thumbnail: "https://picsum.photos/seed/local/400/400",
-              isLocal: true,
-              localFile: file
-            });
+      try {
+        const handle = await (window as any).showDirectoryPicker();
+        const tracks: Track[] = [];
+        for await (const entry of handle.values()) {
+          if (entry.kind === 'file') {
+            const file = await entry.getFile();
+            if (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|m4a|ogg)$/i)) {
+              tracks.push({
+                id: `local-${Math.random().toString(36).substr(2, 9)}`,
+                title: file.name.replace(/\.[^/.]+$/, ""),
+                artist: "Local Archive",
+                thumbnail: "https://picsum.photos/seed/local/400/400",
+                isLocal: true,
+                localFile: file
+              });
+            }
           }
         }
-      }
-      setLocalTracks([...localTracks, ...tracks]);
+        setLocalTracks([...localTracks, ...tracks]);
+      } catch (e) {}
     } else {
       fileInputRef.current?.click();
     }
@@ -502,7 +504,7 @@ function LocalArchivesView() {
         {localTracks.map(t => <SearchResult key={t.id} track={t} />)}
         {localTracks.length === 0 && (
           <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-white/5 rounded-[2rem] md:rounded-[3rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-white/5 transition-all group">
-            <FolderOpen className="w-20 h-24 md:w-24 md:h-24 text-muted-foreground/10 group-hover:text-primary/20 transition-colors" />
+            <FolderPlus className="w-20 h-24 md:w-24 md:h-24 text-muted-foreground/10 group-hover:text-primary/20 transition-colors" />
             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">Click to unlock local vault</p>
           </div>
         )}

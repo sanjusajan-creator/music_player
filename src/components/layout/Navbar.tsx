@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -26,9 +25,6 @@ export const Navbar: React.FC = () => {
   const currentTab = searchParams.get("tab") || "home";
   const [searchValue, setSearchValue] = useState(searchParams.get("q") || "");
   
-  // Requirement: Debounce search input (300ms)
-  const debouncedSearch = useDebounce(searchValue, 300);
-
   useEffect(() => {
     setSearchValue(searchParams.get("q") || "");
   }, [searchParams]);
@@ -45,7 +41,7 @@ export const Navbar: React.FC = () => {
   const handleLogout = () => signOut(auth);
 
   return (
-    <nav className="sticky top-0 z-50 h-16 px-6 flex items-center justify-between bg-black/40 backdrop-blur-md">
+    <nav className="sticky top-0 z-40 h-16 px-6 flex items-center justify-between bg-black/80 backdrop-blur-xl border-b border-white/5">
       <div className="flex items-center gap-4">
         <div className="flex gap-2">
           <NavArrow icon={<ChevronLeft />} onClick={() => router.back()} />
@@ -70,7 +66,7 @@ export const Navbar: React.FC = () => {
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 bg-black/40 border border-white/10 hover:scale-105 transition-all p-0">
+              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 bg-black border border-white/10 hover:scale-105 transition-all p-0">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={`https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`} />
                   <AvatarFallback className="bg-primary text-black">U</AvatarFallback>
@@ -95,7 +91,7 @@ export const Navbar: React.FC = () => {
 const NavArrow = ({ icon, onClick }: { icon: React.ReactNode, onClick: () => void }) => (
   <button 
     onClick={onClick}
-    className="h-8 w-8 bg-black/60 rounded-full flex items-center justify-center text-white/60 hover:text-white transition-all"
+    className="h-8 w-8 bg-black rounded-full flex items-center justify-center text-white/60 hover:text-white border border-white/5 transition-all"
   >
     {React.cloneElement(icon as React.ReactElement, { className: 'w-5 h-5' })}
   </button>
