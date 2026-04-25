@@ -150,7 +150,7 @@ function HomeView({ layoutMode }: { layoutMode: LayoutMode }) {
         <h2 className="text-3xl font-black text-primary mb-8 gold-glow uppercase tracking-tighter">Manifesting Trending</h2>
         <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
           {trendingLoading ? [...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-2xl" />) :
-            (trending || []).map((track, i) => <SearchResult key={track.id} track={track} results={trending} index={i} />)
+            (trending || []).map((track: any, i: number) => <SearchResult key={track.id} track={track} results={trending} index={i} />)
           }
         </div>
       </section>
@@ -178,7 +178,7 @@ const { data, isLoading } = useSaavnSearch(query);
     <div className="space-y-8">
       <h2 className="text-2xl font-black text-primary uppercase tracking-tighter gold-glow">Archives for "{query}"</h2>
       <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
-        {(data?.results || []).map((track: any, i: number) => <SearchResult key={track.id} track={track} results={data.results} index={i} />)}
+        {(data?.results || []).map((track: any, i: number) => <SearchResult key={track.id} track={track} results={data?.results || []} index={i} />)}
       </div>
     </div>
   );
@@ -193,10 +193,10 @@ function LikedView({ layoutMode }: { layoutMode: LayoutMode }) {
     return query(collection(db, 'users', user.uid, 'likedSongs'), orderBy('likedAt', 'desc'));
   }, [user, db]);
 
-  const { data: likedSongs, loading } = useCollection(likedQuery);
+  const { data: likedSongs, isLoading: likedLoading } = useCollection(likedQuery);
 
   if (!user) return <div className="text-center py-20 text-primary/40 uppercase font-black text-sm tracking-widest">Sign in to view your Liked Songs</div>;
-  if (loading) return <div className="h-48 flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  if (likedLoading) return <div className="h-48 flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
   if (!likedSongs || likedSongs.length === 0) return <div className="text-center py-20 text-primary/40 uppercase font-black text-sm tracking-widest">Your liked archive is empty. Fill it with resonance.</div>;
 
   const tracks = likedSongs.map((doc: any) => ({

@@ -19,6 +19,8 @@ export const YouTubePlayer: React.FC = () => {
   const lastSeekRef = useRef<number | null>(null);
   // Track whether the current track is using iframe vs audio element
   const usingIframeRef = useRef<boolean>(false);
+  // Stores a YouTube video ID when Saavn/Gaana falls back to YT search
+  const fallbackVideoIdRef = useRef<string | null>(null);
 
   // Sleep timer tick
   useEffect(() => {
@@ -31,7 +33,6 @@ export const YouTubePlayer: React.FC = () => {
     if (typeof window !== 'undefined' && !audioRef.current) {
       const audio = new Audio();
       audio.preload = 'auto';
-      audio.crossOrigin = 'anonymous';
 
       audio.addEventListener('timeupdate', () => {
         if (!usingIframeRef.current) setProgress(audio.currentTime);
@@ -105,6 +106,7 @@ export const YouTubePlayer: React.FC = () => {
       // LOCAL files → use ObjectURL directly
       if (currentTrack.isLocal && currentTrack.localFile) {
         usingIframeRef.current = false;
+        fallbackVideoIdRef.current = null;
         const url = URL.createObjectURL(currentTrack.localFile);
         audioRef.current!.src = url;
         audioRef.current!.load();
@@ -118,6 +120,7 @@ export const YouTubePlayer: React.FC = () => {
       // YOUTUBE → use iframe (fastest, no proxy needed)
       if (currentTrack.isYouTube && settings.useIframeForYouTube) {
         usingIframeRef.current = true;
+        fallbackVideoIdRef.current = null;
         // The iframe will autoplay via onReady / cueVideoById
         setIsBuffering(false);
         return;
@@ -126,7 +129,14 @@ export const YouTubePlayer: React.FC = () => {
       // SAAVN / GAANA / YT without iframe → resolve raw stream URL
       const url = await resolveTrackAudio(currentTrack);
 
-      if (url && audioRef.current) {
+      if (url && url.startsWith('yt-fallback:')) {
+        // Saavn/Gaana couldn't stream — play via YouTube iframe instead
+        const videoId = url.replace('yt-fallback:', '');
+        fallbackVideoIdRef.current = videoId;
+        usingIframeRef.current = true;
+        setIsBuffering(false);
+      } else if (url && audioRef.current) {
+        fallbackVideoIdRef.current = null;
         usingIframeRef.current = false;
         audioRef.current.src = url;
         audioRef.current.load();
@@ -137,6 +147,7 @@ export const YouTubePlayer: React.FC = () => {
         }
       } else if (currentTrack.isYouTube && !url) {
         // Proxy failed – force iframe as fallback
+        fallbackVideoIdRef.current = null;
         usingIframeRef.current = true;
         usePlayerStore.getState().updateSettings({ useIframeForYouTube: true });
         setIsBuffering(false);
@@ -207,10 +218,12 @@ export const YouTubePlayer: React.FC = () => {
     if (e.data === 3) setIsBuffering(true);
   };
 
+  // Determine the video ID the iframe should play
+  const effectiveVideoId = fallbackVideoIdRef.current || currentTrack?.videoId || currentTrack?.id || "";
+
   const isPlaylist = ['PL', 'VL', 'RD', 'OL'].some(prefix => 
-    currentTrack?.videoId?.startsWith(prefix) || currentTrack?.id?.startsWith(prefix)
+    effectiveVideoId.startsWith(prefix)
   );
-  const trackId = currentTrack?.videoId || currentTrack?.id || "";
 
   const opts: YouTubeProps['opts'] = {
     height: '100%', width: '100%',
@@ -220,12 +233,14 @@ export const YouTubePlayer: React.FC = () => {
       modestbranding: 1,
       rel: 0,
       origin: typeof window !== 'undefined' ? window.location.origin : undefined,
-      ...(isPlaylist ? { listType: 'playlist', list: trackId } : {})
+      ...(isPlaylist ? { listType: 'playlist', list: effectiveVideoId } : {})
     },
   };
 
   const showVideo = currentTrack?.isYouTube && settings.isVideoVisible;
-  const mountIframe = currentTrack?.isYouTube && (settings.isVideoVisible || settings.useIframeForYouTube);
+  // Mount iframe for: YT tracks with iframe enabled, OR any track with a fallback YT video ID
+  const hasFallback = !!fallbackVideoIdRef.current;
+  const mountIframe = (currentTrack?.isYouTube && (settings.isVideoVisible || settings.useIframeForYouTube)) || hasFallback;
 
   return (
     <div className={cn(
@@ -236,7 +251,7 @@ export const YouTubePlayer: React.FC = () => {
     )}>
       {mountIframe && (
         <YouTube
-          videoId={isPlaylist ? undefined : trackId}
+          videoId={isPlaylist ? undefined : effectiveVideoId}
           opts={opts}
           onReady={onReady}
           onStateChange={onStateChange}

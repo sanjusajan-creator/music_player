@@ -433,21 +433,44 @@ export async function resolveTrackAudio(track: Track): Promise<string | null> {
   }
 
   if (track.source === 'jiosaavn') {
-    const data = await safeFetchStream(`${SAAVN_API_BASE}/api/songs/${track.id}`);
-    const links = data?.data?.[0]?.downloadUrl;
-    if (links && links.length > 0) {
-      // Prefer highest quality (last entry)
-      const best = links[links.length - 1]?.url;
-      if (best) return best;
+    try {
+      const data = await safeFetchStream(`${SAAVN_API_BASE}/api/songs/${track.id}`);
+      const links = data?.data?.[0]?.downloadUrl;
+      if (links && links.length > 0) {
+        // Prefer highest quality (last entry)
+        const best = links[links.length - 1]?.url;
+        if (best) return best;
+      }
+    } catch (e) {
+      console.warn("Saavn stream resolution failed:", e);
     }
-    return null;
+    // Saavn failed — fall back to YouTube search
+    return resolveViaYouTubeSearch(track.title, track.artist);
   }
 
   if (track.source === 'gaana') {
-    const data = await safeFetchStream(`${GAANA_API_BASE}/api/songs/${track.id}`);
-    return data?.data?.[0]?.stream_url || null;
+    // Gaana API has no streaming endpoint — search YouTube for the song
+    return resolveViaYouTubeSearch(track.title, track.artist);
   }
 
+  return null;
+}
+
+/**
+ * Fallback: Search YouTube for a song by title+artist and return
+ * a special 'yt-fallback:VIDEO_ID' string. The player will detect 
+ * this prefix and switch to YouTube iframe playback.
+ */
+async function resolveViaYouTubeSearch(title: string, artist: string): Promise<string | null> {
+  try {
+    const query = `${title} ${artist}`.trim();
+    const data = await safeFetch(`${YT_MUSIC_API_BASE}/api/search?query=${encodeURIComponent(query)}`);
+    if (data?.results?.[0]?.video_id) {
+      return `yt-fallback:${data.results[0].video_id}`;
+    }
+  } catch (e) {
+    console.warn("YouTube fallback search failed:", e);
+  }
   return null;
 }
 
