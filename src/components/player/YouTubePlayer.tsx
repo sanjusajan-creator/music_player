@@ -55,6 +55,7 @@ export const YouTubePlayer: React.FC = () => {
       });
       
       audio.addEventListener('ended', () => {
+        console.log("%cOracle: Manifestation ended. Summoning next track...", "color: #FFD700;");
         nextTrack();
       });
       
@@ -62,6 +63,11 @@ export const YouTubePlayer: React.FC = () => {
       audio.addEventListener('playing', () => {
         setIsBuffering(false);
         setIsPlaying(true);
+      });
+
+      audio.addEventListener('error', (e) => {
+        console.error("%cOracle: Audio engine failure.", "color: #FF0000;", e);
+        setIsBuffering(false);
       });
       
       audioRef.current = audio;
@@ -95,7 +101,7 @@ export const YouTubePlayer: React.FC = () => {
           audioRef.current.pause();
           audioRef.current.src = "";
         }
-        console.log(`%cOracle: Manifesting YouTube Video Sanctuary`, "color: #FFD700; font-weight: 900;");
+        console.log(`%cOracle: Manifesting YouTube Video Sanctuary for "${currentTrack.title}"`, "color: #FFD700; font-weight: 900;");
       } else {
         // Native Audio Manifestation
         if (ytPlayerRef.current) ytPlayerRef.current.stopVideo();
@@ -106,27 +112,35 @@ export const YouTubePlayer: React.FC = () => {
           
           if (currentTrack.source === 'local' && currentTrack.localFile) {
             url = URL.createObjectURL(currentTrack.localFile);
-          } else if (currentTrack.streamUrl && currentTrack.source !== 'youtube') {
-            url = currentTrack.streamUrl;
           } else {
             const resolvedUrl = await resolveTrackAudio(currentTrack);
             if (resolvedUrl) url = resolvedUrl;
           }
 
           if (url && audioRef.current) {
-            console.log(`%cOracle: Manifesting Audio Bitstream from ${currentTrack.source?.toUpperCase() || 'UNKNOWN'}`, "color: #FFD700; font-weight: 900;");
+            const sourceLabel = (currentTrack.source || 'unknown').toUpperCase();
+            console.log(`%cOracle: Manifesting Audio Bitstream from ${sourceLabel} for "${currentTrack.title}"`, "color: #FFD700; font-weight: 900;");
+            
+            // Aggressive buffer reset
+            audioRef.current.pause();
             audioRef.current.src = url;
             audioRef.current.load();
+            
             if (isPlaying) {
               const playPromise = audioRef.current.play();
               if (playPromise !== undefined) {
-                playPromise.catch(() => setIsPlaying(false));
+                playPromise.catch((e) => {
+                  console.warn("%cOracle: Autoplay blocked or interrupted.", "color: #FFA500;", e);
+                  setIsPlaying(false);
+                });
               }
             }
           } else {
+            console.error(`%cOracle: Failed to resolve stream URL for "${currentTrack.title}"`, "color: #FF0000;");
             setIsBuffering(false);
           }
         } catch (error) {
+          console.error("%cOracle: Manifestation initialization failed.", "color: #FF0000;", error);
           setIsBuffering(false);
         }
       }
@@ -182,14 +196,15 @@ export const YouTubePlayer: React.FC = () => {
   };
 
   const onStateChange: YouTubeProps['onStateChange'] = (event) => {
-    if (event.data === 1) {
+    if (event.data === 1) { // Playing
       setIsPlaying(true);
       setIsBuffering(false);
-    } else if (event.data === 2) {
+    } else if (event.data === 2) { // Paused
       setIsPlaying(false);
-    } else if (event.data === 0) {
+    } else if (event.data === 0) { // Ended
+      console.log("%cOracle: Video Sanctuary ended. Summoning next track...", "color: #FFD700;");
       nextTrack();
-    } else if (event.data === 3) {
+    } else if (event.data === 3) { // Buffering
       setIsBuffering(true);
     }
   };
