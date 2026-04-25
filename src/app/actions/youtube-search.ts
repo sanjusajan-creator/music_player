@@ -65,31 +65,37 @@ export async function searchAllAction(queryInput: string) {
 
 async function fetchYouTubeMusic(query: string): Promise<Track[]> {
   try {
+    // Attempting the specialized music search endpoint
     const res = await fetch(`${YT_MUSIC_API_BASE}/api/music/search?q=${encodeURIComponent(query)}`);
     if (!res.ok) return [];
     const data = await res.json();
     
-    // InnerTube Deep Extraction - Searching through common structures
+    // InnerTube Deep Extraction - Searching through complex nested structures
     let rawResults: any[] = [];
     
     if (Array.isArray(data.results)) {
       rawResults = data.results;
-    } else if (Array.isArray(data.data)) {
-      rawResults = data.data;
     } else if (data.contents?.tabbedSearchResultsRenderer) {
       const tabs = data.contents.tabbedSearchResultsRenderer.tabs;
-      const shelfContents = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
-      rawResults = shelfContents.flatMap((sec: any) => 
-        sec.musicShelfRenderer?.contents || sec.musicCardShelfRenderer?.contents || []
-      );
+      const sectionList = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+      
+      rawResults = sectionList.flatMap((sec: any) => {
+        const shelf = sec.musicShelfRenderer || sec.musicCardShelfRenderer;
+        return shelf?.contents || [];
+      });
     } else if (data.contents?.sectionListRenderer?.contents) {
       rawResults = data.contents.sectionListRenderer.contents.flatMap((sec: any) => 
         sec.musicShelfRenderer?.contents || []
       );
     }
     
+    // Fallback to general search if music specific fails
     if (rawResults.length === 0) {
-      console.warn(`%cOracle: YouTube Vault returned no structured results for "${query}"`, "color: #FFA500;");
+      const fallbackRes = await fetch(`${YT_MUSIC_API_BASE}/api/search?q=${encodeURIComponent(query)}`);
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json();
+        rawResults = fallbackData.results || [];
+      }
     }
 
     return rawResults.map((item: any) => {
@@ -98,11 +104,14 @@ async function fetchYouTubeMusic(query: string): Promise<Track[]> {
       if (!id) return null;
       
       const title = track.title?.runs?.[0]?.text || track.title || track.name || "YouTube Track";
-      const artist = track.artist?.runs?.[0]?.text || track.author || track.subtitle?.runs?.[0]?.text || "YouTube Music";
-      const thumbnail = track.thumbnail?.thumbnails?.[track.thumbnail?.thumbnails?.length - 1]?.url || 
-                        track.thumbnail?.thumbnails?.[0]?.url || 
-                        track.image || 
-                        `https://picsum.photos/seed/${id}/400/400`;
+      const artist = track.artist?.runs?.[0]?.text || 
+                     track.author || 
+                     track.subtitle?.runs?.[0]?.text || 
+                     track.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text ||
+                     "YouTube Music";
+                     
+      const thumbData = track.thumbnail?.thumbnails || track.thumbnails || [];
+      const thumbnail = thumbData[thumbData.length - 1]?.url || thumbData[0]?.url || `https://picsum.photos/seed/${id}/400/400`;
       
       return {
         id: id,
@@ -174,19 +183,23 @@ async function fetchGaana(query: string): Promise<Track[]> {
 export async function resolveTrackAudio(track: Track): Promise<string | null> {
   const source = track.source || (track.isYouTube ? 'youtube' : 'jiosaavn');
   
-  console.log(`%cOracle: Resolving audio manifestation from ${source.toUpperCase()}`, "color: #FFD700; font-weight: 700;");
-
   if (source === 'youtube' || track.isYouTube) {
     const id = track.videoId || track.id;
-    return `${YT_MUSIC_API_BASE}/streams/${id}`;
+    const url = `${YT_MUSIC_API_BASE}/streams/${id}`;
+    console.log(`%cOracle: Manifesting YouTube Bitstream from ${url}`, "color: #FFD700; font-weight: 700;");
+    return url;
   }
   
   if (source === 'gaana') {
-    return getGaanaPlaybackUrl(track.id);
+    const url = await getGaanaPlaybackUrl(track.id);
+    console.log(`%cOracle: Manifesting Gaana Bitstream from ${url}`, "color: #FFD700; font-weight: 700;");
+    return url;
   }
   
   if (source === 'jiosaavn' || source === 'saavn') {
-    return getSaavnPlaybackUrl(track.id);
+    const url = await getSaavnPlaybackUrl(track.id);
+    console.log(`%cOracle: Manifesting JioSaavn Bitstream from ${url}`, "color: #FFD700; font-weight: 700;");
+    return url;
   }
   
   return null;
@@ -200,7 +213,6 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
     const song = data.data?.[0];
     if (!song || !song.downloadUrl) return null;
     const links = song.downloadUrl;
-    // Prefer higher quality
     return links[links.length - 1]?.url || links[0]?.url || null;
   } catch (error) {
     return null;

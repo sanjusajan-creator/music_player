@@ -66,7 +66,8 @@ export const YouTubePlayer: React.FC = () => {
       });
 
       audio.addEventListener('error', (e) => {
-        console.error("%cOracle: Audio engine failure.", "color: #FF0000;", e);
+        const err = audioRef.current?.error;
+        console.error(`%cOracle: Audio engine failure. Code: ${err?.code} | Message: ${err?.message} | URL: ${audioRef.current?.src}`, "color: #FF0000; font-weight: bold;");
         setIsBuffering(false);
       });
       
@@ -119,7 +120,7 @@ export const YouTubePlayer: React.FC = () => {
 
           if (url && audioRef.current) {
             const sourceLabel = (currentTrack.source || 'unknown').toUpperCase();
-            console.log(`%cOracle: Manifesting Audio Bitstream from ${sourceLabel} for "${currentTrack.title}"`, "color: #FFD700; font-weight: 900;");
+            console.log(`%cOracle: Manifesting Audio Bitstream from ${sourceLabel} for "${currentTrack.title}" | URL: ${url}`, "color: #FFD700; font-weight: 900;");
             
             // Aggressive buffer reset
             audioRef.current.pause();
