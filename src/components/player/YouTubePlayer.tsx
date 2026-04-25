@@ -67,6 +67,9 @@ export const YouTubePlayer: React.FC = () => {
 
       audio.addEventListener('error', (e) => {
         const err = audioRef.current?.error;
+        // Ignore Code 4 (Empty Source) errors as they are often transitionary or harmless initial states
+        if (err?.code === 4) return;
+        
         console.error(`%cOracle: Audio engine failure. Code: ${err?.code} | Message: ${err?.message} | URL: ${audioRef.current?.src}`, "color: #FF0000; font-weight: bold;");
         setIsBuffering(false);
       });
@@ -158,7 +161,7 @@ export const YouTubePlayer: React.FC = () => {
     if (isYT && settings.isVideoVisible && ytPlayerRef.current) {
       if (isPlaying) ytPlayerRef.current.playVideo();
       else ytPlayerRef.current.pauseVideo();
-    } else if (audioRef.current && audioRef.current.src) {
+    } else if (audioRef.current && audioRef.current.src && audioRef.current.src !== window.location.href) {
       if (isPlaying) audioRef.current.play().catch(() => {});
       else audioRef.current.pause();
     }
@@ -175,7 +178,7 @@ export const YouTubePlayer: React.FC = () => {
       const isYT = currentTrack?.isYouTube || currentTrack?.source === 'youtube' || currentTrack?.id?.length === 11;
       if (isYT && settings.isVideoVisible && ytPlayerRef.current) {
         ytPlayerRef.current.seekTo(seekRequest, true);
-      } else if (audioRef.current && audioRef.current.src) {
+      } else if (audioRef.current && audioRef.current.src && audioRef.current.src !== window.location.href) {
         audioRef.current.currentTime = seekRequest;
       }
     }
