@@ -13,7 +13,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { 
   TrendingUp, Sparkles, Heart, Home,
-  Loader2, FolderOpen, Search, Library, Settings as SettingsIcon, X, LayoutGrid, List, Play, FolderPlus
+  Loader2, FolderOpen, Search, Library, Settings as SettingsIcon, LayoutGrid, List, Play, FolderPlus
 } from 'lucide-react';
 import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -45,7 +45,7 @@ function HomeContent() {
   const db = useFirestore();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setLikedTracks, hasHydrated, currentTrack, setCurrentTrack, settings, updateSettings } = usePlayerStore();
+  const { setLikedTracks, hasHydrated, settings, updateSettings } = usePlayerStore();
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -119,24 +119,6 @@ function HomeContent() {
         <ScrollArea className="flex-1 h-full">
           <div className="p-4 md:p-8 max-w-7xl mx-auto pb-44 md:pb-32">
             
-            <AnimatePresence>
-              {currentTrack?.isYouTube && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }} 
-                  animate={{ opacity: 1, scale: 1 }} 
-                  exit={{ opacity: 0, scale: 0.9 }} 
-                  className="mb-10 w-full aspect-video rounded-3xl overflow-hidden bg-black border border-primary/20 relative group"
-                >
-                  <iframe src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen />
-                  <button onClick={() => setCurrentTrack(null)} className="absolute top-4 right-4 bg-black/80 p-2 rounded-full text-primary opacity-0 group-hover:opacity-100 transition-opacity border border-primary/20"><X className="w-6 h-6" /></button>
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4 backdrop-blur-md border-t border-primary/20">
-                    <p className="text-primary font-black uppercase text-xs tracking-widest">YouTube India Discovery</p>
-                    <h3 className="text-white font-black text-xl tracking-tighter uppercase truncate">{currentTrack.title}</h3>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* Layout Toggle Header (Only in relevant views) */}
             {['home', 'search', 'liked', 'local'].includes(currentTab) && (
               <div className="flex justify-end mb-4 px-2">
@@ -261,18 +243,6 @@ function SearchResultsView({ query, layoutMode }: { query: string, layoutMode: L
           <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
             {results.songs.results.map((t: any, i: number) => (
               <SearchResult key={`unified-${t.id}-${i}`} track={t} results={results.songs.results} index={i} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 📀 Albums (Gaana) */}
-      {results.albums?.results?.length > 0 && (
-        <section>
-          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Artifact Albums</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {results.albums.results.map((a: any, i: number) => (
-              <CollectionCard key={`album-${a.id}-${i}`} data={a} type="albums" />
             ))}
           </div>
         </section>

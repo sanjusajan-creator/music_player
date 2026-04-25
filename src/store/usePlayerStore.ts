@@ -34,6 +34,7 @@ interface SettingsState {
   autoplaySimilar: boolean;
   dataSaver: boolean;
   layoutMode: LayoutMode;
+  isVideoVisible: boolean;
 }
 
 interface PlayerState {
@@ -76,6 +77,7 @@ interface PlayerState {
   previousTrack: () => void;
   clearQueue: () => void;
   updateSettings: (settings: Partial<SettingsState>) => void;
+  toggleVideo: () => void;
   setSleepTimer: (minutes: number | null) => void;
   tickSleepTimer: () => void;
 }
@@ -107,6 +109,7 @@ export const usePlayerStore = create<PlayerState>()(
         autoplaySimilar: true,
         dataSaver: false,
         layoutMode: 'list',
+        isVideoVisible: false,
       },
 
       setHasHydrated: (state) => set({ hasHydrated: state }),
@@ -234,6 +237,10 @@ export const usePlayerStore = create<PlayerState>()(
         settings: { ...state.settings, ...newSettings }
       })),
 
+      toggleVideo: () => set((state) => ({
+        settings: { ...state.settings, isVideoVisible: !state.settings.isVideoVisible }
+      })),
+
       setSleepTimer: (minutes) => set({ sleepTimer: minutes ? minutes * 60 : null }),
       tickSleepTimer: () => {
         const { sleepTimer, isPlaying } = get();
@@ -246,7 +253,7 @@ export const usePlayerStore = create<PlayerState>()(
       }
     }),
     {
-      name: 'vibecraft-sovereign-v8',
+      name: 'vibecraft-sovereign-v9',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 

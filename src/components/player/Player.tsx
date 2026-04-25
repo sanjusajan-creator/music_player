@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, 
-  Heart, Maximize2, Music, Loader2, Shuffle, Repeat, 
-  VolumeX, ListMusic, X, Share2, Youtube, Moon, Clock, MoreVertical
+  Heart, Maximize2, Music, Loader2, Shuffle, 
+  VolumeX, ListMusic, X, Youtube, Moon, Video, VideoOff
 } from 'lucide-react';
 import { usePlayerStore, Track } from '@/store/usePlayerStore';
 import { Slider } from '@/components/ui/slider';
@@ -31,8 +31,8 @@ export const Player: React.FC = () => {
   const { 
     currentTrack, isPlaying, setIsPlaying, nextTrack, previousTrack, 
     progress, duration, volume, setVolume, likedTrackIds, toggleLike, seekTo,
-    isShuffle, toggleShuffle, repeatMode, setRepeatMode, hasHydrated,
-    queue, sleepTimer, setSleepTimer
+    isShuffle, toggleShuffle, hasHydrated,
+    sleepTimer, setSleepTimer, settings, toggleVideo
   } = usePlayerStore();
   
   const { user } = useUser();
@@ -150,18 +150,28 @@ export const Player: React.FC = () => {
                 </button>
                 
                 <div className="flex flex-col items-center flex-1 px-4 min-w-0">
-                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 mb-1">Now Manifesting</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 mb-1">
+                    {settings.isVideoVisible && currentTrack.isYouTube ? "Visual Manifestation" : "Audio Manifestation"}
+                  </span>
                   <div className="flex flex-col items-center w-full">
                     <h2 className="text-xs font-black text-white uppercase tracking-tighter truncate max-w-full text-center">
                       {currentTrack.title}
                     </h2>
-                    <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest truncate max-w-full">
-                      {currentTrack.artist}
-                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1 -mr-2">
+                  {currentTrack.isYouTube && (
+                    <button 
+                      onClick={toggleVideo} 
+                      className={cn(
+                        "p-2 transition-all rounded-full hover:bg-white/5",
+                        settings.isVideoVisible ? "text-primary gold-glow" : "text-primary/40"
+                      )}
+                    >
+                      {settings.isVideoVisible ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                    </button>
+                  )}
                   <SleepTimerButton />
                   <button onClick={() => openSheet('queue')} className="text-primary p-2">
                     <ListMusic className="w-6 h-6" />
@@ -170,24 +180,35 @@ export const Player: React.FC = () => {
               </div>
             </div>
 
-            {/* 2. CENTER SECTION: Flexible Artwork */}
-            <div className="flex-1 flex items-center justify-center p-8 md:p-12 min-h-0 z-10">
-              <motion.div 
-                layoutId="player-artwork"
-                className="relative w-full max-w-[400px] aspect-square group"
-              >
-                <img 
-                  src={getImage(currentTrack)} 
-                  className="w-full h-full object-cover rounded-[2.5rem] shadow-[0_0_100px_rgba(255,215,0,0.15)] gold-border-glow" 
-                  alt="art" 
-                />
-                {currentTrack.isYouTube && (
-                  <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-primary/20 flex items-center gap-2">
-                    <Youtube className="w-4 h-4 text-primary" />
-                    <span className="text-[8px] font-black text-primary uppercase tracking-widest">YouTube Discovery</span>
-                  </div>
+            {/* 2. CENTER SECTION: Flexible Artwork or Spacer for Video */}
+            <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-12 min-h-0 z-10 relative">
+              <AnimatePresence mode="wait">
+                {(!settings.isVideoVisible || !currentTrack.isYouTube) ? (
+                  <motion.div 
+                    key="artwork"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    layoutId="player-artwork"
+                    className="relative w-full max-w-[400px] aspect-square group"
+                  >
+                    <img 
+                      src={getImage(currentTrack)} 
+                      className="w-full h-full object-cover rounded-[2.5rem] shadow-[0_0_100px_rgba(255,215,0,0.15)] gold-border-glow" 
+                      alt="art" 
+                    />
+                    {currentTrack.isYouTube && (
+                      <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-primary/20 flex items-center gap-2">
+                        <Youtube className="w-4 h-4 text-primary" />
+                        <span className="text-[8px] font-black text-primary uppercase tracking-widest">YouTube Archive</span>
+                      </div>
+                    )}
+                  </motion.div>
+                ) : (
+                  /* Space reserved for YouTubePlayer's absolute positioned video sanctuary */
+                  <div key="video-spacer" className="w-full max-w-[400px] aspect-video" />
                 )}
-              </motion.div>
+              </AnimatePresence>
             </div>
 
             {/* 3. BOTTOM SECTION: Controls (Fixed Priority) */}
@@ -291,42 +312,39 @@ export const Player: React.FC = () => {
           </button>
         </div>
 
-        {!currentTrack.isYouTube ? (
-          <div className="flex-[2] max-w-2xl flex flex-col items-center gap-1">
-            <div className="flex items-center gap-4 md:gap-6">
-              <button onClick={toggleShuffle} className={cn("transition-all hidden md:block", isShuffle ? "text-primary" : "text-muted-foreground hover:text-white")}>
-                <Shuffle className="w-4 h-4" />
-              </button>
-              <button onClick={previousTrack} className="text-muted-foreground hover:text-white transition-all"><SkipBack className="w-5 h-5 md:w-6 md:h-6 fill-current" /></button>
+        <div className="flex-[2] max-w-2xl flex flex-col items-center gap-1">
+          <div className="flex items-center gap-4 md:gap-6">
+            <button onClick={toggleShuffle} className={cn("transition-all hidden md:block", isShuffle ? "text-primary" : "text-muted-foreground hover:text-white")}>
+              <Shuffle className="w-4 h-4" />
+            </button>
+            <button onClick={previousTrack} className="text-muted-foreground hover:text-white transition-all"><SkipBack className="w-5 h-5 md:w-6 md:h-6 fill-current" /></button>
+            <button 
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-all active:scale-95 shadow-xl"
+            >
+              {isPlaying ? <Pause className="fill-black text-black w-4 h-4 md:w-5 md:h-5" /> : <Play className="fill-black text-black w-4 h-4 md:w-5 md:h-5 ml-0.5" />}
+            </button>
+            <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all"><SkipForward className="fill-current w-5 h-5 md:w-6 md:h-6" /></button>
+            {currentTrack.isYouTube && (
               <button 
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-all active:scale-95 shadow-xl"
+                onClick={toggleVideo} 
+                className={cn("transition-all hidden md:block", settings.isVideoVisible ? "text-primary" : "text-muted-foreground")}
               >
-                {isPlaying ? <Pause className="fill-black text-black w-4 h-4 md:w-5 md:h-5" /> : <Play className="fill-black text-black w-4 h-4 md:w-5 md:h-5 ml-0.5" />}
+                <Video className="w-4 h-4" />
               </button>
-              <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all"><SkipForward className="fill-current w-5 h-5 md:w-6 md:h-6" /></button>
-              <div className="hidden md:block">
-                 <Repeat className="w-4 h-4 text-muted-foreground opacity-30" />
-              </div>
-            </div>
-            <div className="flex items-center gap-3 w-full px-2 hidden md:flex">
-              <span className="text-[9px] font-black text-muted-foreground w-8 text-right">{formatTime(progress)}</span>
-              <Slider 
-                value={[progress]} 
-                max={duration || 100} 
-                onValueChange={(v) => seekTo(v[0])} 
-                className="flex-1 cursor-pointer h-1" 
-              />
-              <span className="text-[9px] font-black text-muted-foreground w-8">{formatTime(duration)}</span>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="flex-[2] flex items-center justify-center">
-             <button onClick={() => window.open(`https://www.youtube.com/watch?v=${currentTrack.videoId}`, '_blank')} className="text-[10px] font-black uppercase tracking-[0.3em] text-primary hover:gold-glow flex items-center gap-2">
-               <Youtube className="w-4 h-4" /> Video Mode
-             </button>
+          <div className="flex items-center gap-3 w-full px-2 hidden md:flex">
+            <span className="text-[9px] font-black text-muted-foreground w-8 text-right">{formatTime(progress)}</span>
+            <Slider 
+              value={[progress]} 
+              max={duration || 100} 
+              onValueChange={(v) => seekTo(v[0])} 
+              className="flex-1 cursor-pointer h-1" 
+            />
+            <span className="text-[9px] font-black text-muted-foreground w-8">{formatTime(duration)}</span>
           </div>
-        )}
+        </div>
 
         <div className="flex-1 flex items-center justify-end gap-3 md:gap-4">
           {!currentTrack.isYouTube && (
