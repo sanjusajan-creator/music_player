@@ -33,7 +33,7 @@ async function safeFetch(url: string) {
 
 /**
  * Normalizes manifestations into the Sovereign Unified Schema
- * Handles ResponsiveListItem, CardShelf, and TwoRowItem renderers with hyper-aggression.
+ * Handles ResponsiveListItem, CardShelf, and TwoRowItem renderers with high-fidelity.
  */
 function normalizeYTTrack(item: any): Track {
   const renderer = item.musicResponsiveListItemRenderer || 
@@ -102,38 +102,44 @@ function normalizeYTTrack(item: any): Track {
 
 /**
  * Sovereign Unified Search Oracle
- * Summons archives from YouTube, Saavn, and Gaana in strict hierarchical order.
  */
 export async function searchAllAction(query: string, source: string = 'all') {
   const cleanQuery = query?.toLowerCase().trim();
   if (!cleanQuery) return { success: false, results: [] };
 
-  console.log(`%cOracle: Summons Initiated for "${cleanQuery}" [Source: ${source}]`, "color: #FFD700; font-weight: 900;");
+  console.log(`%cOracle: Unified Summons Initiated for "${cleanQuery}"`, "color: #FFD700; font-weight: 900;");
 
   const results: Track[] = [];
 
   try {
+    // 1. YouTube Music - ABSOLUTE PRIORITY
     if (source === 'all' || source === 'youtube') {
       const ytResults = await fetchYouTubeMusic(cleanQuery);
       results.push(...ytResults);
+      console.log(`%cOracle: YouTube Vault Manifested ${ytResults.length} tracks.`, "color: #FFD700;");
     }
+
+    // 2. JioSaavn
     if (source === 'all' || source === 'jiosaavn') {
       const saavnResults = await fetchSaavn(cleanQuery);
       results.push(...saavnResults);
+      console.log(`%cOracle: JioSaavn Vault Manifested ${saavnResults.length} tracks.`, "color: #FFD700;");
     }
+
+    // 3. Gaana
     if (source === 'all' || source === 'gaana') {
       const gaanaResults = await fetchGaana(cleanQuery);
       results.push(...gaanaResults);
+      console.log(`%cOracle: Gaana Vault Manifested ${gaanaResults.length} tracks.`, "color: #FFD700;");
     }
 
-    console.log(`%cOracle: Summons Complete. Found: ${results.length} Manifestations.`, "color: #FFD700; font-weight: bold;");
     return {
       success: true,
       count: results.length,
       results: results
     };
   } catch (error) {
-    console.error("Oracle: Unified summons sanctuary collapsed.", error);
+    console.error("Oracle: Unified summons collapsed.", error);
     return { success: false, results: [] };
   }
 }
@@ -144,24 +150,25 @@ async function fetchYouTubeMusic(query: string): Promise<Track[]> {
   
   let raw: any[] = [];
   
-  // 1. Direct results check
-  if (Array.isArray(data.results) && data.results.length > 0) {
-    raw = data.results;
-  } 
-  // 2. Standard parsed structure
-  else if (data.contents?.tabbedSearchResultsRenderer) {
-    const tabs = data.contents.tabbedSearchResultsRenderer.tabs;
-    raw = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.flatMap((s: any) => 
-      (s.musicShelfRenderer || s.musicCardShelfRenderer)?.contents || []
-    ) || [];
-  }
-  // 3. Recursive raw_data extraction
-  else if (data.raw_data?.contents?.tabbedSearchResultsRenderer) {
-    const tabs = data.raw_data.contents.tabbedSearchResultsRenderer.tabs;
-    raw = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.flatMap((s: any) => 
-      (s.musicShelfRenderer || s.musicCardShelfRenderer)?.contents || []
-    ) || [];
-  }
+  // Recursive extraction for YouTube Music structures
+  const findShelves = (obj: any): any[] => {
+    if (!obj || typeof obj !== 'object') return [];
+    if (Array.isArray(obj)) return obj.flatMap(findShelves);
+    
+    let items: any[] = [];
+    if (obj.musicShelfRenderer?.contents) items.push(...obj.musicShelfRenderer.contents);
+    if (obj.musicCardShelfRenderer?.contents) items.push(...obj.musicCardShelfRenderer.contents);
+    
+    for (const key in obj) {
+      if (key !== 'musicShelfRenderer' && key !== 'musicCardShelfRenderer') {
+        items.push(...findShelves(obj[key]));
+      }
+    }
+    return items;
+  };
+
+  raw = findShelves(data);
+  if (raw.length === 0 && Array.isArray(data.results)) raw = data.results;
 
   return raw
     .map(normalizeYTTrack)
@@ -205,14 +212,20 @@ export async function getTrendingAction(region: string = 'IN') {
 export async function getMusicHomeAction() {
   const data = await safeFetch(`${YT_MUSIC_API_BASE}/api/music/home`);
   if (!data) return [];
-  const sections = data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
-  return sections.slice(0, 5).map((sec: any) => {
+
+  // Robust path extraction for Music Home manifestations
+  const contents = data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents ||
+                   data.raw_data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents ||
+                   [];
+
+  return contents.slice(0, 8).map((sec: any) => {
     const shelf = sec.musicCarouselShelfRenderer;
+    if (!shelf) return null;
     return {
       title: shelf?.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.[0]?.text || "Music Pick",
       items: (shelf?.contents || []).map((item: any) => normalizeYTTrack(item.musicTwoRowItemRenderer || item))
     };
-  }).filter((s: any) => s.items.length > 0);
+  }).filter((s: any) => s && s.items.length > 0);
 }
 
 export async function getRelatedTracksAction(videoId: string) {
@@ -234,10 +247,6 @@ export async function getLyricsAction(videoId: string) {
   return data?.lyrics || null;
 }
 
-/**
- * Sovereign Audio Resolver
- * Performs a Playability Sanctuary check to determine if a direct bitstream is allowed.
- */
 export async function resolveTrackAudio(track: Track): Promise<string | null> {
   if (track.source === 'youtube' || track.isYouTube) {
     const id = track.videoId || track.id;

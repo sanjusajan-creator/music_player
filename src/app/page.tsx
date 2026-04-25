@@ -11,7 +11,7 @@ import { YouTubePlayer } from '@/components/player/YouTubePlayer';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
-import { Loader2, LayoutGrid, List, Home } from 'lucide-react';
+import { Loader2, LayoutGrid, List } from 'lucide-react';
 import { useUser, useAuth } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
@@ -48,7 +48,6 @@ function HomeContent() {
   
   const currentTab = searchParams.get('tab') || 'home';
   const searchQuery = searchParams.get('q') || '';
-  const detailId = searchParams.get('id');
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +104,13 @@ function HomeContent() {
             </div>
 
             <AnimatePresence mode="wait">
-              <motion.div key={currentTab + searchQuery + detailId} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+              <motion.div 
+                key={currentTab + searchQuery} 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: -10 }} 
+                transition={{ duration: 0.2 }}
+              >
                 {currentTab === 'home' && <HomeView layoutMode={settings.layoutMode} />}
                 {currentTab === 'search' && <SearchResultsView query={searchQuery} layoutMode={settings.layoutMode} />}
                 {currentTab === 'settings' && <SettingsView />}
@@ -134,7 +139,9 @@ function HomeView({ layoutMode }: { layoutMode: LayoutMode }) {
         </div>
       </section>
 
-      {homeLoading ? <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-primary" /></div> :
+      {homeLoading ? (
+        <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
+      ) : (
         homeData?.map((sec: any, i: number) => (
           <section key={i}>
             <h3 className="text-xl font-black text-primary/60 mb-6 uppercase tracking-widest gold-glow">{sec.title}</h3>
@@ -143,7 +150,7 @@ function HomeView({ layoutMode }: { layoutMode: LayoutMode }) {
             </div>
           </section>
         ))
-      }
+      )}
     </div>
   );
 }
