@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -193,7 +192,6 @@ export const Player: React.FC = () => {
 
             {/* 3. BOTTOM SECTION: Controls (Fixed Priority) */}
             <div className="pb-[calc(env(safe-area-inset-bottom)+2rem)] px-8 space-y-8 shrink-0 z-10">
-              {/* Song Title & Like (Desktop layout uses these, but we keep them here for safe display if needed) */}
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <h1 className="text-2xl font-black text-white gold-glow tracking-tighter uppercase leading-none truncate break-words">
@@ -208,7 +206,6 @@ export const Player: React.FC = () => {
                 </button>
               </div>
 
-              {/* Progress Bar & Timestamps */}
               <div className="space-y-3">
                 <Slider 
                   value={[progress]} 
@@ -229,7 +226,6 @@ export const Player: React.FC = () => {
                 </div>
               </div>
               
-              {/* Primary Controls */}
               <div className="flex items-center justify-between">
                 <button onClick={toggleShuffle} className={cn("transition-all p-2", isShuffle ? "text-primary" : "text-primary/20")}>
                   <Shuffle className="w-6 h-6" />
@@ -313,7 +309,6 @@ export const Player: React.FC = () => {
                  <Repeat className="w-4 h-4 text-muted-foreground opacity-30" />
               </div>
             </div>
-            {/* PROGRESS BAR: Hidden on mobile mini-player */}
             <div className="flex items-center gap-3 w-full px-2 hidden md:flex">
               <span className="text-[9px] font-black text-muted-foreground w-8 text-right">{formatTime(progress)}</span>
               <Slider 

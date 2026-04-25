@@ -87,7 +87,6 @@ function HomeContent() {
   const toggleLayout = () => {
     const next: LayoutMode = settings.layoutMode === 'grid' ? 'list' : 'grid';
     updateSettings({ layoutMode: next });
-    toast({ title: "Layout Transformation", description: `Vault manifested as ${next.toUpperCase()} view.` });
   };
 
   if (isUserLoading) return <div className="h-screen w-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
@@ -188,7 +187,7 @@ function HomeContent() {
 
 const MobileNavItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) => (
   <button onClick={onClick} className={cn("flex flex-col items-center gap-1 transition-all", active ? "text-primary" : "text-primary/40")}>
-    {React.cloneElement(icon as React.ReactElement, { className: 'w-6 h-6' })}
+    {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement, { className: 'w-6 h-6' }) : icon}
     <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
   </button>
 );
@@ -436,7 +435,7 @@ function LikedSongsView({ userId, layoutMode }: { userId: string, layoutMode: La
 function LocalArchivesView({ layoutMode }: { layoutMode: LayoutMode }) {
   const { localTracks, setLocalTracks } = usePlayerStore();
   const handleSummon = async () => {
-    if ('showDirectoryPicker' in window) {
+    if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
       try {
         const handle = await (window as any).showDirectoryPicker();
         const tracks: Track[] = [];

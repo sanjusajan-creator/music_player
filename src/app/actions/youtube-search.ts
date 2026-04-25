@@ -1,4 +1,3 @@
-
 'use server';
 
 import { Track } from '@/store/usePlayerStore';
@@ -15,16 +14,14 @@ const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
  * Strips modifiers and cleanses noise for high-fidelity matching.
  */
 function parseQuery(query: string) {
-  const lowerQuery = query.toLowerCase().trim();
-  const ytMode = /:yt\b/i.test(query);
-  const lyricMode = /:lyrics\b/i.test(query);
-  
   const cleanQuery = query
     .replace(/:yt\b/gi, "")
     .replace(/:lyrics\b/gi, "")
-    .replace(/[^\w\s]/gi, '') // Remove special characters for search
     .trim()
     .toLowerCase();
+
+  const ytMode = /:yt\b/i.test(query);
+  const lyricMode = /:lyrics\b/i.test(query);
 
   return { ytMode, lyricMode, cleanQuery };
 }
@@ -141,7 +138,7 @@ async function fetchSaavn(query: string) {
 
 async function fetchGaana(query: string) {
   try {
-    const url = `${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}&country=IN`;
+    const url = `${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}`;
     console.log(`%cOracle: Dispatching Gaana Summon [${url}]`, "color: #FFD700;");
     
     const res = await fetch(url, {
@@ -195,18 +192,27 @@ async function fetchYouTube(query: string) {
     if (!res.ok) return [];
     const data = await res.json();
     
-    let items = Array.isArray(data) ? data : (data.results || data.contents || data.data || []);
-    return items.map((v: any) => ({
-      id: v.videoId || v.id || v.id?.videoId,
-      videoId: v.videoId || v.id || v.id?.videoId,
-      title: v.title || v.snippet?.title || "YouTube Discovery",
-      artist: v.channelTitle || v.snippet?.channelTitle || "YouTube",
-      thumbnail: v.thumbnail?.[0]?.url || v.thumbnail || v.snippet?.thumbnails?.high?.url,
-      source: 'youtube' as const,
-      isYouTube: true,
-      url: `https://www.youtube.com/watch?v=${v.videoId || v.id || v.id?.videoId}`,
-      isIndiaContent: true
-    }));
+    let items = [];
+    if (Array.isArray(data)) items = data;
+    else if (data.results) items = data.results;
+    else if (data.contents) items = data.contents;
+    else if (data.data) items = data.data;
+
+    return items.map((v: any) => {
+      const videoId = v.videoId || v.id?.videoId || (typeof v.id === 'string' ? v.id : null);
+      if (!videoId) return null;
+      return {
+        id: videoId,
+        videoId: videoId,
+        title: v.title || v.snippet?.title || "YouTube Discovery",
+        artist: v.channelTitle || v.snippet?.channelTitle || "YouTube",
+        thumbnail: v.thumbnail?.[0]?.url || v.thumbnail || v.snippet?.thumbnails?.high?.url,
+        source: 'youtube' as const,
+        isYouTube: true,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        isIndiaContent: true
+      };
+    }).filter(Boolean);
   } catch (e) {
     return [];
   }
