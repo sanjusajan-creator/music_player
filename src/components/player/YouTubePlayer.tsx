@@ -32,7 +32,7 @@ export const YouTubePlayer: React.FC = () => {
       audio.addEventListener('playing', () => { 
         setIsBuffering(false); 
         setIsPlaying(true); 
-        console.log(`%cOracle: Bitstream Manifestation Active via Native Audio Sanctuary.`, "color: #FFD700; font-weight: bold;");
+        console.log(`%cOracle: Bitstream Manifestation Active via Native Audio Sanctuary. [Source: ${currentTrack?.source}]`, "color: #FFD700; font-weight: bold;");
       });
 
       audio.addEventListener('error', (e) => {
@@ -65,7 +65,6 @@ export const YouTubePlayer: React.FC = () => {
           audioRef.current.pause(); 
           audioRef.current.src = ""; 
         }
-        console.log(`%cOracle: Initializing Video Sanctuary for "${currentTrack.title}"`, "color: #FFD700;");
       } else {
         if (ytPlayerRef.current) {
           try { ytPlayerRef.current.stopVideo(); } catch (e) {}
@@ -77,14 +76,12 @@ export const YouTubePlayer: React.FC = () => {
           audioRef.current.src = url;
           if (isPlaying) {
             audioRef.current.play().catch(e => {
-              console.warn("%cOracle: Autoplay sanctuary denied by browser policy. Interaction required.", "color: #FFD700;");
+              console.warn("%cOracle: Autoplay sanctuary denied by browser policy.", "color: #FFD700;");
               if (currentTrack.isYouTube) setUseIframeFallback(true);
             });
           }
         } else if (currentTrack.isYouTube) {
           setUseIframeFallback(true);
-        } else {
-          console.error(`%cOracle: Void bitstream for ${currentTrack.title}. Source: ${currentTrack.source}`, "color: #FF0000;");
         }
       }
     };
@@ -116,7 +113,7 @@ export const YouTubePlayer: React.FC = () => {
   const onReady: YouTubeProps['onReady'] = (event) => {
     ytPlayerRef.current = event.target;
     event.target.setVolume(volume);
-    console.log(`%cOracle: Video Sanctuary manifested successfully.`, "color: #FFD700; font-weight: bold;");
+    console.log(`%cOracle: Video Sanctuary manifested successfully. [Source: youtube]`, "color: #FFD700; font-weight: bold;");
     
     setInterval(() => {
       if (ytPlayerRef.current && (settings.isVideoVisible || useIframeFallback)) {

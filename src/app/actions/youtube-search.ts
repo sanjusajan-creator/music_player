@@ -20,10 +20,9 @@ async function safeFetch(url: string) {
     const text = await res.text();
     try {
       const data = JSON.parse(text);
-      console.log(`%cOracle: Manifestation Received from ${url.substring(0, 40)}...`, "color: #FFD700;");
       return data;
     } catch (parseError) {
-      console.error(`%cOracle: Manifestation Corruption at ${url}`, "color: #FF0000; font-weight: bold;", text.substring(0, 100));
+      console.error(`%cOracle: Manifestation Corruption at ${url}`, "color: #FF0000; font-weight: bold;");
       return null;
     }
   } catch (e) {
@@ -34,20 +33,64 @@ async function safeFetch(url: string) {
 
 /**
  * Normalizes manifestations into the Sovereign Unified Schema
+ * Handles ResponsiveListItem, CardShelf, and TwoRowItem renderers.
  */
 function normalizeYTTrack(item: any): Track {
-  const id = item?.videoId || item?.id || item?.navigationEndpoint?.watchEndpoint?.videoId;
+  const renderer = item.musicResponsiveListItemRenderer || 
+                   item.musicCardShelfRenderer || 
+                   item.musicTwoRowItemRenderer || 
+                   item;
+  
+  // Tiered VideoId Extraction
+  let videoId = renderer.videoId || renderer.id;
+  if (!videoId && renderer.overlay?.musicItemThumbnailOverlayRenderer) {
+    videoId = renderer.overlay.musicItemThumbnailOverlayRenderer
+      .content?.musicPlayButtonRenderer
+      ?.playNavigationEndpoint?.watchEndpoint?.videoId;
+  }
+  if (!videoId && renderer.navigationEndpoint?.watchEndpoint?.videoId) {
+    videoId = renderer.navigationEndpoint.watchEndpoint.videoId;
+  }
+
+  // Title Extraction Sanctuary
+  let title = "Unknown Title";
+  if (renderer.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text) {
+    title = renderer.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs[0].text;
+  } else if (renderer.title?.runs?.[0]?.text) {
+    title = renderer.title.runs[0].text;
+  } else if (typeof renderer.title === 'string') {
+    title = renderer.title;
+  }
+
+  // Artist Extraction Sanctuary
+  let artist = "Unknown Artist";
+  if (renderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text) {
+    artist = renderer.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs[0].text;
+  } else if (renderer.subtitle?.runs?.[0]?.text) {
+    artist = renderer.subtitle.runs[0].text;
+  } else if (renderer.artist?.runs?.[0]?.text) {
+    artist = renderer.artist.runs[0].text;
+  } else if (typeof renderer.artist === 'string') {
+    artist = renderer.artist;
+  }
+
+  const thumbnail = renderer.thumbnail?.thumbnails?.slice(-1)[0]?.url || 
+                    renderer.thumbnails?.[0]?.url || 
+                    `https://picsum.photos/seed/${videoId || 'default'}/400/400`;
+
+  const duration = renderer.duration?.text || renderer.duration || "0:00";
+
   return {
-    id: id || "unknown_id",
-    videoId: id,
-    title: item?.title?.runs?.[0]?.text || item?.title || "YouTube Track",
-    artist: item?.artist?.runs?.[0]?.text || item?.author || item?.subtitle?.runs?.[0]?.text || "YouTube Music",
-    thumbnail: item?.thumbnail?.thumbnails?.slice(-1)[0]?.url || item?.thumbnails?.[0]?.url || `https://picsum.photos/seed/${id}/400/400`,
-    duration: item?.duration?.text || item?.duration || "0:00",
+    id: videoId || "unknown_id",
+    videoId: videoId,
+    title: title || "Unknown Title",
+    artist: artist || "Unknown Artist",
+    thumbnail: thumbnail,
+    duration: duration,
     source: 'youtube' as const,
     isYouTube: true,
-    type: (item?.type || 'song') as any,
-    streamUrl: id ? `${YT_MUSIC_API_BASE}/streams/${id}` : undefined
+    type: (renderer.type || 'song') as any,
+    streamUrl: videoId ? `${YT_MUSIC_API_BASE}/streams/${videoId}` : undefined
   };
 }
 
@@ -77,6 +120,7 @@ export async function searchAllAction(query: string, source: string = 'all') {
       results.push(...gaanaResults);
     }
 
+    console.log(`%cOracle: Summons Complete. Found: ${results.length} Manifestations.`, "color: #FFD700; font-weight: bold;");
     return {
       success: true,
       count: results.length,
@@ -93,16 +137,30 @@ async function fetchYouTubeMusic(query: string): Promise<Track[]> {
   if (!data) return [];
   
   let raw: any[] = [];
-  if (Array.isArray(data.results)) {
+  
+  // 1. Direct results check
+  if (Array.isArray(data.results) && data.results.length > 0) {
     raw = data.results;
-  } else if (data.contents?.tabbedSearchResultsRenderer) {
+  } 
+  // 2. Standard parsed structure
+  else if (data.contents?.tabbedSearchResultsRenderer) {
     const tabs = data.contents.tabbedSearchResultsRenderer.tabs;
     raw = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.flatMap((s: any) => 
       (s.musicShelfRenderer || s.musicCardShelfRenderer)?.contents || []
     ) || [];
   }
+  // 3. Recursive raw_data extraction (Critical for Render Sanctuary)
+  else if (data.raw_data?.contents?.tabbedSearchResultsRenderer) {
+    console.log("%cOracle: results[] empty. Activating raw_data Manual Extraction.", "color: #FFD700; font-weight: bold;");
+    const tabs = data.raw_data.contents.tabbedSearchResultsRenderer.tabs;
+    raw = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.flatMap((s: any) => 
+      (s.musicShelfRenderer || s.musicCardShelfRenderer)?.contents || []
+    ) || [];
+  }
 
-  return raw.map(normalizeYTTrack).filter(t => t.id && t.id !== "unknown_id");
+  return raw
+    .map(normalizeYTTrack)
+    .filter(t => t.id && t.id !== "unknown_id" && t.title !== "Unknown Title");
 }
 
 async function fetchSaavn(query: string): Promise<Track[]> {
@@ -183,7 +241,7 @@ export async function resolveTrackAudio(track: Track): Promise<string | null> {
     
     if (status === "LOGIN_REQUIRED" || status === "UNPLAYABLE" || !playerData?.title) {
       console.warn(`%cOracle: Bitstream manifestation blocked [${status}]. Metamorphosing to Iframe Sanctuary.`, "color: #FFD700; font-weight: bold;");
-      return null; // Signals the frontend to fallback to iframe
+      return null;
     }
 
     return `${YT_MUSIC_API_BASE}/streams/${id}`;
