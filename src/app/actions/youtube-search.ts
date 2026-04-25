@@ -11,70 +11,99 @@ const RAPIDAPI_KEY = process.env.NEXT_PUBLIC_RAPIDAPI_KEY || process.env.RAPIDAP
 const RAPIDAPI_HOST = 'youtube-data16.p.rapidapi.com';
 
 /**
- * Sovereign Query Parser
- * Strips modifiers and returns logic flags with regex-level precision
+ * Sovereign Query Parser & Normalizer
+ * Strips modifiers and cleanses noise for high-fidelity matching.
  */
 function parseQuery(query: string) {
-  const lowerQuery = query.toLowerCase();
-  
-  // Detect modes accurately with global flags
+  const lowerQuery = query.toLowerCase().trim();
   const ytMode = /:yt\b/i.test(query);
   const lyricMode = /:lyrics\b/i.test(query);
   
-  // Clean query thoroughly using global regex
   const cleanQuery = query
     .replace(/:yt\b/gi, "")
     .replace(/:lyrics\b/gi, "")
-    .trim();
+    .replace(/[^\w\s]/gi, '') // Remove special characters for search
+    .trim()
+    .toLowerCase();
 
   return { ytMode, lyricMode, cleanQuery };
 }
 
 /**
- * Sovereign Hybrid Search Oracle - India Optimized
- * Aggregates JioSaavn (Primary), Gaana (Secondary), and YouTube (Explicit Fallback via :yt)
+ * Sovereign Scoring Oracle
+ * Calculates a relevance score for a manifestation based on the clean query.
+ */
+function calculateScore(item: Track, query: string) {
+  const title = item.title.toLowerCase();
+  const artist = item.artist.toLowerCase();
+  const q = query.toLowerCase();
+  
+  let score = 0;
+
+  // Title Similarity (0.5 weight)
+  if (title === q) score += 0.5;
+  else if (title.startsWith(q)) score += 0.4;
+  else if (title.includes(q)) score += 0.3;
+
+  // Artist Similarity (0.3 weight)
+  if (artist === q) score += 0.3;
+  else if (artist.includes(q)) score += 0.2;
+
+  // Exact Match Bonus (0.1 weight)
+  if (title === q || artist === q) score += 0.1;
+
+  // Start-of-string Bonus (0.1 weight)
+  if (title.startsWith(q)) score += 0.1;
+
+  return score;
+}
+
+/**
+ * Sovereign Hybrid Search Oracle - Intelligent Ranking Edition
  */
 export async function searchAllAction(query: string) {
   try {
     const { ytMode, cleanQuery } = parseQuery(query);
+    if (!cleanQuery) return null;
 
-    if (!cleanQuery && !ytMode) return null;
+    console.log(`%cOracle: Summoning Unified Archives for "${cleanQuery}"`, "color: #FFD700; font-weight: 900;");
 
-    console.log(`%cOracle: Parsing query for manifestation [Mode: ${ytMode ? 'YT' : 'Standard'}]`, "color: #FFD700; font-weight: 900;");
-
-    // Parallel Summoning with Sovereign Fault-Tolerance
-    const saavnPromise = cleanQuery ? fetchSaavn(cleanQuery).catch(() => ({ songs: [] })) : Promise.resolve({ songs: [] });
-    const gaanaPromise = cleanQuery ? fetchGaana(cleanQuery).catch(() => ({ songs: [], albums: [], artists: [], playlists: [] })) : Promise.resolve({ songs: [], albums: [], artists: [], playlists: [] });
-    
-    const youtubeQuery = cleanQuery || "Trending Music India";
-    const youtubePromise = ytMode ? fetchYouTube(youtubeQuery).catch((err) => {
-      console.error("Oracle: YouTube Vault error", err);
-      return [];
-    }) : Promise.resolve([]);
-
-    const [saavnData, gaanaData, ytResults] = await Promise.all([
-      saavnPromise,
-      gaanaPromise,
-      youtubePromise
+    // Parallel Summoning
+    const [saavnResults, gaanaResults, ytResults] = await Promise.all([
+      fetchSaavn(cleanQuery).catch(e => { console.error("Saavn Vault unreachable", e); return []; }),
+      fetchGaana(cleanQuery).catch(e => { console.error("Gaana Sanctuary unreachable", e); return { songs: [] }; }),
+      ytMode ? fetchYouTube(cleanQuery).catch(e => { console.error("YouTube Discovery silent", e); return []; }) : Promise.resolve([])
     ]);
 
-    // Unified Song List (JioSaavn + Gaana merged)
-    const allSongs = [...(saavnData.songs || []), ...(gaanaData.songs || [])];
-    
-    // De-duplication Strategy
+    // Unified Song List Manifestation
+    const allTracks = [
+      ...saavnResults,
+      ...(gaanaResults.songs || [])
+    ];
+
+    // Sovereign De-duplication & Scoring
     const seen = new Set<string>();
-    const uniqueSongs = allSongs.filter(song => {
-      const key = `${song.title.toLowerCase().trim()}-${song.artist.toLowerCase().trim()}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    const scoredTracks = allTracks
+      .map(track => ({
+        ...track,
+        score: calculateScore(track, cleanQuery)
+      }))
+      .filter(track => {
+        const key = `${track.title.toLowerCase()}-${track.artist.toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    // Debug Manifestation
+    console.log(`%cOracle Debug: Best Match [${scoredTracks[0]?.title}] Score: ${scoredTracks[0]?.score}`, "color: #C9A227; font-weight: 900;");
 
     return {
-      songs: { results: uniqueSongs },
-      albums: { results: gaanaData.albums || [] },
-      artists: { results: gaanaData.artists || [] },
-      playlists: { results: gaanaData.playlists || [] },
+      songs: { results: scoredTracks },
+      albums: { results: (gaanaResults as any).albums || [] },
+      artists: { results: (gaanaResults as any).artists || [] },
+      playlists: { results: (gaanaResults as any).playlists || [] },
       videos: { results: ytResults || [] },
       ytMode
     };
@@ -89,11 +118,11 @@ async function fetchSaavn(query: string) {
     const res = await fetch(`${SAAVN_API_BASE}/api/search?query=${encodeURIComponent(query)}`, {
       next: { revalidate: 3600 } 
     });
-    if (!res.ok) return { songs: [] };
+    if (!res.ok) return [];
     const data = await res.json();
-    const results = data.data || {};
+    const results = data.data?.songs?.results || [];
     
-    const songs = (results.songs?.results || []).map((track: any) => ({
+    return results.map((track: any) => ({
       id: track.id,
       title: track.title,
       artist: track.primaryArtists || "Unknown Artist",
@@ -105,16 +134,17 @@ async function fetchSaavn(query: string) {
       isIndiaContent: true,
       hasLyrics: !!track.hasLyrics
     }));
-
-    return { songs };
   } catch (e) {
-    return { songs: [] };
+    return [];
   }
 }
 
 async function fetchGaana(query: string) {
   try {
-    const res = await fetch(`${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}&country=IN`, {
+    const url = `${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}&country=IN`;
+    console.log(`%cOracle: Dispatching Gaana Summon [${url}]`, "color: #FFD700;");
+    
+    const res = await fetch(url, {
       next: { revalidate: 3600 }
     });
     if (!res.ok) return { songs: [], albums: [], artists: [], playlists: [] };
@@ -126,18 +156,15 @@ async function fetchGaana(query: string) {
       title: item.title,
       artist: item.artists || item.artist || "Gaana Artist",
       album: item.album || "Gaana Archive",
-      image: item.artworkUrl,
+      thumbnail: item.artworkUrl || item.image || "https://via.placeholder.com/150",
       artworkUrl: item.artworkUrl,
-      thumbnail: item.artworkUrl || item.image || item.thumbnail || "https://via.placeholder.com/150",
       url: item.song_url,
-      duration: item.duration,
       source: 'gaana' as const,
       isGaana: true,
       isIndiaContent: true
     });
 
     const songs = (results.songs || []).map(normalizeGaanaSong);
-
     const albums = (results.albums || []).map((album: any) => ({
       id: album.id,
       title: album.title,
@@ -145,41 +172,18 @@ async function fetchGaana(query: string) {
       thumbnail: album.artworkUrl || album.image,
       artworkUrl: album.artworkUrl,
       type: 'albums',
-      source: 'gaana' as const,
-      isIndiaContent: true
+      source: 'gaana' as const
     }));
 
-    const artists = (results.artists || []).map((artist: any) => ({
-      id: artist.id,
-      title: artist.title,
-      thumbnail: artist.artworkUrl || artist.image,
-      artworkUrl: artist.artworkUrl,
-      type: 'artists',
-      source: 'gaana' as const,
-      isIndiaContent: true
-    }));
-
-    const playlists = (results.playlists || []).map((pl: any) => ({
-      id: pl.id,
-      title: pl.title,
-      thumbnail: pl.artworkUrl || pl.image,
-      artworkUrl: pl.artworkUrl,
-      type: 'playlists',
-      source: 'gaana' as const,
-      isIndiaContent: true
-    }));
-
-    return { songs, albums, artists, playlists };
+    return { songs, albums, artists: results.artists || [], playlists: results.playlists || [] };
   } catch (e) {
+    console.error("Oracle: Gaana fetch error", e);
     return { songs: [], albums: [], artists: [], playlists: [] };
   }
 }
 
 async function fetchYouTube(query: string) {
-  if (!RAPIDAPI_KEY) {
-    console.warn("Oracle: YouTube Vault key missing.");
-    return [];
-  }
+  if (!RAPIDAPI_KEY) return [];
   try {
     const res = await fetch(`https://${RAPIDAPI_HOST}/search?query=${encodeURIComponent(query)}&regionCode=IN&hl=en-IN`, {
       headers: {
@@ -190,29 +194,20 @@ async function fetchYouTube(query: string) {
     });
     if (!res.ok) return [];
     const data = await res.json();
-    console.log("Oracle: YouTube response received", !!data);
     
-    // Robust normalization for diverse RapidAPI response structures
-    let items = [];
-    if (Array.isArray(data)) items = data;
-    else if (data.results && Array.isArray(data.results)) items = data.results;
-    else if (data.contents && Array.isArray(data.contents)) items = data.contents;
-    else if (data.data && Array.isArray(data.data)) items = data.data;
-    else if (data.videos && Array.isArray(data.videos)) items = data.videos;
-
+    let items = Array.isArray(data) ? data : (data.results || data.contents || data.data || []);
     return items.map((v: any) => ({
       id: v.videoId || v.id || v.id?.videoId,
       videoId: v.videoId || v.id || v.id?.videoId,
-      title: v.title || v.snippet?.title || "Untitled Discovery",
-      artist: v.channelTitle || v.snippet?.channelTitle || "YouTube Discovery",
-      thumbnail: v.thumbnail?.[0]?.url || v.thumbnail || v.snippet?.thumbnails?.high?.url || "https://via.placeholder.com/150",
+      title: v.title || v.snippet?.title || "YouTube Discovery",
+      artist: v.channelTitle || v.snippet?.channelTitle || "YouTube",
+      thumbnail: v.thumbnail?.[0]?.url || v.thumbnail || v.snippet?.thumbnails?.high?.url,
       source: 'youtube' as const,
       isYouTube: true,
       url: `https://www.youtube.com/watch?v=${v.videoId || v.id || v.id?.videoId}`,
       isIndiaContent: true
     }));
   } catch (e) {
-    console.error("Oracle: YT fetch error", e);
     return [];
   }
 }
@@ -220,8 +215,8 @@ async function fetchYouTube(query: string) {
 export async function resolveTrackAudio(track: Track): Promise<string | null> {
   if (track.source === 'gaana') {
     const saavnResults = await fetchSaavn(`${track.title} ${track.artist}`);
-    if (saavnResults.songs.length > 0) {
-      return getSaavnPlaybackUrl(saavnResults.songs[0].id);
+    if (saavnResults.length > 0) {
+      return getSaavnPlaybackUrl(saavnResults[0].id);
     }
     return null; 
   }
@@ -247,18 +242,13 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
 
 export async function getLyricsAction(songId: string, songUrl?: string) {
   try {
-    console.log(`Oracle: Summoning lyrics manifestation for ID: ${songId}`);
-    // Tier 1: Summon via ID
     let res = await fetch(`${SAAVN_API_BASE}/api/songs/${songId}`);
     if (res.ok) {
       let data = await res.json();
       let song = data?.data?.[0];
       if (song?.lyrics) return song.lyrics;
     }
-
-    // Tier 2: Fallback via Link
     if (songUrl) {
-      console.log(`Oracle: Retrying lyrics manifestation via Link: ${songUrl}`);
       res = await fetch(`${SAAVN_API_BASE}/api/songs?link=${encodeURIComponent(songUrl)}`);
       if (res.ok) {
         let data = await res.json();
@@ -268,7 +258,6 @@ export async function getLyricsAction(songId: string, songUrl?: string) {
     }
     return null;
   } catch (error) {
-    console.error("Oracle Lyrics Fetch Error:", error);
     return null;
   }
 }
