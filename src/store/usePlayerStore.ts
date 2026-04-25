@@ -7,20 +7,18 @@ export interface Track {
   artist: string;
   thumbnail: string;
   album?: string;
-  duration?: number;
+  duration?: string | number;
+  type?: 'song' | 'video' | 'album' | 'playlist' | 'artist';
   isLocal?: boolean;
   localFile?: File;
   isSaavn?: boolean;
   isYouTube?: boolean;
   isGaana?: boolean;
   videoId?: string;
-  language?: string;
-  hasLyrics?: boolean;
-  bitrates?: string[];
-  source?: 'jiosaavn' | 'gaana' | 'youtube' | 'local';
-  image?: any;
-  artworkUrl?: string;
+  streamUrl?: string;
   url?: string;
+  hasLyrics?: boolean;
+  source?: 'jiosaavn' | 'gaana' | 'youtube' | 'local';
 }
 
 export type AudioQuality = 'low' | 'medium' | 'high' | 'auto';

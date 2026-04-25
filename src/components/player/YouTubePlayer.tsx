@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -9,7 +8,6 @@ import { toast } from '@/hooks/use-toast';
 /**
  * Vibecraft Sovereign Audio Engine
  * Pure HTML5 Native Audio implementation with Hybrid Resolution Fallback.
- * Hardened to prevent overlap and ghost playback by aggressively clearing state.
  */
 export const YouTubePlayer: React.FC = () => {
   const { 
@@ -81,7 +79,7 @@ export const YouTubePlayer: React.FC = () => {
       // MANDATORY: Aggressively purge state before manifestation to prevent overlapping snippets
       audioRef.current!.pause();
       audioRef.current!.src = "";
-      audioRef.current!.load(); // Forces cleanup
+      audioRef.current!.load();
       setProgress(0);
       
       if (!currentTrack) return;
@@ -95,25 +93,20 @@ export const YouTubePlayer: React.FC = () => {
         if (currentTrack.source === 'local' && currentTrack.localFile) {
           url = URL.createObjectURL(currentTrack.localFile);
           sourceLog = "Local Vault";
-        } else if (currentTrack.source === 'youtube') {
-          sourceLog = "YouTube Discovery (Iframe Mode)";
-          setIsBuffering(false);
-          return;
+        } else if (currentTrack.source === 'youtube' && currentTrack.streamUrl) {
+          url = currentTrack.streamUrl;
+          sourceLog = "YouTube Music Audio Stream";
         } else {
           const resolvedUrl = await resolveTrackAudio(currentTrack);
           if (resolvedUrl) {
             url = resolvedUrl;
-            sourceLog = currentTrack.source === 'gaana' ? "Gaana Resolved via Saavn Vault" : "JioSaavn Vault";
-          } else if (currentTrack.source === 'gaana') {
-            sourceLog = "Gaana Fallback to YouTube Discovery";
-            toast({ title: "Resolution Fallback", description: "Manifesting via YouTube Discovery." });
-            setIsBuffering(false);
-            return;
+            sourceLog = currentTrack.source === 'gaana' ? "Gaana Resolved via Saavn Vault" : 
+                        currentTrack.source === 'youtube' ? "YouTube Music Audio Stream" : "JioSaavn Vault";
           }
         }
 
         if (url && audioRef.current) {
-          console.log(`%cOracle: Manifesting track from ${sourceLog}`, "color: #FFD700; font-weight: 900; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);");
+          console.log(`%cOracle: Manifesting track from ${sourceLog}`, "color: #FFD700; font-weight: 900;");
           audioRef.current.src = url;
           audioRef.current.load();
           if (isPlaying) {
@@ -124,9 +117,9 @@ export const YouTubePlayer: React.FC = () => {
           }
         } else {
           setIsBuffering(false);
-          if (currentTrack.source !== 'youtube') {
-            console.error("Saavn Vault returned no stream for:", currentTrack.title);
-            toast({ title: "Manifestation Failed", description: "Archive unreachable.", variant: "destructive" });
+          // If it's a legacy YouTube track without streamUrl, we still can't play it in native audio
+          if (currentTrack.source === 'youtube' && !currentTrack.streamUrl) {
+            toast({ title: "Resolution Failed", description: "YouTube track has no audio stream.", variant: "destructive" });
           }
         }
       } catch (error) {
@@ -135,16 +128,16 @@ export const YouTubePlayer: React.FC = () => {
     };
 
     initializePlayback();
-  }, [currentTrack?.id]); // Strictly on manifestation change
+  }, [currentTrack?.id]);
 
   useEffect(() => {
-    if (!audioRef.current || !audioRef.current.src || currentTrack?.isYouTube) return;
+    if (!audioRef.current || !audioRef.current.src) return;
     if (isPlaying) {
       audioRef.current.play().catch(() => {});
     } else {
       audioRef.current.pause();
     }
-  }, [isPlaying, currentTrack?.isYouTube]);
+  }, [isPlaying]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume / 100;
