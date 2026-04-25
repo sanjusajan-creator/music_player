@@ -83,11 +83,12 @@ export const Player: React.FC = () => {
     if (!currentTrack) return;
     openSheet('lyrics');
     
-    if (lyrics && lyrics.includes(currentTrack.title)) return;
+    // Check if lyrics for this song are already manifested
+    if (lyrics && lyrics.includes(currentTrack.title.substring(0, 5))) return;
     
     setIsLoadingLyrics(true);
     try {
-      const apiLyrics = await getLyricsAction(currentTrack.id, currentTrack.url);
+      const apiLyrics = await getLyricsAction(currentTrack.id);
       if (apiLyrics) {
         setLyrics(apiLyrics);
       } else {
@@ -142,7 +143,6 @@ export const Player: React.FC = () => {
           >
             <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-black pointer-events-none opacity-50" />
             
-            {/* 1. TOP SECTION: Info & Navigation */}
             <div className="pt-[env(safe-area-inset-top)] px-6 shrink-0 z-10">
               <div className="h-16 flex items-center justify-between">
                 <button onClick={closeOverlays} className="text-primary hover:scale-110 transition-transform p-2 -ml-2">
@@ -180,7 +180,6 @@ export const Player: React.FC = () => {
               </div>
             </div>
 
-            {/* 2. CENTER SECTION: Flexible Artwork or Spacer for Video */}
             <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-12 min-h-0 z-10 relative">
               <AnimatePresence mode="wait">
                 {(!settings.isVideoVisible || !currentTrack.isYouTube) ? (
@@ -205,13 +204,11 @@ export const Player: React.FC = () => {
                     )}
                   </motion.div>
                 ) : (
-                  /* Space reserved for YouTubePlayer's absolute positioned video sanctuary */
                   <div key="video-spacer" className="w-full max-w-[400px] aspect-video" />
                 )}
               </AnimatePresence>
             </div>
 
-            {/* 3. BOTTOM SECTION: Controls (Fixed Priority) */}
             <div className="pb-[calc(env(safe-area-inset-bottom)+2rem)] px-8 space-y-8 shrink-0 z-10">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -273,20 +270,15 @@ export const Player: React.FC = () => {
                   </button>
                 </div>
 
-                {!currentTrack.isYouTube ? (
-                  <button onClick={fetchLyrics} className="text-primary/20 hover:text-primary p-2">
-                    <Music className="w-6 h-6" />
-                  </button>
-                ) : (
-                  <div className="w-10" />
-                )}
+                <button onClick={fetchLyrics} className="text-primary/20 hover:text-primary p-2">
+                  <Music className="w-6 h-6" />
+                </button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Mini Player: Desktop & Mobile Bottom Bar */}
       <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-[60] h-20 md:h-24 bg-[#000000] backdrop-blur-xl border-t border-primary/20 flex items-center px-4 md:px-6 gap-4 shadow-2xl pointer-events-auto">
         <div className="flex-1 flex items-center gap-3 min-w-0">
           <div className="relative group shrink-0" onClick={() => router.push(`/?view=full&${searchParams.toString()}`)}>
@@ -347,11 +339,9 @@ export const Player: React.FC = () => {
         </div>
 
         <div className="flex-1 flex items-center justify-end gap-3 md:gap-4">
-          {!currentTrack.isYouTube && (
-            <button onClick={fetchLyrics} title="Lyrics" className={cn("transition-all", isLyricsSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
-              <Music className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-          )}
+          <button onClick={fetchLyrics} title="Lyrics" className={cn("transition-all", isLyricsSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
+            <Music className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
           <SleepTimerButton />
           <button onClick={() => openSheet('queue')} title="Queue" className={cn("transition-all", isQueueSheetOpen ? "text-primary" : "text-muted-foreground hover:text-white")}>
             <ListMusic className="w-5 h-5" />

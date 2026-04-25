@@ -1,8 +1,8 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useMemo } from 'react';
+import React, { Suspense, useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useSaavnSearch, useSaavnDetails, useTrending } from '@/hooks/useYouTube';
+import { useSaavnSearch, useTrending, useMusicHome } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
 import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -11,18 +11,14 @@ import { YouTubePlayer } from '@/components/player/YouTubePlayer';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
-import { 
-  TrendingUp, Sparkles, Heart, Home,
-  Loader2, FolderOpen, Search, Library, Settings as SettingsIcon, LayoutGrid, List, Play, FolderPlus
-} from 'lucide-react';
-import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
+import { Loader2, LayoutGrid, List, Play, TrendingUp, Sparkles, Music, Heart, FolderOpen } from 'lucide-react';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { query, collection, limit, getDocs, orderBy } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { usePlayerStore, Track, LayoutMode } from '@/store/usePlayerStore';
-import { cn, getImage } from '@/lib/utils';
+import { usePlayerStore, LayoutMode } from '@/store/usePlayerStore';
+import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -42,10 +38,9 @@ export default function AppWrapper() {
 function HomeContent() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
-  const db = useFirestore();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setLikedTracks, hasHydrated, settings, updateSettings } = usePlayerStore();
+  const { settings, updateSettings } = usePlayerStore();
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -54,21 +49,7 @@ function HomeContent() {
   
   const currentTab = searchParams.get('tab') || 'home';
   const searchQuery = searchParams.get('q') || '';
-  const detailType = searchParams.get('type') as any;
   const detailId = searchParams.get('id');
-
-  useEffect(() => {
-    if (user && db && hasHydrated) {
-      const syncLiked = async () => {
-        try {
-          const likedRef = collection(db, 'users', user.uid, 'likedSongs');
-          const snap = await getDocs(query(likedRef, limit(100)));
-          setLikedTracks(snap.docs.map(doc => doc.id));
-        } catch (e) {}
-      };
-      syncLiked();
-    }
-  }, [user?.uid, db, hasHydrated, setLikedTracks]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,8 +66,7 @@ function HomeContent() {
   };
 
   const toggleLayout = () => {
-    const next: LayoutMode = settings.layoutMode === 'grid' ? 'list' : 'grid';
-    updateSettings({ layoutMode: next });
+    updateSettings({ layoutMode: settings.layoutMode === 'grid' ? 'list' : 'grid' });
   };
 
   if (isUserLoading) return <div className="h-screen w-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
@@ -118,313 +98,65 @@ function HomeContent() {
         
         <ScrollArea className="flex-1 h-full">
           <div className="p-4 md:p-8 max-w-7xl mx-auto pb-44 md:pb-32">
-            
-            {['home', 'search', 'liked', 'local'].includes(currentTab) && (
-              <div className="flex justify-end mb-4 px-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={toggleLayout}
-                  className="bg-primary/5 hover:bg-primary/20 text-primary border border-primary/10 rounded-full gap-2 px-4 h-10 transition-all"
-                >
-                  {settings.layoutMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
-                  <span className="text-[10px] font-black uppercase tracking-widest">Layout Switch</span>
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-end mb-6 px-2">
+              <Button variant="ghost" size="sm" onClick={toggleLayout} className="bg-primary/5 hover:bg-primary/20 text-primary border border-primary/10 rounded-full gap-2 px-4 h-10">
+                {settings.layoutMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+                <span className="text-[10px] font-black uppercase tracking-widest">Switch View</span>
+              </Button>
+            </div>
 
             <AnimatePresence mode="wait">
-              <motion.div 
-                key={currentTab + searchQuery + detailId + settings.layoutMode} 
-                initial={{ opacity: 0, y: 10 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                exit={{ opacity: 0, y: -10 }} 
-                transition={{ duration: 0.2 }}
-              >
+              <motion.div key={currentTab + searchQuery + detailId} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                 {currentTab === 'home' && <HomeView layoutMode={settings.layoutMode} />}
                 {currentTab === 'search' && <SearchResultsView query={searchQuery} layoutMode={settings.layoutMode} />}
-                {currentTab === 'liked' && <LikedSongsView userId={user.uid} layoutMode={settings.layoutMode} />}
-                {currentTab === 'local' && <LocalArchivesView layoutMode={settings.layoutMode} />}
-                {currentTab === 'detail' && detailType && detailId && <DetailView type={detailType} id={detailId} />}
                 {currentTab === 'settings' && <SettingsView />}
               </motion.div>
             </AnimatePresence>
           </div>
         </ScrollArea>
-
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-black border-t border-primary/20 flex items-center justify-around z-50">
-          <MobileNavItem icon={<Home />} label="Home" active={currentTab === 'home'} onClick={() => router.push('/?tab=home')} />
-          <MobileNavItem icon={<Search />} label="Search" active={currentTab === 'search'} onClick={() => router.push('/?tab=search')} />
-          <MobileNavItem icon={<Library />} label="Library" active={currentTab === 'liked'} onClick={() => router.push('/?tab=liked')} />
-          <MobileNavItem icon={<SettingsIcon />} label="Settings" active={currentTab === 'settings'} onClick={() => router.push('/?tab=settings')} />
-        </nav>
-
         <Player />
       </main>
     </div>
   );
 }
 
-const MobileNavItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) => (
-  <button onClick={onClick} className={cn("flex flex-col items-center gap-1 transition-all", active ? "text-primary" : "text-primary/40")}>
-    {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement, { className: 'w-6 h-6' }) : icon}
-    <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
-  </button>
-);
-
 function HomeView({ layoutMode }: { layoutMode: LayoutMode }) {
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  }, []);
-
   const { data: trending, isLoading: trendingLoading } = useTrending();
+  const { data: homeData, isLoading: homeLoading } = useMusicHome();
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-12">
       <section>
-        <h2 className="text-3xl font-black text-primary mb-6 gold-glow uppercase tracking-tighter">{greeting}</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-          <GreetingCard label="Trending India" icon={<TrendingUp className="text-primary" />} />
-          <GreetingCard label="Liked Songs" icon={<Heart className="text-primary fill-current" />} />
-          <GreetingCard label="Regional Mix" icon={<Sparkles className="text-primary" />} />
-          <GreetingCard label="Local Vault" icon={<FolderOpen className="text-primary" />} />
-        </div>
-      </section>
-
-      {/* Dynamic Trending Section */}
-      <section>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl md:text-2xl font-black text-primary hover:text-white cursor-pointer transition-all uppercase tracking-tighter gold-glow">Trending Manifestations</h3>
-        </div>
-        <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
-          {trendingLoading ? [...Array(5)].map((_, i) => <div key={`skeleton-${i}`} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
-            (trending || []).slice(0, 5).map((track: any, i: number) => (
-              <SearchResult key={`${track.id}-${i}`} track={track} results={trending} index={i} />
-            ))
+        <h2 className="text-3xl font-black text-primary mb-8 gold-glow uppercase tracking-tighter">Manifesting Trending</h2>
+        <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
+          {trendingLoading ? [...Array(5)].map((_, i) => <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-2xl" />) :
+            (trending || []).map((track, i) => <SearchResult key={track.id} track={track} results={trending} index={i} />)
           }
         </div>
       </section>
 
-      <SectionLayout title="Fresh Manifestations (IN)" query="Indian New Songs" layoutMode={layoutMode} />
-      <SectionLayout title="Sovereign Discovery" query="Trending Music India" layoutMode={layoutMode} />
+      {homeLoading ? <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-primary" /></div> :
+        homeData?.map((sec: any, i: number) => (
+          <section key={i}>
+            <h3 className="text-xl font-black text-primary/60 mb-6 uppercase tracking-widest gold-glow">{sec.title}</h3>
+            <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
+              {sec.items.map((track: any, j: number) => <SearchResult key={track.id} track={track} results={sec.items} index={j} />)}
+            </div>
+          </section>
+        ))
+      }
     </div>
-  );
-}
-
-function SectionLayout({ title, query, layoutMode }: { title: string, query: string, layoutMode: LayoutMode }) {
-  const { data, isLoading } = useSaavnSearch(query);
-  const songs = data?.results || [];
-  
-  return (
-    <section>
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl md:text-2xl font-black text-primary hover:text-white cursor-pointer transition-all uppercase tracking-tighter gold-glow">{title}</h3>
-      </div>
-      <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
-        {isLoading ? [...Array(5)].map((_, i) => <div key={`skeleton-${i}`} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
-          songs.slice(0, 5).map((track: any, i: number) => (
-            <SearchResult key={`${track.id}-${i}`} track={track} results={songs.slice(0, 5)} index={i} />
-          ))
-        }
-      </div>
-    </section>
   );
 }
 
 function SearchResultsView({ query, layoutMode }: { query: string, layoutMode: LayoutMode }) {
-  const { data: results, isLoading } = useSaavnSearch(query);
-  
+  const { data, isLoading } = useSaavnSearch(query);
   if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
-
-  if (!results) return (
-    <div className="h-96 flex flex-col items-center justify-center gap-4 text-primary/20">
-      <Search className="w-16 h-16 opacity-20" />
-      <p className="text-[10px] font-black uppercase tracking-widest">Search the archives for gold</p>
-    </div>
-  );
-
   return (
-    <div className="space-y-12 pb-20">
-      <section>
-        <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Unified Search Manifestations</h2>
-        <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
-          {(results.results || []).map((t: any, i: number) => (
-            <SearchResult key={`unified-${t.id}-${i}`} track={t} results={results.results} index={i} />
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id: string }) {
-  const { data, isLoading } = useSaavnDetails(type, id);
-  const { setQueue } = usePlayerStore();
-
-  if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
-  if (!data) return null;
-
-  const songs = data.songs || data.topSongs || data.tracks || [];
-  const normalizedSongs = songs.map((s: any) => ({
-    id: s.id || s.videoId,
-    videoId: s.videoId || s.id,
-    title: s.title || s.name,
-    artist: s.primaryArtists || s.artist || s.author || data.title,
-    thumbnail: getImage(s),
-    album: data.title || data.name,
-    source: s.source || (s.videoId ? 'youtube' : 'jiosaavn'),
-    isYouTube: !!(s.videoId || s.source === 'youtube')
-  }));
-
-  const handlePlayAll = () => {
-    setQueue(normalizedSongs, 0);
-  };
-
-  return (
-    <div className="space-y-10 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
-        <img src={getImage(data)} className={cn("w-48 h-48 md:w-64 md:h-64 shadow-2xl object-cover gold-border-glow", type === 'artists' ? "rounded-full" : "rounded-2xl")} alt="cover" />
-        <div className="space-y-4 flex-1 text-center md:text-left">
-          <p className="text-[10px] font-black uppercase tracking-widest text-primary/60">{type.slice(0, -1)}</p>
-          <h1 className="text-3xl md:text-6xl font-black text-primary gold-glow tracking-tighter leading-none uppercase">{data.title || data.name}</h1>
-          <div className="flex flex-col md:flex-row items-center gap-6 mt-4">
-             <Button onClick={handlePlayAll} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all"><Play className="w-6 h-6 fill-current mr-2" /> Play All</Button>
-             <span className="text-sm font-black text-primary">{songs.length} Manifestations</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        {normalizedSongs.map((track: any, i: number) => (
-          <TrackRow 
-            key={`${track.id}-${i}`} 
-            track={track} 
-            index={i + 1} 
-            onClick={() => setQueue(normalizedSongs, i)} 
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TrackRow({ track, index, onClick }: { track: Track, index: number, onClick: () => void }) {
-  const { currentTrack } = usePlayerStore();
-  const isActive = currentTrack?.id === track.id;
-  
-  return (
-    <div onClick={onClick} className={cn("grid grid-cols-[32px_1fr_48px] items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer border border-transparent", isActive && "bg-primary/10 border-primary/20")}>
-      <span className="text-sm font-black text-primary/40 group-hover:text-primary transition-colors text-center">{index}</span>
-      <div className="flex items-center gap-3 md:gap-4 min-w-0">
-        <img src={getImage(track)} className="w-10 h-10 rounded shadow-md object-cover shrink-0" alt="t" />
-        <div className="flex flex-col min-w-0">
-          <p className={cn("text-sm font-black truncate uppercase tracking-tighter", isActive ? "text-primary gold-glow" : "text-primary/80")}>{track.title}</p>
-          <p className="text-[10px] text-primary/40 font-black truncate uppercase tracking-widest">{track.artist}</p>
-        </div>
-      </div>
-      <button className="opacity-0 group-hover:opacity-100 text-primary flex justify-center"><Play className="w-5 h-5 fill-current" /></button>
-    </div>
-  );
-}
-
-const GreetingCard = ({ label, icon }: { label: string, icon: React.ReactNode }) => (
-  <div className="flex items-center gap-3 md:gap-4 bg-white/5 hover:bg-primary/10 transition-all rounded-md overflow-hidden cursor-pointer group pr-4 h-16 md:h-20 border border-primary/10">
-    <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/5 flex items-center justify-center shrink-0 border-r border-primary/10">{icon}</div>
-    <span className="text-xs md:text-sm font-black text-primary truncate flex-1 uppercase tracking-tighter">{label}</span>
-    <button className="w-10 h-10 bg-primary rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl hidden md:flex"><Play className="w-6 h-6 text-black fill-current" /></button>
-  </div>
-);
-
-function LikedSongsView({ userId, layoutMode }: { userId: string, layoutMode: LayoutMode }) {
-  const db = useFirestore();
-  const q = useMemoFirebase(() => {
-    if (!userId || !db) return null;
-    return query(collection(db, 'users', userId, 'likedSongs'), orderBy('likedAt', 'desc'), limit(50));
-  }, [userId, db]);
-  const { data: likedDocs } = useCollection(q);
-
-  const likedTracks = useMemo(() => {
-    return (likedDocs || []).map((doc, i) => ({
-      id: doc.id,
-      title: doc.title,
-      artist: doc.artist,
-      thumbnail: doc.thumbnailUrl,
-      album: "Liked Songs",
-      source: 'jiosaavn' as const,
-      isSaavn: true
-    }));
-  }, [likedDocs]);
-
-  return (
-    <div className="space-y-10">
-      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
-        <div className="w-48 h-48 md:w-64 md:h-64 bg-primary/10 rounded-2xl shadow-2xl flex items-center justify-center gold-border-glow">
-          <Heart className="w-24 h-24 md:w-32 md:h-32 text-primary fill-current animate-pulse-gold" />
-        </div>
-        <div className="space-y-4 text-center md:text-left">
-          <p className="text-[10px] font-black uppercase tracking-widest text-primary/40">Collection</p>
-          <h2 className="text-4xl md:text-8xl font-black text-primary gold-glow tracking-tighter leading-none uppercase">Liked Songs</h2>
-        </div>
-      </div>
-      <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
-        {likedTracks.map((track, i) => (
-          <SearchResult 
-            key={`liked-${track.id}-${i}`} 
-            track={track} 
-            results={likedTracks} 
-            index={i} 
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function LocalArchivesView({ layoutMode }: { layoutMode: LayoutMode }) {
-  const { localTracks, setLocalTracks } = usePlayerStore();
-  const handleSummon = async () => {
-    if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
-      try {
-        const handle = await (window as any).showDirectoryPicker();
-        const tracks: Track[] = [];
-        for await (const entry of handle.values()) {
-          if (entry.kind === 'file' && entry.name.match(/\.(mp3|wav|m4a|ogg)$/i)) {
-            const file = await entry.getFile();
-            tracks.push({
-              id: `local-${Math.random().toString(36).substr(2, 9)}`,
-              title: file.name.replace(/\.[^/.]+$/, ""),
-              artist: "Local Archive",
-              thumbnail: "https://picsum.photos/seed/local/400/400",
-              source: 'local' as const,
-              isLocal: true,
-              localFile: file
-            });
-          }
-        }
-        setLocalTracks([...localTracks, ...tracks]);
-      } catch (e) {}
-    }
-  };
-
-  return (
-    <div className="space-y-12">
-      <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 bg-gradient-to-b from-primary/10 to-transparent p-6 md:p-8 rounded-[2rem] border border-primary/20">
-        <h2 className="text-4xl md:text-7xl font-black text-primary gold-glow tracking-tighter uppercase leading-none">Local Vault</h2>
-        <Button onClick={handleSummon} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all">Summon Folder</Button>
-      </header>
-      <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
-        {localTracks.map((t, i) => (
-          <SearchResult key={`local-${t.id}-${i}`} track={t} results={localTracks} index={i} />
-        ))}
-        {localTracks.length === 0 && (
-          <div onClick={handleSummon} className="col-span-full py-40 border-2 border-dashed border-primary/20 rounded-[2rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-primary/5 group transition-all">
-            <FolderPlus className="w-20 h-24 text-primary/20 group-hover:text-primary transition-colors" />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/20">Click to unlock local vault</p>
-          </div>
-        )}
+    <div className="space-y-8">
+      <h2 className="text-2xl font-black text-primary uppercase tracking-tighter gold-glow">Archives for "{query}"</h2>
+      <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
+        {(data?.results || []).map((track: any, i: number) => <SearchResult key={track.id} track={track} results={data.results} index={i} />)}
       </div>
     </div>
   );

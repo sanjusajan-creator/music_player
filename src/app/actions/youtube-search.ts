@@ -2,133 +2,78 @@
 
 import { Track } from '@/store/usePlayerStore';
 
+const YT_MUSIC_API_BASE = 'https://yt-api-2lez.onrender.com';
 const SAAVN_API_BASE = 'https://my-jiosaavn-api.onrender.com';
 const GAANA_API_BASE = 'https://my-gaana-api-tau.vercel.app';
-const YT_MUSIC_API_BASE = 'https://yt-api-2lez.onrender.com';
 
 /**
- * Sovereign Query Normalizer
+ * Normalizes manifestations into the Sovereign Schema
  */
-function normalizeQuery(query: string) {
-  return query
-    .replace(/:yt\b/gi, "")
-    .replace(/:lyrics\b/gi, "")
-    .trim()
-    .toLowerCase();
+function normalizeYTTrack(item: any): Track {
+  const id = item.videoId || item.id || item.navigationEndpoint?.watchEndpoint?.videoId;
+  return {
+    id: id,
+    videoId: id,
+    title: item.title?.runs?.[0]?.text || item.title || "YouTube Track",
+    artist: item.artist?.runs?.[0]?.text || item.author || item.subtitle?.runs?.[0]?.text || "YouTube Music",
+    thumbnail: item.thumbnail?.thumbnails?.slice(-1)[0]?.url || item.thumbnails?.[0]?.url || `https://picsum.photos/seed/${id}/400/400`,
+    duration: item.duration?.text || item.duration || "0:00",
+    source: 'youtube' as const,
+    isYouTube: true,
+    type: (item.type || 'song') as any,
+    streamUrl: `${YT_MUSIC_API_BASE}/streams/${id}`
+  };
 }
 
 /**
- * Sovereign Unified Search Oracle - [YouTube > Saavn > Gaana]
+ * Sovereign Unified Search Oracle
  */
-export async function searchAllAction(queryInput: string) {
+export async function searchAllAction(query: string, source: string = 'all') {
+  const cleanQuery = query.toLowerCase().trim();
+  if (!cleanQuery) return null;
+
+  console.log(`%cOracle: Summoning Archives for "${cleanQuery}" [Source: ${source}]`, "color: #FFD700; font-weight: 900;");
+
+  const results: Track[] = [];
+
   try {
-    const cleanQuery = normalizeQuery(queryInput);
-    if (!cleanQuery) return null;
+    const promises = [];
+    if (source === 'all' || source === 'youtube') promises.push(fetchYouTubeMusic(cleanQuery));
+    if (source === 'all' || source === 'jiosaavn') promises.push(fetchSaavn(cleanQuery));
+    if (source === 'all' || source === 'gaana') promises.push(fetchGaana(cleanQuery));
 
-    console.log(`%cOracle: Summoning Unified Archives for "${cleanQuery}"`, "color: #FFD700; font-weight: 900;");
-
-    // Parallel summons across discovery vaults with individual error sanctuaries
-    const [ytResults, saavnResults, gaanaResults] = await Promise.all([
-      fetchYouTubeMusic(cleanQuery).catch(e => {
-        console.error("%cOracle: YouTube Vault Error:", "color: #FF0000;", e);
-        return [];
-      }),
-      fetchSaavn(cleanQuery).catch(e => {
-        console.error("%cOracle: Saavn Vault Error:", "color: #FF0000;", e);
-        return [];
-      }),
-      fetchGaana(cleanQuery).catch(e => {
-        console.error("%cOracle: Gaana Vault Error:", "color: #FF0000;", e);
-        return [];
-      })
-    ]);
-
-    console.log(
-      `%cOracle: Discovery Results - YT: ${ytResults.length} | Saavn: ${saavnResults.length} | Gaana: ${gaanaResults.length}`,
-      "color: #FFD700; font-weight: 700;"
-    );
-
-    // Strict Ordering: YT -> Saavn -> Gaana
-    const results = [...ytResults, ...saavnResults, ...gaanaResults];
+    const settled = await Promise.all(promises);
+    
+    // Strict priority ordering: YouTube -> Saavn -> Gaana
+    settled.forEach(r => results.push(...r));
 
     return {
       success: true,
-      query: cleanQuery,
       count: results.length,
       results: results
     };
   } catch (error) {
-    console.error("%cOracle: Unified Search Critical Failure:", "color: #FF0000;", error);
-    return null;
+    return { success: false, results: [] };
   }
 }
 
 async function fetchYouTubeMusic(query: string): Promise<Track[]> {
   try {
-    // Attempting the specialized music search endpoint
     const res = await fetch(`${YT_MUSIC_API_BASE}/api/music/search?q=${encodeURIComponent(query)}`);
     if (!res.ok) return [];
     const data = await res.json();
     
-    // InnerTube Deep Extraction - Searching through complex nested structures
-    let rawResults: any[] = [];
-    
-    if (Array.isArray(data.results)) {
-      rawResults = data.results;
-    } else if (data.contents?.tabbedSearchResultsRenderer) {
+    let raw: any[] = [];
+    if (data.results) raw = data.results;
+    else if (data.contents?.tabbedSearchResultsRenderer) {
       const tabs = data.contents.tabbedSearchResultsRenderer.tabs;
-      const sectionList = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
-      
-      rawResults = sectionList.flatMap((sec: any) => {
-        const shelf = sec.musicShelfRenderer || sec.musicCardShelfRenderer;
-        return shelf?.contents || [];
-      });
-    } else if (data.contents?.sectionListRenderer?.contents) {
-      rawResults = data.contents.sectionListRenderer.contents.flatMap((sec: any) => 
-        sec.musicShelfRenderer?.contents || []
-      );
-    }
-    
-    // Fallback to general search if music specific fails
-    if (rawResults.length === 0) {
-      const fallbackRes = await fetch(`${YT_MUSIC_API_BASE}/api/search?q=${encodeURIComponent(query)}`);
-      if (fallbackRes.ok) {
-        const fallbackData = await fallbackRes.json();
-        rawResults = fallbackData.results || [];
-      }
+      raw = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.flatMap((s: any) => 
+        (s.musicShelfRenderer || s.musicCardShelfRenderer)?.contents || []
+      ) || [];
     }
 
-    return rawResults.map((item: any) => {
-      const track = item.musicResponsiveListItemRenderer || item;
-      const id = track.videoId || track.id || track.navigationEndpoint?.watchEndpoint?.videoId;
-      if (!id) return null;
-      
-      const title = track.title?.runs?.[0]?.text || track.title || track.name || "YouTube Track";
-      const artist = track.artist?.runs?.[0]?.text || 
-                     track.author || 
-                     track.subtitle?.runs?.[0]?.text || 
-                     track.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text ||
-                     "YouTube Music";
-                     
-      const thumbData = track.thumbnail?.thumbnails || track.thumbnails || [];
-      const thumbnail = thumbData[thumbData.length - 1]?.url || thumbData[0]?.url || `https://picsum.photos/seed/${id}/400/400`;
-      
-      return {
-        id: id,
-        videoId: id,
-        title: title,
-        artist: artist,
-        thumbnail: thumbnail,
-        duration: track.duration?.text || track.duration,
-        type: (track.type || 'song') as any,
-        source: 'youtube' as const,
-        isYouTube: true,
-        streamUrl: `${YT_MUSIC_API_BASE}/streams/${id}`,
-        url: `https://music.youtube.com/watch?v=${id}`
-      };
-    }).filter(Boolean) as Track[];
+    return raw.map(normalizeYTTrack).filter(t => t.id);
   } catch (e) {
-    console.error("%cOracle: YouTube Vault silent.", "color: #FF0000;", e);
     return [];
   }
 }
@@ -136,173 +81,117 @@ async function fetchYouTubeMusic(query: string): Promise<Track[]> {
 async function fetchSaavn(query: string): Promise<Track[]> {
   try {
     const res = await fetch(`${SAAVN_API_BASE}/api/search?query=${encodeURIComponent(query)}`);
-    if (!res.ok) return [];
     const data = await res.json();
-    const results = data.data?.songs?.results || data.results || [];
-    
-    return results.map((track: any) => ({
-      id: track.id,
-      title: track.title || track.name,
-      artist: track.primaryArtists || track.artist || "Saavn Artist",
-      thumbnail: track.image?.[2]?.url || track.image?.[1]?.url || track.image?.[0]?.url || track.thumbnail,
-      album: track.album || "Saavn Vault",
-      duration: track.duration,
-      type: 'song' as const,
+    const raw = data.data?.songs?.results || [];
+    return raw.map((t: any) => ({
+      id: t.id,
+      title: t.title || t.name,
+      artist: t.primaryArtists || t.artist || "Saavn Artist",
+      thumbnail: t.image?.[2]?.url || t.image?.[0]?.url,
+      album: t.album || "Saavn Archive",
+      duration: t.duration,
       source: 'jiosaavn' as const,
-      isYouTube: false,
-      url: track.url
+      isYouTube: false
     }));
-  } catch (e) {
-    return [];
-  }
+  } catch (e) { return []; }
 }
 
 async function fetchGaana(query: string): Promise<Track[]> {
   try {
     const res = await fetch(`${GAANA_API_BASE}/api/search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) return [];
     const data = await res.json();
-    const results = data.data?.songs || data.songs || data.results || [];
-
-    return results.map((item: any) => ({
-      id: item.track_id || item.id,
-      title: item.title || item.name,
-      artist: item.artists || item.artist || "Gaana Artist",
-      thumbnail: item.artworkUrl || item.image || item.thumbnail,
-      duration: item.duration,
-      type: 'song' as const,
+    const raw = data.data?.songs || [];
+    return raw.map((t: any) => ({
+      id: t.track_id || t.id,
+      title: t.title || t.name,
+      artist: t.artists || t.artist || "Gaana Artist",
+      thumbnail: t.artworkUrl || t.image,
+      duration: t.duration,
       source: 'gaana' as const,
-      isYouTube: false,
-      url: item.song_url || item.url
+      isYouTube: false
     }));
-  } catch (e) {
-    return [];
-  }
+  } catch (e) { return []; }
 }
 
-export async function resolveTrackAudio(track: Track): Promise<string | null> {
-  const source = track.source || (track.isYouTube ? 'youtube' : 'jiosaavn');
-  
-  if (source === 'youtube' || track.isYouTube) {
-    const id = track.videoId || track.id;
-    const url = `${YT_MUSIC_API_BASE}/streams/${id}`;
-    console.log(`%cOracle: Manifesting YouTube Bitstream from ${url}`, "color: #FFD700; font-weight: 700;");
-    return url;
-  }
-  
-  if (source === 'gaana') {
-    const url = await getGaanaPlaybackUrl(track.id);
-    console.log(`%cOracle: Manifesting Gaana Bitstream from ${url}`, "color: #FFD700; font-weight: 700;");
-    return url;
-  }
-  
-  if (source === 'jiosaavn' || source === 'saavn') {
-    const url = await getSaavnPlaybackUrl(track.id);
-    console.log(`%cOracle: Manifesting JioSaavn Bitstream from ${url}`, "color: #FFD700; font-weight: 700;");
-    return url;
-  }
-  
-  return null;
-}
-
-export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
+/**
+ * Discovery Manifestations
+ */
+export async function getTrendingAction(region: string = 'IN') {
   try {
-    const res = await fetch(`${SAAVN_API_BASE}/api/songs/${id}`);
-    if (!res.ok) return null;
+    const res = await fetch(`${YT_MUSIC_API_BASE}/api/trending?region=${region}`);
     const data = await res.json();
-    const song = data.data?.[0];
-    if (!song || !song.downloadUrl) return null;
-    const links = song.downloadUrl;
-    return links[links.length - 1]?.url || links[0]?.url || null;
-  } catch (error) {
-    return null;
-  }
+    return (data.results || []).slice(0, 10).map(normalizeYTTrack);
+  } catch (e) { return []; }
 }
 
-export async function getGaanaPlaybackUrl(id: string): Promise<string | null> {
+export async function getMusicHomeAction() {
   try {
-    const res = await fetch(`${GAANA_API_BASE}/api/songs/${id}`);
-    if (!res.ok) return getSaavnPlaybackUrl(id);
+    const res = await fetch(`${YT_MUSIC_API_BASE}/api/music/home`);
     const data = await res.json();
-    const song = data.data?.[0] || data.data;
-    if (!song) return null;
-    return song.stream_url || song.downloadUrl?.[0]?.url || null;
-  } catch (e) {
-    return getSaavnPlaybackUrl(id);
-  }
-}
-
-export async function getTrendingAction() {
-  try {
-    const res = await fetch(`${YT_MUSIC_API_BASE}/api/trending?region=IN`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.results || []).slice(0, 10).map((v: any) => ({
-      id: v.videoId,
-      videoId: v.videoId,
-      title: v.title,
-      artist: v.author || "Trending",
-      thumbnail: v.thumbnail || v.thumbnails?.[0]?.url,
-      duration: v.duration,
-      source: 'youtube' as const,
-      isYouTube: true
-    }));
-  } catch (e) {
-    return [];
-  }
+    // Complex mapping for YT Music Home shelves
+    const sections = data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+    return sections.slice(0, 5).map((sec: any) => {
+      const shelf = sec.musicCarouselShelfRenderer;
+      return {
+        title: shelf?.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.[0]?.text || "Music Pick",
+        items: (shelf?.contents || []).map((item: any) => normalizeYTTrack(item.musicTwoRowItemRenderer || item))
+      };
+    }).filter((s: any) => s.items.length > 0);
+  } catch (e) { return []; }
 }
 
 export async function getRelatedTracksAction(videoId: string) {
   try {
     const res = await fetch(`${YT_MUSIC_API_BASE}/api/next/${videoId}`);
-    if (!res.ok) return [];
     const data = await res.json();
-    return (data.results || []).map((v: any) => ({
-      id: v.videoId || v.id,
-      videoId: v.videoId || v.id,
-      title: v.title,
-      artist: v.author || v.artist || "Related",
-      thumbnail: v.thumbnail || v.thumbnails?.[0]?.url,
-      duration: v.duration,
-      source: 'youtube' as const,
-      isYouTube: true
-    }));
-  } catch (e) {
-    return [];
-  }
+    return (data.results || []).map(normalizeYTTrack);
+  } catch (e) { return []; }
 }
 
-export async function getLyricsAction(songId: string, songUrl?: string) {
+export async function getPlaylistAction(id: string) {
   try {
-    let res = await fetch(`${SAAVN_API_BASE}/api/songs?id=${songId}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.data?.[0]?.lyrics) return data.data[0].lyrics;
-    }
-    return null;
-  } catch (error) {
-    return null;
-  }
+    const res = await fetch(`${YT_MUSIC_API_BASE}/api/music/playlist/${id}`);
+    const data = await res.json();
+    return {
+      title: data.title || "Playlist",
+      tracks: (data.results || []).map(normalizeYTTrack)
+    };
+  } catch (e) { return null; }
 }
 
-export async function getDetailAction(type: 'albums' | 'playlists' | 'artists', id: string) {
+export async function getLyricsAction(videoId: string) {
   try {
-    const isYT = id.length === 11 || id.startsWith('PL') || id.startsWith('RD');
-    let endpoint = type === 'albums' ? 'album' : type === 'playlists' ? 'playlist' : 'artist';
-    
-    if (isYT) {
-       const res = await fetch(`${YT_MUSIC_API_BASE}/api/music/${endpoint}/${id}`);
-       if (res.ok) {
-         const data = await res.json();
-         return data || null;
-       }
-    }
-    
-    const res = await fetch(`${SAAVN_API_BASE}/api/${type}/${id}`);
+    const res = await fetch(`${YT_MUSIC_API_BASE}/api/music/lyrics/${videoId}`);
     if (!res.ok) return null;
     const data = await res.json();
-    return data.data || null;
+    return data.lyrics || null;
   } catch (e) {
     return null;
   }
+}
+
+export async function resolveTrackAudio(track: Track): Promise<string | null> {
+  if (track.source === 'youtube' || track.isYouTube) {
+    const url = `${YT_MUSIC_API_BASE}/streams/${track.videoId || track.id}`;
+    return url;
+  }
+  
+  if (track.source === 'jiosaavn') {
+    try {
+      const res = await fetch(`${SAAVN_API_BASE}/api/songs/${track.id}`);
+      const data = await res.json();
+      const links = data.data?.[0]?.downloadUrl;
+      return links?.slice(-1)[0]?.url || null;
+    } catch (e) { return null; }
+  }
+
+  if (track.source === 'gaana') {
+    try {
+      const res = await fetch(`${GAANA_API_BASE}/api/songs/${track.id}`);
+      const data = await res.json();
+      return data.data?.[0]?.stream_url || null;
+    } catch (e) { return null; }
+  }
+
+  return null;
 }
