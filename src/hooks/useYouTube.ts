@@ -1,6 +1,5 @@
-
 import { useQuery } from "@tanstack/react-query";
-import { searchAllAction, getDetailAction } from "@/app/actions/youtube-search";
+import { searchAllAction, getDetailAction, getTrendingAction } from "@/app/actions/youtube-search";
 
 export function useSaavnSearch(query: string) {
   return useQuery({
@@ -17,6 +16,14 @@ export function useSaavnDetails(type: 'albums' | 'playlists' | 'artists', id: st
     queryKey: ['saavn-details', type, id],
     queryFn: () => getDetailAction(type, id),
     enabled: !!id,
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+}
+
+export function useTrending() {
+  return useQuery({
+    queryKey: ['trending-music'],
+    queryFn: () => getTrendingAction(),
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 }

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { getRelatedTracksAction } from '@/app/actions/youtube-search';
 
 export interface Track {
   id: string;
@@ -54,7 +55,7 @@ interface PlayerState {
   isShuffle: boolean;
   hasHydrated: boolean;
   settings: SettingsState;
-  sleepTimer: number | null; // in seconds
+  sleepTimer: number | null; 
   
   setHasHydrated: (state: boolean) => void;
   setCurrentTrack: (track: Track | null) => void;
@@ -186,8 +187,9 @@ export const usePlayerStore = create<PlayerState>()(
 
       setRepeatMode: (mode) => set({ repeatMode: mode }),
 
-      nextTrack: () => {
-        const { queue, repeatMode, currentTrack, originalQueue, history } = get();
+      nextTrack: async () => {
+        const { queue, repeatMode, currentTrack, originalQueue, history, settings } = get();
+        
         if (repeatMode === 'one' && currentTrack) {
           set({ progress: 0, seekRequest: 0, isPlaying: true });
           return;
@@ -213,6 +215,21 @@ export const usePlayerStore = create<PlayerState>()(
             seekRequest: 0, 
             isPlaying: true 
           });
+        } else if (settings.autoplaySimilar && currentTrack && currentTrack.isYouTube) {
+          // Autoplay Sanctuary: Fetch similar tracks from the next API
+          const related = await getRelatedTracksAction(currentTrack.videoId || currentTrack.id);
+          if (related.length > 0) {
+            set({
+              currentTrack: related[0],
+              queue: related.slice(1),
+              history: nextHistory,
+              progress: 0,
+              seekRequest: 0,
+              isPlaying: true
+            });
+          } else {
+            set({ isPlaying: false, progress: 0 });
+          }
         } else {
           set({ isPlaying: false, progress: 0 });
         }
@@ -243,7 +260,7 @@ export const usePlayerStore = create<PlayerState>()(
 
       setSleepTimer: (minutes) => set({ sleepTimer: minutes ? minutes * 60 : null }),
       tickSleepTimer: () => {
-        const { sleepTimer, isPlaying } = get();
+        const { sleepTimer } = get();
         if (sleepTimer === null) return;
         if (sleepTimer <= 0) {
           set({ sleepTimer: null, isPlaying: false });
@@ -253,7 +270,7 @@ export const usePlayerStore = create<PlayerState>()(
       }
     }),
     {
-      name: 'vibecraft-sovereign-v9',
+      name: 'vibecraft-sovereign-v10',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 

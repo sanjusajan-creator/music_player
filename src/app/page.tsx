@@ -2,7 +2,7 @@
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useSaavnSearch, useSaavnDetails } from '@/hooks/useYouTube';
+import { useSaavnSearch, useSaavnDetails, useTrending } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
 import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -119,7 +119,6 @@ function HomeContent() {
         <ScrollArea className="flex-1 h-full">
           <div className="p-4 md:p-8 max-w-7xl mx-auto pb-44 md:pb-32">
             
-            {/* Layout Toggle Header (Only in relevant views) */}
             {['home', 'search', 'liked', 'local'].includes(currentTab) && (
               <div className="flex justify-end mb-4 px-2">
                 <Button 
@@ -153,7 +152,6 @@ function HomeContent() {
           </div>
         </ScrollArea>
 
-        {/* Mobile Navigation Bar */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-black border-t border-primary/20 flex items-center justify-around z-50">
           <MobileNavItem icon={<Home />} label="Home" active={currentTab === 'home'} onClick={() => router.push('/?tab=home')} />
           <MobileNavItem icon={<Search />} label="Search" active={currentTab === 'search'} onClick={() => router.push('/?tab=search')} />
@@ -182,15 +180,31 @@ function HomeView({ layoutMode }: { layoutMode: LayoutMode }) {
     return "Good evening";
   }, []);
 
+  const { data: trending, isLoading: trendingLoading } = useTrending();
+
   return (
     <div className="space-y-10">
       <section>
         <h2 className="text-3xl font-black text-primary mb-6 gold-glow uppercase tracking-tighter">{greeting}</h2>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-          <GreetingCard label="Indian Hits" icon={<TrendingUp className="text-primary" />} />
+          <GreetingCard label="Trending India" icon={<TrendingUp className="text-primary" />} />
           <GreetingCard label="Liked Songs" icon={<Heart className="text-primary fill-current" />} />
           <GreetingCard label="Regional Mix" icon={<Sparkles className="text-primary" />} />
           <GreetingCard label="Local Vault" icon={<FolderOpen className="text-primary" />} />
+        </div>
+      </section>
+
+      {/* Dynamic Trending Section */}
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl md:text-2xl font-black text-primary hover:text-white cursor-pointer transition-all uppercase tracking-tighter gold-glow">Trending Manifestations</h3>
+        </div>
+        <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
+          {trendingLoading ? [...Array(5)].map((_, i) => <div key={`skeleton-${i}`} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
+            (trending || []).slice(0, 5).map((track: any, i: number) => (
+              <SearchResult key={`${track.id}-${i}`} track={track} results={trending} index={i} />
+            ))
+          }
         </div>
       </section>
 
@@ -202,7 +216,7 @@ function HomeView({ layoutMode }: { layoutMode: LayoutMode }) {
 
 function SectionLayout({ title, query, layoutMode }: { title: string, query: string, layoutMode: LayoutMode }) {
   const { data, isLoading } = useSaavnSearch(query);
-  const songs = data?.songs?.results || [];
+  const songs = data?.results || [];
   
   return (
     <section>
@@ -232,50 +246,16 @@ function SearchResultsView({ query, layoutMode }: { query: string, layoutMode: L
     </div>
   );
 
-  const ytMode = results.ytMode;
-
   return (
     <div className="space-y-12 pb-20">
-      {/* 🎧 Songs (JioSaavn + Gaana merged) */}
-      {results.songs?.results?.length > 0 && (
-        <section>
-          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Unified Songs (IN)</h2>
-          <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
-            {results.songs.results.map((t: any, i: number) => (
-              <SearchResult key={`unified-${t.id}-${i}`} track={t} results={results.songs.results} index={i} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 🎬 Videos (YouTube fallback - ONLY IF :yt) */}
-      {ytMode && (
-        <section>
-          <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">YouTube Discovery (IN)</h2>
-          {results.videos?.results?.length > 0 ? (
-            <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
-              {results.videos.results.map((v: any, i: number) => (
-                <SearchResult key={`video-${v.id}-${i}`} track={v} results={results.videos.results} index={i} />
-              ))}
-            </div>
-          ) : (
-             <div className="py-20 text-center border border-dashed border-primary/20 rounded-3xl text-xs font-black uppercase tracking-widest text-primary/40">No videos manifested in this region.</div>
-          )}
-        </section>
-      )}
-    </div>
-  );
-}
-
-function CollectionCard({ data, type }: { data: any, type: string }) {
-  const router = useRouter();
-  return (
-    <div onClick={() => router.push(`/?tab=detail&type=${type}&id=${data.id}`)} className="spotify-card flex flex-col gap-4">
-      <img src={getImage(data)} className="aspect-square rounded-lg object-cover shadow-2xl" alt="cover" />
-      <div className="flex flex-col min-w-0">
-        <h4 className="font-black text-sm text-primary truncate uppercase tracking-tighter">{data.title}</h4>
-        <p className="text-[10px] text-primary/40 uppercase tracking-widest truncate">{data.artist || "Collection"}</p>
-      </div>
+      <section>
+        <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Unified Search Manifestations</h2>
+        <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
+          {(results.results || []).map((t: any, i: number) => (
+            <SearchResult key={`unified-${t.id}-${i}`} track={t} results={results.results} index={i} />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
@@ -287,15 +267,16 @@ function DetailView({ type, id }: { type: 'albums' | 'playlists' | 'artists', id
   if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
   if (!data) return null;
 
-  const songs = data.songs || data.topSongs || [];
+  const songs = data.songs || data.topSongs || data.tracks || [];
   const normalizedSongs = songs.map((s: any) => ({
-    id: s.id,
+    id: s.id || s.videoId,
+    videoId: s.videoId || s.id,
     title: s.title || s.name,
-    artist: s.primaryArtists || s.artists?.primary?.[0]?.name || data.title,
+    artist: s.primaryArtists || s.artist || s.author || data.title,
     thumbnail: getImage(s),
     album: data.title || data.name,
-    source: 'jiosaavn' as const,
-    isSaavn: true
+    source: s.source || (s.videoId ? 'youtube' : 'jiosaavn'),
+    isYouTube: !!(s.videoId || s.source === 'youtube')
   }));
 
   const handlePlayAll = () => {
