@@ -8,10 +8,6 @@ import { toast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-/**
- * Vibecraft Sovereign Hybrid Engine
- * Manages dual-tier manifestation: HTML5 Native Audio & YouTube Iframe API.
- */
 export const YouTubePlayer: React.FC = () => {
   const searchParams = useSearchParams();
   const { 
@@ -40,37 +36,32 @@ export const YouTubePlayer: React.FC = () => {
     return () => clearInterval(timer);
   }, [tickSleepTimer]);
 
-  // HTML5 Native Audio Engine Initialization
+  // Audio Engine Initialization
   useEffect(() => {
-    if (!audioRef.current && typeof Audio !== 'undefined') {
+    if (typeof window !== 'undefined' && !audioRef.current) {
       const audio = new Audio();
       audio.preload = "auto";
       
       audio.addEventListener('timeupdate', () => {
-        if (!currentTrack?.isYouTube && audioRef.current && !isNaN(audioRef.current.currentTime)) {
+        if (audioRef.current && !isNaN(audioRef.current.currentTime)) {
           setProgress(audioRef.current.currentTime);
         }
       });
       
       audio.addEventListener('loadedmetadata', () => {
-        if (!currentTrack?.isYouTube && audioRef.current && !isNaN(audioRef.current.duration)) {
+        if (audioRef.current && !isNaN(audioRef.current.duration)) {
           setDuration(audioRef.current.duration);
         }
       });
       
       audio.addEventListener('ended', () => {
-        if (!currentTrack?.isYouTube) nextTrack();
+        nextTrack();
       });
       
-      audio.addEventListener('waiting', () => {
-        if (!currentTrack?.isYouTube) setIsBuffering(true);
-      });
-      
+      audio.addEventListener('waiting', () => setIsBuffering(true));
       audio.addEventListener('playing', () => {
-        if (!currentTrack?.isYouTube) {
-          setIsBuffering(false);
-          setIsPlaying(true);
-        }
+        setIsBuffering(false);
+        setIsPlaying(true);
       });
       
       audioRef.current = audio;
@@ -82,7 +73,7 @@ export const YouTubePlayer: React.FC = () => {
         audioRef.current.src = "";
       }
     };
-  }, [nextTrack, setDuration, setIsBuffering, setIsPlaying, setProgress, currentTrack?.isYouTube]);
+  }, [nextTrack, setDuration, setIsBuffering, setIsPlaying, setProgress]);
 
   // Sovereign Manifestation Pipeline
   useEffect(() => {
@@ -92,48 +83,45 @@ export const YouTubePlayer: React.FC = () => {
           audioRef.current.pause();
           audioRef.current.src = "";
         }
-        if (ytPlayerRef.current) {
-          ytPlayerRef.current.stopVideo();
-        }
+        if (ytPlayerRef.current) ytPlayerRef.current.stopVideo();
         return;
       }
 
-      // Hardened Purge: Stop the other engine
-      if (currentTrack.isYouTube) {
+      const isYT = currentTrack.isYouTube || currentTrack.source === 'youtube' || currentTrack.id.length === 11;
+
+      if (isYT && settings.isVideoVisible) {
+        // Video Sanctuary Priority
         if (audioRef.current) {
           audioRef.current.pause();
           audioRef.current.src = "";
         }
-        // YouTube Iframe component handles its own src change via videoId prop
+        console.log(`%cOracle: Manifesting YouTube Video Sanctuary`, "color: #FFD700; font-weight: 900;");
       } else {
+        // Native Audio Manifestation
         if (ytPlayerRef.current) ytPlayerRef.current.stopVideo();
         
         let url = "";
-        let sourceLog = "Unknown Vault";
-
         try {
           setIsBuffering(true);
           
           if (currentTrack.source === 'local' && currentTrack.localFile) {
             url = URL.createObjectURL(currentTrack.localFile);
-            sourceLog = "Local Vault";
           } else if (currentTrack.streamUrl && currentTrack.source !== 'youtube') {
             url = currentTrack.streamUrl;
-            sourceLog = `${currentTrack.source?.toUpperCase()} Unified Stream`;
           } else {
             const resolvedUrl = await resolveTrackAudio(currentTrack);
-            if (resolvedUrl) {
-              url = resolvedUrl;
-              sourceLog = `${currentTrack.source?.toUpperCase()} Resolved Manifestation`;
-            }
+            if (resolvedUrl) url = resolvedUrl;
           }
 
           if (url && audioRef.current) {
-            console.log(`%cOracle: Manifesting track from ${sourceLog}`, "color: #FFD700; font-weight: 900;");
+            console.log(`%cOracle: Manifesting Audio Bitstream from ${currentTrack.source?.toUpperCase() || 'UNKNOWN'}`, "color: #FFD700; font-weight: 900;");
             audioRef.current.src = url;
             audioRef.current.load();
             if (isPlaying) {
-              audioRef.current.play().catch(() => setIsPlaying(false));
+              const playPromise = audioRef.current.play();
+              if (playPromise !== undefined) {
+                playPromise.catch(() => setIsPlaying(false));
+              }
             }
           } else {
             setIsBuffering(false);
@@ -145,61 +133,55 @@ export const YouTubePlayer: React.FC = () => {
     };
 
     initializePlayback();
-  }, [currentTrack?.id]);
+  }, [currentTrack?.id, settings.isVideoVisible]);
 
-  // Synchronized Play/Pause Controls
+  // Synchronized Controls
   useEffect(() => {
     if (!currentTrack) return;
+    const isYT = currentTrack.isYouTube || currentTrack.source === 'youtube' || currentTrack.id.length === 11;
 
-    if (currentTrack.isYouTube) {
-      if (ytPlayerRef.current) {
-        if (isPlaying) ytPlayerRef.current.playVideo();
-        else ytPlayerRef.current.pauseVideo();
-      }
+    if (isYT && settings.isVideoVisible && ytPlayerRef.current) {
+      if (isPlaying) ytPlayerRef.current.playVideo();
+      else ytPlayerRef.current.pauseVideo();
     } else if (audioRef.current && audioRef.current.src) {
       if (isPlaying) audioRef.current.play().catch(() => {});
       else audioRef.current.pause();
     }
-  }, [isPlaying, currentTrack?.isYouTube]);
+  }, [isPlaying, currentTrack?.id, settings.isVideoVisible]);
 
-  // Volume Synchronization
+  // Volume & Seek
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume / 100;
     if (ytPlayerRef.current) ytPlayerRef.current.setVolume(volume);
   }, [volume]);
 
-  // Seek Synchronization
   useEffect(() => {
     if (seekRequest !== null) {
-      if (currentTrack?.isYouTube && ytPlayerRef.current) {
+      const isYT = currentTrack?.isYouTube || currentTrack?.source === 'youtube' || currentTrack?.id?.length === 11;
+      if (isYT && settings.isVideoVisible && ytPlayerRef.current) {
         ytPlayerRef.current.seekTo(seekRequest, true);
       } else if (audioRef.current && audioRef.current.src) {
         audioRef.current.currentTime = seekRequest;
       }
     }
-  }, [seekRequest, currentTrack?.isYouTube]);
+  }, [seekRequest, currentTrack?.id]);
 
-  // YouTube Iframe Engine Configuration
   const onReady: YouTubeProps['onReady'] = (event) => {
     ytPlayerRef.current = event.target;
     event.target.setVolume(volume);
-    if (isPlaying) event.target.playVideo();
+    if (isPlaying && settings.isVideoVisible) event.target.playVideo();
     
-    // Start Heartbeat for progress
-    const timer = setInterval(() => {
-      if (ytPlayerRef.current && currentTrack?.isYouTube) {
+    setInterval(() => {
+      if (ytPlayerRef.current && settings.isVideoVisible) {
         const time = ytPlayerRef.current.getCurrentTime();
         const dur = ytPlayerRef.current.getDuration();
         if (!isNaN(time)) setProgress(time);
         if (!isNaN(dur) && dur > 0) setDuration(dur);
       }
     }, 500);
-
-    return () => clearInterval(timer);
   };
 
   const onStateChange: YouTubeProps['onStateChange'] = (event) => {
-    // 1 = playing, 2 = paused, 0 = ended, 3 = buffering
     if (event.data === 1) {
       setIsPlaying(true);
       setIsBuffering(false);
@@ -215,21 +197,16 @@ export const YouTubePlayer: React.FC = () => {
   const opts: YouTubeProps['opts'] = {
     height: '100%',
     width: '100%',
-    playerVars: {
-      autoplay: 1,
-      controls: 1,
-      modestbranding: 1,
-      rel: 0,
-    },
+    playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0 },
   };
 
-  // The video element must remain mounted to keep playback active when hidden
-  const showVideo = isFullPlayer && settings.isVideoVisible && currentTrack?.isYouTube;
+  const isYT = currentTrack?.isYouTube || currentTrack?.source === 'youtube' || currentTrack?.id?.length === 11;
+  const showVideo = isYT && settings.isVideoVisible;
 
   return (
     <>
       <div id="vibecraft-sovereign-audio-engine" className="hidden" />
-      {currentTrack?.isYouTube && (
+      {isYT && (
         <div 
           className={cn(
             "fixed transition-all duration-500 z-[110] bg-black border-primary/20",
@@ -239,7 +216,7 @@ export const YouTubePlayer: React.FC = () => {
           )}
         >
           <YouTube 
-            videoId={currentTrack.videoId} 
+            videoId={currentTrack.videoId || currentTrack.id} 
             opts={opts} 
             onReady={onReady} 
             onStateChange={onStateChange}
