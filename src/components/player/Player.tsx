@@ -7,12 +7,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, 
   Heart, Maximize2, Music, Loader2, Shuffle, Repeat, 
-  VolumeX, ListMusic, X, Share2, Youtube, Moon, Clock
+  VolumeX, ListMusic, X, Share2, Youtube, Moon, Clock, MoreVertical
 } from 'lucide-react';
 import { usePlayerStore, Track } from '@/store/usePlayerStore';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, getImage } from '@/lib/utils';
 import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { generateLyrics } from '@/ai/flows/generate-lyrics';
@@ -61,7 +61,7 @@ export const Player: React.FC = () => {
       userId: user.uid, 
       title: currentTrack.title,
       artist: currentTrack.artist,
-      thumbnailUrl: currentTrack.thumbnail,
+      thumbnailUrl: getImage(currentTrack),
       durationSeconds: currentTrack.duration || 0,
       likedAt: new Date().toISOString() 
     }, { merge: true });
@@ -139,83 +139,143 @@ export const Player: React.FC = () => {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[100] bg-black flex flex-col"
+            className="fixed inset-0 z-[100] bg-black flex flex-col h-[100dvh] overflow-hidden select-none"
           >
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-black pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-black pointer-events-none opacity-50" />
             
-            <div className="p-8 flex items-center justify-between z-10">
-              <button onClick={closeOverlays} className="text-white/60 hover:text-white transition-all"><ChevronDown className="w-10 h-10" /></button>
-              <div className="flex flex-col items-center">
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Now Manifesting</span>
-                <span className="text-xs font-black uppercase tracking-widest text-primary truncate max-w-[200px]">{currentTrack.album || "Sovereign Track"}</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <SleepTimerButton />
-                <button onClick={() => openSheet('queue')} className="text-white/60 hover:text-white"><ListMusic className="w-6 h-6" /></button>
-                <button className="text-white/60 hover:text-white"><Share2 className="w-6 h-6" /></button>
-              </div>
-            </div>
-
-            <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 md:gap-12 z-10">
-              <motion.img 
-                layoutId="player-artwork"
-                src={currentTrack.thumbnail} 
-                className="w-full max-w-[300px] md:max-w-md aspect-square rounded-[2rem] shadow-[0_0_80px_rgba(255,215,0,0.1)] gold-border-glow object-cover" 
-                alt="art" 
-              />
-              <div className="w-full max-w-xl space-y-2 text-center px-4">
-                <h1 className="text-2xl md:text-6xl font-black text-white gold-glow tracking-tighter uppercase leading-none">{currentTrack.title}</h1>
-                <p className="text-sm md:text-lg font-black text-primary/60 uppercase tracking-[0.2em]">{currentTrack.artist}</p>
-                {currentTrack.isYouTube && <span className="inline-flex items-center gap-2 text-[10px] font-black text-primary uppercase tracking-[0.4em] mt-4"><Youtube className="w-4 h-4" /> YouTube Discovery</span>}
-              </div>
-            </div>
-
-            {!currentTrack.isYouTube && (
-              <div className="p-8 md:p-12 w-full max-w-3xl mx-auto space-y-8 z-10">
-                <div className="space-y-4">
-                  <Slider 
-                    value={[progress]} 
-                    max={duration || 100} 
-                    onValueChange={(v) => seekTo(v[0])} 
-                    className="h-2" 
-                  />
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/40">
-                    <span>{formatTime(progress)}</span>
-                    <div className="flex items-center gap-3">
-                       {sleepTimer !== null && (
-                         <span className="text-primary flex items-center gap-1 animate-pulse"><Moon className="w-3 h-3" /> {formatSleepTimer(sleepTimer)}</span>
-                       )}
-                       <span>{formatTime(duration)}</span>
-                    </div>
-                  </div>
-                </div>
+            {/* 1. TOP SECTION: Info & Navigation */}
+            <div className="pt-[env(safe-area-inset-top)] px-6 shrink-0 z-10">
+              <div className="h-16 flex items-center justify-between">
+                <button onClick={closeOverlays} className="text-primary hover:scale-110 transition-transform p-2 -ml-2">
+                  <ChevronDown className="w-8 h-8" />
+                </button>
                 
-                <div className="flex items-center justify-between">
-                  <button onClick={toggleShuffle} className={cn("transition-all", isShuffle ? "text-primary" : "text-white/40")}><Shuffle className="w-6 h-6" /></button>
-                  <div className="flex items-center gap-6 md:gap-10">
-                    <button onClick={previousTrack} className="text-white hover:text-primary transition-all"><SkipBack className="w-8 h-8 md:w-10 md:h-10 fill-current" /></button>
-                    <button 
-                      onClick={() => setIsPlaying(!isPlaying)}
-                      className="w-20 h-20 md:w-24 md:h-24 bg-primary rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-2xl"
-                    >
-                      {isPlaying ? <Pause className="w-8 h-8 md:w-10 md:h-10 fill-black text-black" /> : <Play className="w-8 h-8 md:w-10 md:h-10 fill-black text-black ml-1.5" />}
-                    </button>
-                    <button onClick={nextTrack} className="text-white hover:text-primary transition-all"><SkipForward className="w-8 h-8 md:w-10 md:h-10 fill-current" /></button>
+                <div className="flex flex-col items-center flex-1 px-4 min-w-0">
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 mb-1">Now Manifesting</span>
+                  <div className="flex flex-col items-center w-full">
+                    <h2 className="text-xs font-black text-white uppercase tracking-tighter truncate max-w-full text-center">
+                      {currentTrack.title}
+                    </h2>
+                    <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest truncate max-w-full">
+                      {currentTrack.artist}
+                    </p>
                   </div>
-                  <div className="w-6" /> {/* Placeholder for balance */}
+                </div>
+
+                <div className="flex items-center gap-1 -mr-2">
+                  <SleepTimerButton />
+                  <button onClick={() => openSheet('queue')} className="text-primary p-2">
+                    <ListMusic className="w-6 h-6" />
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* 2. CENTER SECTION: Flexible Artwork */}
+            <div className="flex-1 flex items-center justify-center p-8 md:p-12 min-h-0 z-10">
+              <motion.div 
+                layoutId="player-artwork"
+                className="relative w-full max-w-[400px] aspect-square group"
+              >
+                <img 
+                  src={getImage(currentTrack)} 
+                  className="w-full h-full object-cover rounded-[2.5rem] shadow-[0_0_100px_rgba(255,215,0,0.15)] gold-border-glow" 
+                  alt="art" 
+                />
+                {currentTrack.isYouTube && (
+                  <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-primary/20 flex items-center gap-2">
+                    <Youtube className="w-4 h-4 text-primary" />
+                    <span className="text-[8px] font-black text-primary uppercase tracking-widest">YouTube Discovery</span>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+
+            {/* 3. BOTTOM SECTION: Controls (Fixed Priority) */}
+            <div className="pb-[calc(env(safe-area-inset-bottom)+2rem)] px-8 space-y-8 shrink-0 z-10">
+              {/* Song Title & Like (Desktop layout uses these, but we keep them here for safe display if needed) */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h1 className="text-2xl font-black text-white gold-glow tracking-tighter uppercase leading-none truncate break-words">
+                    {currentTrack.title}
+                  </h1>
+                  <p className="text-sm font-black text-primary/60 uppercase tracking-[0.2em] truncate">
+                    {currentTrack.artist}
+                  </p>
+                </div>
+                <button onClick={handleLike} className="shrink-0 p-2">
+                  <Heart className={cn("w-7 h-7 transition-all", isLiked ? "fill-primary text-primary" : "text-primary/20")} />
+                </button>
+              </div>
+
+              {/* Progress Bar & Timestamps */}
+              <div className="space-y-3">
+                <Slider 
+                  value={[progress]} 
+                  max={duration || 100} 
+                  onValueChange={(v) => seekTo(v[0])} 
+                  className="h-1.5" 
+                />
+                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-primary/40">
+                  <span>{formatTime(progress)}</span>
+                  <div className="flex items-center gap-2">
+                    {sleepTimer !== null && (
+                      <span className="text-primary flex items-center gap-1 animate-pulse mr-2">
+                        <Moon className="w-3 h-3" /> {formatSleepTimer(sleepTimer)}
+                      </span>
+                    )}
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Primary Controls */}
+              <div className="flex items-center justify-between">
+                <button onClick={toggleShuffle} className={cn("transition-all p-2", isShuffle ? "text-primary" : "text-primary/20")}>
+                  <Shuffle className="w-6 h-6" />
+                </button>
+                
+                <div className="flex items-center gap-8 md:gap-12">
+                  <button onClick={previousTrack} className="text-white hover:text-primary transition-all">
+                    <SkipBack className="w-10 h-10 fill-current" />
+                  </button>
+                  
+                  <button 
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="w-20 h-20 bg-primary rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,215,0,0.3)]"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-10 h-10 fill-black text-black" />
+                    ) : (
+                      <Play className="w-10 h-10 fill-black text-black ml-1.5" />
+                    )}
+                  </button>
+                  
+                  <button onClick={nextTrack} className="text-white hover:text-primary transition-all">
+                    <SkipForward className="w-10 h-10 fill-current" />
+                  </button>
+                </div>
+
+                {!currentTrack.isYouTube ? (
+                  <button onClick={fetchLyrics} className="text-primary/20 hover:text-primary p-2">
+                    <Music className="w-6 h-6" />
+                  </button>
+                ) : (
+                  <div className="w-10" />
+                )}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Mini Player: Desktop & Mobile Bottom Bar */}
       <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-[60] h-20 md:h-24 bg-[#000000] backdrop-blur-xl border-t border-primary/20 flex items-center px-4 md:px-6 gap-4 shadow-2xl pointer-events-auto">
         <div className="flex-1 flex items-center gap-3 min-w-0">
           <div className="relative group shrink-0" onClick={() => router.push(`/?view=full&${searchParams.toString()}`)}>
             <motion.img 
               layoutId="player-artwork"
-              src={currentTrack.thumbnail} 
+              src={getImage(currentTrack)} 
               className="w-12 h-12 md:w-14 md:h-14 rounded shadow-lg object-cover gold-border-glow cursor-pointer" 
               alt="artwork" 
             />
