@@ -26,6 +26,7 @@ export interface Track {
 export type AudioQuality = 'low' | 'medium' | 'high' | 'auto';
 export type StreamingMode = 'stream' | 'download' | 'offline';
 export type RepeatMode = 'none' | 'one' | 'all';
+export type LayoutMode = 'grid' | 'list';
 
 interface SettingsState {
   audioQuality: AudioQuality;
@@ -34,6 +35,7 @@ interface SettingsState {
   autoScrollLyrics: boolean;
   autoplaySimilar: boolean;
   dataSaver: boolean;
+  layoutMode: LayoutMode;
 }
 
 interface PlayerState {
@@ -106,6 +108,7 @@ export const usePlayerStore = create<PlayerState>()(
         autoScrollLyrics: true,
         autoplaySimilar: true,
         dataSaver: false,
+        layoutMode: 'list',
       },
 
       setHasHydrated: (state) => set({ hasHydrated: state }),
@@ -245,7 +248,7 @@ export const usePlayerStore = create<PlayerState>()(
       }
     }),
     {
-      name: 'vibecraft-sovereign-v7',
+      name: 'vibecraft-sovereign-v8',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         volume: state.volume, 

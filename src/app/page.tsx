@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { Suspense, useState, useEffect, useMemo } from 'react';
@@ -14,7 +13,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { 
   TrendingUp, Sparkles, Heart, Home,
-  Loader2, FolderOpen, Search, Library, Settings as SettingsIcon, X, Youtube, Play, FolderPlus
+  Loader2, FolderOpen, Search, Library, Settings as SettingsIcon, X, LayoutGrid, List, Play, FolderPlus
 } from 'lucide-react';
 import { useUser, useAuth, useMemoFirebase, useFirestore, useCollection } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -22,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { query, collection, limit, getDocs, orderBy } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { usePlayerStore, Track } from '@/store/usePlayerStore';
+import { usePlayerStore, Track, LayoutMode } from '@/store/usePlayerStore';
 import { cn, getImage } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,7 +45,7 @@ function HomeContent() {
   const db = useFirestore();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setLikedTracks, hasHydrated, currentTrack, setCurrentTrack } = usePlayerStore();
+  const { setLikedTracks, hasHydrated, currentTrack, setCurrentTrack, settings, updateSettings } = usePlayerStore();
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -83,6 +82,12 @@ function HomeContent() {
     } finally {
       setIsAuthLoading(false);
     }
+  };
+
+  const toggleLayout = () => {
+    const next: LayoutMode = settings.layoutMode === 'grid' ? 'list' : 'grid';
+    updateSettings({ layoutMode: next });
+    toast({ title: "Layout Transformation", description: `Vault manifested as ${next.toUpperCase()} view.` });
   };
 
   if (isUserLoading) return <div className="h-screen w-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
@@ -133,18 +138,33 @@ function HomeContent() {
               )}
             </AnimatePresence>
 
+            {/* Layout Toggle Header (Only in relevant views) */}
+            {['home', 'search', 'liked', 'local'].includes(currentTab) && (
+              <div className="flex justify-end mb-4 px-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={toggleLayout}
+                  className="bg-primary/5 hover:bg-primary/20 text-primary border border-primary/10 rounded-full gap-2 px-4 h-10 transition-all"
+                >
+                  {settings.layoutMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+                  <span className="text-[10px] font-black uppercase tracking-widest">Layout Switch</span>
+                </Button>
+              </div>
+            )}
+
             <AnimatePresence mode="wait">
               <motion.div 
-                key={currentTab + searchQuery + detailId} 
+                key={currentTab + searchQuery + detailId + settings.layoutMode} 
                 initial={{ opacity: 0, y: 10 }} 
                 animate={{ opacity: 1, y: 0 }} 
                 exit={{ opacity: 0, y: -10 }} 
                 transition={{ duration: 0.2 }}
               >
-                {currentTab === 'home' && <HomeView />}
-                {currentTab === 'search' && <SearchResultsView query={searchQuery} />}
-                {currentTab === 'liked' && <LikedSongsView userId={user.uid} />}
-                {currentTab === 'local' && <LocalArchivesView />}
+                {currentTab === 'home' && <HomeView layoutMode={settings.layoutMode} />}
+                {currentTab === 'search' && <SearchResultsView query={searchQuery} layoutMode={settings.layoutMode} />}
+                {currentTab === 'liked' && <LikedSongsView userId={user.uid} layoutMode={settings.layoutMode} />}
+                {currentTab === 'local' && <LocalArchivesView layoutMode={settings.layoutMode} />}
                 {currentTab === 'detail' && detailType && detailId && <DetailView type={detailType} id={detailId} />}
                 {currentTab === 'settings' && <SettingsView />}
               </motion.div>
@@ -173,7 +193,7 @@ const MobileNavItem = ({ icon, label, active, onClick }: { icon: React.ReactNode
   </button>
 );
 
-function HomeView() {
+function HomeView({ layoutMode }: { layoutMode: LayoutMode }) {
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -193,13 +213,13 @@ function HomeView() {
         </div>
       </section>
 
-      <SectionLayout title="Fresh Manifestations (IN)" query="Indian New Songs" />
-      <SectionLayout title="Sovereign Discovery" query="Trending Music India" />
+      <SectionLayout title="Fresh Manifestations (IN)" query="Indian New Songs" layoutMode={layoutMode} />
+      <SectionLayout title="Sovereign Discovery" query="Trending Music India" layoutMode={layoutMode} />
     </div>
   );
 }
 
-function SectionLayout({ title, query }: { title: string, query: string }) {
+function SectionLayout({ title, query, layoutMode }: { title: string, query: string, layoutMode: LayoutMode }) {
   const { data, isLoading } = useSaavnSearch(query);
   const songs = data?.songs?.results || [];
   
@@ -208,7 +228,7 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl md:text-2xl font-black text-primary hover:text-white cursor-pointer transition-all uppercase tracking-tighter gold-glow">{title}</h3>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+      <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
         {isLoading ? [...Array(5)].map((_, i) => <div key={`skeleton-${i}`} className="aspect-square bg-white/5 animate-pulse rounded-xl" />) :
           songs.slice(0, 5).map((track: any, i: number) => (
             <SearchResult key={`${track.id}-${i}`} track={track} results={songs.slice(0, 5)} index={i} />
@@ -219,7 +239,7 @@ function SectionLayout({ title, query }: { title: string, query: string }) {
   );
 }
 
-function SearchResultsView({ query }: { query: string }) {
+function SearchResultsView({ query, layoutMode }: { query: string, layoutMode: LayoutMode }) {
   const { data: results, isLoading } = useSaavnSearch(query);
   
   if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
@@ -239,7 +259,7 @@ function SearchResultsView({ query }: { query: string }) {
       {results.songs?.results?.length > 0 && (
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">Unified Songs (IN)</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+          <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
             {results.songs.results.map((t: any, i: number) => (
               <SearchResult key={`unified-${t.id}-${i}`} track={t} results={results.songs.results} index={i} />
             ))}
@@ -264,7 +284,7 @@ function SearchResultsView({ query }: { query: string }) {
         <section>
           <h2 className="text-2xl font-black text-primary mb-6 uppercase tracking-tighter gold-glow">YouTube Discovery (IN)</h2>
           {results.videos?.results?.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+            <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
               {results.videos.results.map((v: any, i: number) => (
                 <SearchResult key={`video-${v.id}-${i}`} track={v} results={results.videos.results} index={i} />
               ))}
@@ -368,7 +388,7 @@ const GreetingCard = ({ label, icon }: { label: string, icon: React.ReactNode })
   </div>
 );
 
-function LikedSongsView({ userId }: { userId: string }) {
+function LikedSongsView({ userId, layoutMode }: { userId: string, layoutMode: LayoutMode }) {
   const db = useFirestore();
   const q = useMemoFirebase(() => {
     if (!userId || !db) return null;
@@ -399,7 +419,7 @@ function LikedSongsView({ userId }: { userId: string }) {
           <h2 className="text-4xl md:text-8xl font-black text-primary gold-glow tracking-tighter leading-none uppercase">Liked Songs</h2>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+      <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
         {likedTracks.map((track, i) => (
           <SearchResult 
             key={`liked-${track.id}-${i}`} 
@@ -413,7 +433,7 @@ function LikedSongsView({ userId }: { userId: string }) {
   );
 }
 
-function LocalArchivesView() {
+function LocalArchivesView({ layoutMode }: { layoutMode: LayoutMode }) {
   const { localTracks, setLocalTracks } = usePlayerStore();
   const handleSummon = async () => {
     if ('showDirectoryPicker' in window) {
@@ -445,7 +465,7 @@ function LocalArchivesView() {
         <h2 className="text-4xl md:text-7xl font-black text-primary gold-glow tracking-tighter uppercase leading-none">Local Vault</h2>
         <Button onClick={handleSummon} className="bg-primary text-black font-black uppercase tracking-widest rounded-full px-10 h-14 hover:scale-105 transition-all">Summon Folder</Button>
       </header>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+      <div className={cn("grid gap-4 md:gap-6", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
         {localTracks.map((t, i) => (
           <SearchResult key={`local-${t.id}-${i}`} track={t} results={localTracks} index={i} />
         ))}
