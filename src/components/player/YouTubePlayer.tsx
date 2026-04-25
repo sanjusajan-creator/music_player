@@ -32,7 +32,7 @@ export const YouTubePlayer: React.FC = () => {
       audio.addEventListener('playing', () => { 
         setIsBuffering(false); 
         setIsPlaying(true); 
-        console.log(`%cOracle: Bitstream Manifestation Active via Native Audio Sanctuary. [Source: ${currentTrack?.source}]`, "color: #FFD700; font-weight: bold;");
+        console.log(`%cOracle: Bitstream Manifestation Active. [Source: ${currentTrack?.source}]`, "color: #FFD700; font-weight: bold;");
       });
 
       audio.addEventListener('error', (e) => {
@@ -43,7 +43,7 @@ export const YouTubePlayer: React.FC = () => {
         console.error(`%cOracle: Audio engine failure. Code: ${err?.code} | Message: ${err?.message} | URL: ${audio.src}`, "color: #FF0000; font-weight: bold;");
         
         if (currentTrack?.isYouTube) {
-          console.warn("%cOracle: Native bitstream blocked. Fallback to Video Sanctuary activated.", "color: #FFD700; font-weight: bold;");
+          console.warn("%cOracle: Native bitstream failed. Activating Video Sanctuary.", "color: #FFD700; font-weight: bold;");
           setUseIframeFallback(true);
         }
         setIsBuffering(false);
@@ -113,7 +113,7 @@ export const YouTubePlayer: React.FC = () => {
   const onReady: YouTubeProps['onReady'] = (event) => {
     ytPlayerRef.current = event.target;
     event.target.setVolume(volume);
-    console.log(`%cOracle: Video Sanctuary manifested successfully. [Source: youtube]`, "color: #FFD700; font-weight: bold;");
+    console.log(`%cOracle: Video Sanctuary manifested. [Source: youtube]`, "color: #FFD700; font-weight: bold;");
     
     setInterval(() => {
       if (ytPlayerRef.current && (settings.isVideoVisible || useIframeFallback)) {

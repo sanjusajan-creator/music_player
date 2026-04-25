@@ -33,7 +33,7 @@ async function safeFetch(url: string) {
 
 /**
  * Normalizes manifestations into the Sovereign Unified Schema
- * Handles ResponsiveListItem, CardShelf, and TwoRowItem renderers.
+ * Handles ResponsiveListItem, CardShelf, and TwoRowItem renderers with hyper-aggression.
  */
 function normalizeYTTrack(item: any): Track {
   const renderer = item.musicResponsiveListItemRenderer || 
@@ -41,7 +41,7 @@ function normalizeYTTrack(item: any): Track {
                    item.musicTwoRowItemRenderer || 
                    item;
   
-  // Tiered VideoId Extraction
+  // Tiered VideoId Extraction Sanctuary
   let videoId = renderer.videoId || renderer.id;
   if (!videoId && renderer.overlay?.musicItemThumbnailOverlayRenderer) {
     videoId = renderer.overlay.musicItemThumbnailOverlayRenderer
@@ -50,6 +50,9 @@ function normalizeYTTrack(item: any): Track {
   }
   if (!videoId && renderer.navigationEndpoint?.watchEndpoint?.videoId) {
     videoId = renderer.navigationEndpoint.watchEndpoint.videoId;
+  }
+  if (!videoId && renderer.onTap?.watchEndpoint?.videoId) {
+    videoId = renderer.onTap.watchEndpoint.videoId;
   }
 
   // Title Extraction Sanctuary
@@ -60,16 +63,19 @@ function normalizeYTTrack(item: any): Track {
     title = renderer.title.runs[0].text;
   } else if (typeof renderer.title === 'string') {
     title = renderer.title;
+  } else if (renderer.header?.musicCardShelfHeaderRenderer?.title?.runs?.[0]?.text) {
+    title = renderer.header.musicCardShelfHeaderRenderer.title.runs[0].text;
   }
 
   // Artist Extraction Sanctuary
   let artist = "Unknown Artist";
-  if (renderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text) {
-    artist = renderer.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs[0].text;
-  } else if (renderer.subtitle?.runs?.[0]?.text) {
-    artist = renderer.subtitle.runs[0].text;
-  } else if (renderer.artist?.runs?.[0]?.text) {
-    artist = renderer.artist.runs[0].text;
+  const flexColumn1 = renderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
+  if (flexColumn1 && flexColumn1.length > 0) {
+    artist = flexColumn1.map((r: any) => r.text).join("");
+  } else if (renderer.subtitle?.runs) {
+    artist = renderer.subtitle.runs.map((r: any) => r.text).join("");
+  } else if (renderer.artist?.runs) {
+    artist = renderer.artist.runs.map((r: any) => r.text).join("");
   } else if (typeof renderer.artist === 'string') {
     artist = renderer.artist;
   }
@@ -149,9 +155,8 @@ async function fetchYouTubeMusic(query: string): Promise<Track[]> {
       (s.musicShelfRenderer || s.musicCardShelfRenderer)?.contents || []
     ) || [];
   }
-  // 3. Recursive raw_data extraction (Critical for Render Sanctuary)
+  // 3. Recursive raw_data extraction
   else if (data.raw_data?.contents?.tabbedSearchResultsRenderer) {
-    console.log("%cOracle: results[] empty. Activating raw_data Manual Extraction.", "color: #FFD700; font-weight: bold;");
     const tabs = data.raw_data.contents.tabbedSearchResultsRenderer.tabs;
     raw = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.flatMap((s: any) => 
       (s.musicShelfRenderer || s.musicCardShelfRenderer)?.contents || []
@@ -240,7 +245,7 @@ export async function resolveTrackAudio(track: Track): Promise<string | null> {
     const status = playerData?.player_data?.playabilityStatus?.status;
     
     if (status === "LOGIN_REQUIRED" || status === "UNPLAYABLE" || !playerData?.title) {
-      console.warn(`%cOracle: Bitstream manifestation blocked [${status}]. Metamorphosing to Iframe Sanctuary.`, "color: #FFD700; font-weight: bold;");
+      console.warn(`%cOracle: Bitstream manifestation blocked [${status}]. Metamorphosing to Video Sanctuary.`, "color: #FFD700; font-weight: bold;");
       return null;
     }
 
