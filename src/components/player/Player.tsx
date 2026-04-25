@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
+import YouTube, { YouTubeProps } from 'react-youtube';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, 
   Heart, Maximize2, Music, Loader2, Shuffle, 
@@ -145,8 +146,8 @@ export const Player: React.FC = () => {
             
             <div className="pt-[env(safe-area-inset-top)] px-6 shrink-0 z-10">
               <div className="h-16 flex items-center justify-between">
-                <button onClick={closeOverlays} className="text-primary hover:scale-110 transition-transform p-2 -ml-2">
-                  <ChevronDown className="w-8 h-8" />
+                <button onClick={closeOverlays} className="text-primary hover:bg-white/5 hover:scale-110 transition-all p-2 rounded-full -ml-2 shrink-0">
+                  <ChevronDown className="w-6 h-6 sm:w-8 sm:h-8" />
                 </button>
                 
                 <div className="flex flex-col items-center flex-1 px-4 min-w-0">
@@ -160,27 +161,42 @@ export const Player: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 -mr-2">
+                <div className="flex items-center gap-1 sm:gap-2 -mr-2 shrink-0">
                   {currentTrack.isYouTube && (
                     <button 
                       onClick={toggleVideo} 
                       className={cn(
-                        "p-2 transition-all rounded-full hover:bg-white/5",
+                        "p-2 flex items-center justify-center transition-all rounded-full hover:bg-white/5",
                         settings.isVideoVisible ? "text-primary gold-glow" : "text-primary/40"
                       )}
                     >
-                      {settings.isVideoVisible ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                      {settings.isVideoVisible ? <Video className="w-5 h-5 sm:w-6 sm:h-6" /> : <VideoOff className="w-5 h-5 sm:w-6 sm:h-6" />}
+                    </button>
+                  )}
+                  {currentTrack.isYouTube && (
+                    <button 
+                      onClick={() => usePlayerStore.getState().updateSettings({ useIframeForYouTube: !settings.useIframeForYouTube })} 
+                      className={cn(
+                        "p-2 flex items-center justify-center transition-all rounded-full hover:bg-white/5",
+                        settings.useIframeForYouTube ? "text-primary gold-glow" : "text-primary/40"
+                      )}
+                      title={settings.useIframeForYouTube ? "Using YouTube Player" : "Using Audio Stream"}
+                    >
+                      <Youtube className="w-5 h-5 sm:w-6 sm:h-6" />
                     </button>
                   )}
                   <SleepTimerButton />
-                  <button onClick={() => openSheet('queue')} className="text-primary p-2">
-                    <ListMusic className="w-6 h-6" />
+                  <button 
+                    onClick={() => openSheet('queue')} 
+                    className="p-2 flex items-center justify-center transition-all rounded-full hover:bg-white/5 text-primary"
+                  >
+                    <ListMusic className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-12 min-h-0 z-10 relative">
+            <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 md:p-12 min-h-0 z-10 relative">
               <AnimatePresence mode="wait">
                 {(!settings.isVideoVisible || !currentTrack.isYouTube) ? (
                   <motion.div 
@@ -188,39 +204,46 @@ export const Player: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    layoutId="player-artwork"
-                    className="relative w-full max-w-[400px] aspect-square group"
+                    className="relative w-full max-w-[280px] sm:max-w-[320px] md:max-w-[400px] aspect-square group"
                   >
                     <img 
                       src={getImage(currentTrack)} 
-                      className="w-full h-full object-cover rounded-[2.5rem] shadow-[0_0_100px_rgba(255,215,0,0.15)] gold-border-glow" 
+                      className="w-full h-full object-cover rounded-2xl sm:rounded-[2rem] shadow-[0_0_100px_rgba(255,215,0,0.15)] gold-border-glow" 
                       alt="art" 
                     />
                     {currentTrack.isYouTube && (
-                      <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-primary/20 flex items-center gap-2">
-                        <Youtube className="w-4 h-4 text-primary" />
-                        <span className="text-[8px] font-black text-primary uppercase tracking-widest">YouTube Archive</span>
+                      <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-black/80 backdrop-blur-md px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-primary/20 flex items-center gap-1 sm:gap-2">
+                        <Youtube className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+                        <span className="text-[6px] sm:text-[8px] font-black text-primary uppercase tracking-widest">YouTube</span>
                       </div>
                     )}
                   </motion.div>
                 ) : (
-                  <div key="video-spacer" className="w-full max-w-[400px] aspect-video" />
+                  <motion.div 
+                    key="video-placeholder"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="w-full max-w-[280px] sm:max-w-[320px] md:max-w-[400px] aspect-square rounded-2xl sm:rounded-[2rem] overflow-hidden gold-border-glow bg-black/50 flex items-center justify-center"
+                  >
+                    <Video className="w-12 h-12 text-primary/20" />
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            <div className="pb-[calc(env(safe-area-inset-bottom)+2rem)] px-8 space-y-8 shrink-0 z-10">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <h1 className="text-2xl font-black text-white gold-glow tracking-tighter uppercase leading-none truncate break-words">
+            <div className="pb-[calc(env(safe-area-inset-bottom)+2rem)] px-4 sm:px-6 md:px-8 space-y-6 sm:space-y-8 shrink-0 z-10">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-base sm:text-xl md:text-2xl font-black text-white gold-glow tracking-tighter uppercase leading-none truncate break-words">
                     {currentTrack.title}
                   </h1>
-                  <p className="text-sm font-black text-primary/60 uppercase tracking-[0.2em] truncate">
+                  <p className="text-[10px] sm:text-xs md:text-sm font-black text-primary/60 uppercase tracking-[0.2em] truncate">
                     {currentTrack.artist}
                   </p>
                 </div>
                 <button onClick={handleLike} className="shrink-0 p-2">
-                  <Heart className={cn("w-7 h-7 transition-all", isLiked ? "fill-primary text-primary" : "text-primary/20")} />
+                  <Heart className={cn("w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 transition-all", isLiked ? "fill-primary text-primary" : "text-primary/20")} />
                 </button>
               </div>
 
@@ -231,7 +254,7 @@ export const Player: React.FC = () => {
                   onValueChange={(v) => seekTo(v[0])} 
                   className="h-1.5" 
                 />
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-primary/40">
+                <div className="flex justify-between text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-primary/40">
                   <span>{formatTime(progress)}</span>
                   <div className="flex items-center gap-2">
                     {sleepTimer !== null && (
@@ -245,33 +268,33 @@ export const Player: React.FC = () => {
               </div>
               
               <div className="flex items-center justify-between">
-                <button onClick={toggleShuffle} className={cn("transition-all p-2", isShuffle ? "text-primary" : "text-primary/20")}>
-                  <Shuffle className="w-6 h-6" />
+                <button onClick={toggleShuffle} className={cn("transition-all p-1 sm:p-2", isShuffle ? "text-primary" : "text-primary/20")}>
+                  <Shuffle className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                 </button>
                 
-                <div className="flex items-center gap-8 md:gap-12">
-                  <button onClick={previousTrack} className="text-white hover:text-primary transition-all">
-                    <SkipBack className="w-10 h-10 fill-current" />
+                <div className="flex items-center gap-4 sm:gap-6 md:gap-10 lg:gap-12">
+                  <button onClick={previousTrack} className="text-white hover:text-primary transition-all p-1 sm:p-2">
+                    <SkipBack className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-current" />
                   </button>
                   
                   <button 
                     onClick={() => setIsPlaying(!isPlaying)}
-                    className="w-20 h-20 bg-primary rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,215,0,0.3)]"
+                    className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-primary rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,215,0,0.3)]"
                   >
                     {isPlaying ? (
-                      <Pause className="w-10 h-10 fill-black text-black" />
+                      <Pause className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-black text-black" />
                     ) : (
-                      <Play className="w-10 h-10 fill-black text-black ml-1.5" />
+                      <Play className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-black text-black ml-0.5 sm:ml-1 md:ml-1.5" />
                     )}
                   </button>
                   
-                  <button onClick={nextTrack} className="text-white hover:text-primary transition-all">
-                    <SkipForward className="w-10 h-10 fill-current" />
+                  <button onClick={nextTrack} className="text-white hover:text-primary transition-all p-1 sm:p-2">
+                    <SkipForward className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-current" />
                   </button>
                 </div>
 
-                <button onClick={fetchLyrics} className="text-primary/20 hover:text-primary p-2">
-                  <Music className="w-6 h-6" />
+                <button onClick={fetchLyrics} className="text-primary/20 hover:text-primary p-1 sm:p-2">
+                  <Music className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                 </button>
               </div>
             </div>
@@ -281,7 +304,7 @@ export const Player: React.FC = () => {
 
       <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-[60] h-20 md:h-24 bg-[#000000] backdrop-blur-xl border-t border-primary/20 flex items-center px-4 md:px-6 gap-4 shadow-2xl pointer-events-auto">
         <div className="flex-1 flex items-center gap-3 min-w-0">
-          <div className="relative group shrink-0" onClick={() => router.push(`/?view=full&${searchParams.toString()}`)}>
+<div className="relative group shrink-0" onClick={() => router.push(`/?view=full&${searchParams.toString()}`)}>
             <motion.img 
               layoutId="player-artwork"
               src={getImage(currentTrack)} 
@@ -309,18 +332,18 @@ export const Player: React.FC = () => {
             <button onClick={toggleShuffle} className={cn("transition-all hidden md:block", isShuffle ? "text-primary" : "text-muted-foreground hover:text-white")}>
               <Shuffle className="w-4 h-4" />
             </button>
-            <button onClick={previousTrack} className="text-muted-foreground hover:text-white transition-all"><SkipBack className="w-5 h-5 md:w-6 md:h-6 fill-current" /></button>
+            <button onClick={previousTrack} className="text-muted-foreground hover:text-white transition-all hidden md:block"><SkipBack className="w-5 h-5 md:w-6 md:h-6 fill-current" /></button>
             <button 
               onClick={() => setIsPlaying(!isPlaying)}
               className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-all active:scale-95 shadow-xl"
             >
               {isPlaying ? <Pause className="fill-black text-black w-4 h-4 md:w-5 md:h-5" /> : <Play className="fill-black text-black w-4 h-4 md:w-5 md:h-5 ml-0.5" />}
             </button>
-            <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all"><SkipForward className="fill-current w-5 h-5 md:w-6 md:h-6" /></button>
+            <button onClick={nextTrack} className="text-muted-foreground hover:text-white transition-all hidden md:block"><SkipForward className="fill-current w-5 h-5 md:w-6 md:h-6" /></button>
             {currentTrack.isYouTube && (
               <button 
                 onClick={toggleVideo} 
-                className={cn("transition-all hidden md:block", settings.isVideoVisible ? "text-primary" : "text-muted-foreground")}
+                className={cn("transition-all", settings.isVideoVisible ? "text-primary" : "text-muted-foreground hover:text-white")}
               >
                 <Video className="w-4 h-4" />
               </button>
@@ -366,8 +389,8 @@ const SleepTimerButton = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button title="Sleep Timer" className={cn("transition-all relative p-2 rounded-full hover:bg-white/5", sleepTimer !== null ? "text-primary" : "text-muted-foreground hover:text-white")}>
-          <Moon className="w-5 h-5 md:w-6 md:h-6" />
+        <button title="Sleep Timer" className={cn("transition-all relative p-2 flex items-center justify-center rounded-full hover:bg-white/5", sleepTimer !== null ? "text-primary" : "text-primary/40 hover:text-primary")}>
+          <Moon className="w-5 h-5 sm:w-6 sm:h-6" />
           {sleepTimer !== null && <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_5px_rgba(255,215,0,0.8)]" />}
         </button>
       </DropdownMenuTrigger>

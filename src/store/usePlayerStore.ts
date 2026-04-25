@@ -36,6 +36,7 @@ interface SettingsState {
   dataSaver: boolean;
   layoutMode: LayoutMode;
   isVideoVisible: boolean;
+  useIframeForYouTube: boolean;
 }
 
 interface PlayerState {
@@ -111,6 +112,7 @@ export const usePlayerStore = create<PlayerState>()(
         dataSaver: false,
         layoutMode: 'list',
         isVideoVisible: false,
+        useIframeForYouTube: true,
       },
 
       setHasHydrated: (state) => set({ hasHydrated: state }),
@@ -285,6 +287,7 @@ export const usePlayerStore = create<PlayerState>()(
         if (rehydratedState) {
           rehydratedState.hasHydrated = true;
           if (!Array.isArray(rehydratedState.likedTrackIds)) rehydratedState.likedTrackIds = [];
+          rehydratedState.settings.isVideoVisible = false;
         }
       }
     }

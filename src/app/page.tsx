@@ -6,13 +6,14 @@ import { useSaavnSearch, useTrending, useMusicHome } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
 import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { MobileNav } from '@/components/layout/MobileNav';
 import { Player } from '@/components/player/Player';
 import { YouTubePlayer } from '@/components/player/YouTubePlayer';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { Loader2, LayoutGrid, List } from 'lucide-react';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,8 @@ import { usePlayerStore, LayoutMode } from '@/store/usePlayerStore';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence } from 'framer-motion';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 const queryClient = new QueryClient();
 
@@ -48,6 +51,14 @@ function HomeContent() {
   
   const currentTab = searchParams.get('tab') || 'home';
   const searchQuery = searchParams.get('q') || '';
+
+  const { data: trending } = useTrending();
+  const { data: homeData } = useMusicHome();
+  const { data: searchData } = useSaavnSearch(searchQuery);
+
+  const hasContent = currentTab === 'search' 
+    ? (searchData?.results?.length ?? 0) > 0
+    : (trending?.length ?? 0) > 0 || (homeData?.length ?? 0) > 0;
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,16 +105,18 @@ function HomeContent() {
         <Navbar />
         <YouTubePlayer />
         
-        <ScrollArea className="flex-1 h-full">
+        <ScrollArea className="flex-1 h-full w-full">
           <div className="p-4 md:p-8 max-w-7xl mx-auto pb-44 md:pb-32">
-            <div className="flex justify-end mb-6 px-2">
-              <Button variant="ghost" size="sm" onClick={toggleLayout} className="bg-primary/5 hover:bg-primary/20 text-primary border border-primary/10 rounded-full gap-2 px-4 h-10">
-                {settings.layoutMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
-                <span className="text-[10px] font-black uppercase tracking-widest">Switch View</span>
-              </Button>
-            </div>
-
             <AnimatePresence mode="wait">
+              {hasContent && (
+                <div className="flex justify-end mb-6 px-2">
+                  <Button variant="ghost" size="sm" onClick={toggleLayout} className="bg-primary/5 hover:bg-primary/20 text-primary border border-primary/10 rounded-full gap-2 px-4 h-10">
+                    {settings.layoutMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+                    <span className="text-[10px] font-black uppercase tracking-widest">Switch View</span>
+                  </Button>
+                </div>
+              )}
+
               <motion.div 
                 key={currentTab + searchQuery} 
                 initial={{ opacity: 0, y: 10 }} 
@@ -114,11 +127,14 @@ function HomeContent() {
                 {currentTab === 'home' && <HomeView layoutMode={settings.layoutMode} />}
                 {currentTab === 'search' && <SearchResultsView query={searchQuery} layoutMode={settings.layoutMode} />}
                 {currentTab === 'settings' && <SettingsView />}
+                {currentTab === 'liked' && <LikedView layoutMode={settings.layoutMode} />}
+                {currentTab === 'local' && <LocalView layoutMode={settings.layoutMode} />}
               </motion.div>
             </AnimatePresence>
           </div>
         </ScrollArea>
         <Player />
+        <MobileNav />
       </main>
     </div>
   );
@@ -156,7 +172,7 @@ function HomeView({ layoutMode }: { layoutMode: LayoutMode }) {
 }
 
 function SearchResultsView({ query, layoutMode }: { query: string, layoutMode: LayoutMode }) {
-  const { data, isLoading } = useSaavnSearch(query);
+const { data, isLoading } = useSaavnSearch(query);
   if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
   return (
     <div className="space-y-8">
@@ -164,6 +180,95 @@ function SearchResultsView({ query, layoutMode }: { query: string, layoutMode: L
       <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
         {(data?.results || []).map((track: any, i: number) => <SearchResult key={track.id} track={track} results={data.results} index={i} />)}
       </div>
+    </div>
+  );
+}
+
+function LikedView({ layoutMode }: { layoutMode: LayoutMode }) {
+  const { user } = useUser();
+  const db = useFirestore();
+  
+  const likedQuery = useMemoFirebase(() => {
+    if (!user || !db) return null;
+    return query(collection(db, 'users', user.uid, 'likedSongs'), orderBy('likedAt', 'desc'));
+  }, [user, db]);
+
+  const { data: likedSongs, loading } = useCollection(likedQuery);
+
+  if (!user) return <div className="text-center py-20 text-primary/40 uppercase font-black text-sm tracking-widest">Sign in to view your Liked Songs</div>;
+  if (loading) return <div className="h-48 flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  if (!likedSongs || likedSongs.length === 0) return <div className="text-center py-20 text-primary/40 uppercase font-black text-sm tracking-widest">Your liked archive is empty. Fill it with resonance.</div>;
+
+  const tracks = likedSongs.map((doc: any) => ({
+    id: doc.id,
+    title: doc.title,
+    artist: doc.artist,
+    thumbnail: doc.thumbnailUrl,
+    duration: doc.durationSeconds,
+    source: doc.source || 'youtube',
+    isYouTube: doc.source !== 'jiosaavn' && doc.source !== 'gaana',
+    videoId: doc.id
+  }));
+
+  return (
+    <div className="space-y-8">
+      <h2 className="text-2xl font-black text-primary uppercase tracking-tighter gold-glow">Liked Songs</h2>
+      <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
+        {tracks.map((track, i) => <SearchResult key={track.id} track={track as any} results={tracks} index={i} />)}
+      </div>
+    </div>
+  );
+}
+
+function LocalView({ layoutMode }: { layoutMode: LayoutMode }) {
+  const localTracks = usePlayerStore(state => state.localTracks);
+  const setLocalTracks = usePlayerStore(state => state.setLocalTracks);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    
+    const newTracks = files.map(file => ({
+      id: URL.createObjectURL(file), // Generate a local URL for the ID
+      title: file.name.replace(/\.[^/.]+$/, ""),
+      artist: "Local Device",
+      thumbnail: "/default-art.png", // Or standard fallback
+      isLocal: true,
+      localFile: file,
+      source: 'local' as const
+    }));
+
+    setLocalTracks([...localTracks, ...newTracks] as any);
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h2 className="text-2xl font-black text-primary uppercase tracking-tighter gold-glow">Local Archives</h2>
+        <div className="relative">
+          <Input 
+            type="file" 
+            accept="audio/mpeg, audio/flac, audio/wav, audio/ogg" 
+            multiple 
+            onChange={handleFileUpload}
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+          />
+          <Button className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/30 w-full md:w-auto h-12 uppercase font-black tracking-widest text-[10px]">
+            Import Local Tracks
+          </Button>
+        </div>
+      </div>
+      
+      {localTracks.length === 0 ? (
+         <div className="text-center py-20 text-primary/40 uppercase font-black text-sm tracking-widest flex flex-col items-center gap-4">
+            <span className="text-4xl opacity-20">📁</span>
+            Import local resonance from your device
+         </div>
+      ) : (
+        <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
+          {localTracks.map((track, i) => <SearchResult key={track.id} track={track} results={localTracks} index={i} />)}
+        </div>
+      )}
     </div>
   );
 }

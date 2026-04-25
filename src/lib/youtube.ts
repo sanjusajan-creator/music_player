@@ -45,7 +45,7 @@ export async function searchTracks(query: string): Promise<Track[]> {
   try {
     // Strategy #10: Call the Sovereign Server Action
     const result = await searchAllAction(sanitizedQuery);
-    const results = result?.songs?.results || [];
+    const results = result?.results || [];
 
     if (results.length > 0) {
       updateCache(cacheKey, results);
