@@ -22,65 +22,44 @@ function parseQuery(query: string) {
 }
 
 /**
- * Sovereign Scoring Oracle
- */
-function calculateScore(item: Track, query: string) {
-  const title = (item.title || "").toLowerCase();
-  const artist = (item.artist || "").toLowerCase();
-  const q = query.toLowerCase();
-  
-  let score = 0;
-  if (title === q) score += 0.5;
-  if (artist === q) score += 0.3;
-  if (title.startsWith(q)) score += 0.4;
-  if (title.includes(q)) score += 0.2;
-  if (artist.includes(q)) score += 0.1;
-
-  return score;
-}
-
-/**
  * Sovereign Unified Search Oracle - Combined Manifestation
+ * STRICT ORDERING: YouTube -> JioSaavn -> Gaana
  */
 export async function searchAllAction(queryInput: string, source: 'jiosaavn' | 'gaana' | 'youtube' | 'all' = 'all') {
   try {
-    const { ytMode, cleanQuery } = parseQuery(queryInput);
+    const { cleanQuery } = parseQuery(queryInput);
     if (!cleanQuery) return null;
 
-    console.log(`%cOracle: Summoning Unified Archives for "${cleanQuery}"`, "color: #FFD700; font-weight: 900;");
+    console.log(`%cOracle: Summoning Archives for "${cleanQuery}" (Priority: YouTube > Saavn > Gaana)`, "color: #FFD700; font-weight: 900;");
 
-    const requests = [];
-    if (source === 'all' || source === 'jiosaavn') requests.push(fetchSaavn(cleanQuery).catch(() => []));
-    else requests.push(Promise.resolve([]));
+    // Perform summons in parallel for maximum velocity
+    const requests = [
+      fetchYouTubeMusic(cleanQuery).catch(() => []),
+      fetchSaavn(cleanQuery).catch(() => []),
+      fetchGaana(cleanQuery).catch(() => [])
+    ];
 
-    if (source === 'all' || source === 'gaana') requests.push(fetchGaana(cleanQuery).catch(() => []));
-    else requests.push(Promise.resolve([]));
+    const [ytResults, saavnResults, gaanaResults] = await Promise.all(requests);
 
-    if (source === 'all' || source === 'youtube' || ytMode) requests.push(fetchYouTubeMusic(cleanQuery).catch(() => []));
-    else requests.push(Promise.resolve([]));
+    // Merge in STRICT ORDER: YT -> Saavn -> Gaana
+    const orderedTracks = [...ytResults, ...saavnResults, ...gaanaResults];
 
-    const [saavnResults, gaanaResults, ytResults] = await Promise.all(requests);
-
-    const allTracks = [...saavnResults, ...gaanaResults, ...ytResults];
-
+    // De-duplicate manifestations
     const seen = new Set<string>();
-    const scoredTracks = allTracks
-      .filter(track => track.title && track.id)
-      .map(track => ({ ...track, score: calculateScore(track, cleanQuery) }))
-      .filter(track => {
-        const key = `${track.source}-${track.id}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .sort((a, b) => (b.score || 0) - (a.score || 0));
+    const filteredTracks = orderedTracks.filter(track => {
+      const key = `${track.source}-${track.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    console.log(`%cOracle: Manifested ${filteredTracks.length} tracks.`, "color: #FFD700; font-weight: 900;");
 
     return {
       success: true,
       query: cleanQuery,
-      count: scoredTracks.length,
-      results: scoredTracks,
-      ytMode: ytMode || source === 'youtube'
+      count: filteredTracks.length,
+      results: filteredTracks
     };
   } catch (error) {
     console.error("Oracle Unified Search Error:", error);
@@ -90,13 +69,14 @@ export async function searchAllAction(queryInput: string, source: 'jiosaavn' | '
 
 async function fetchYouTubeMusic(query: string): Promise<Track[]> {
   try {
-    // Strategy #1: Use Music Specific Search for high-fidelity data
     const res = await fetch(`${YT_MUSIC_API_BASE}/api/music/search?q=${encodeURIComponent(query)}`);
     if (!res.ok) return [];
     const data = await res.json();
     
-    const results = data.results || [];
-    return results.map((item: any) => {
+    // Support diverse InnerTube response structures
+    const rawResults = data.results || data.data || [];
+    
+    return rawResults.map((item: any) => {
       const id = item.videoId || item.id;
       if (!id) return null;
       
@@ -104,8 +84,8 @@ async function fetchYouTubeMusic(query: string): Promise<Track[]> {
         id: id,
         videoId: id,
         title: item.title || item.name,
-        artist: item.artist || item.author || "YouTube Music",
-        thumbnail: item.thumbnail || item.thumbnails?.[0]?.url,
+        artist: item.artist || item.author || item.subtitle || "YouTube Music",
+        thumbnail: item.thumbnail || item.thumbnails?.[0]?.url || `https://picsum.photos/seed/${id}/400/400`,
         duration: item.duration,
         type: (item.type || 'song') as any,
         source: 'youtube' as const,
@@ -113,8 +93,9 @@ async function fetchYouTubeMusic(query: string): Promise<Track[]> {
         streamUrl: `${YT_MUSIC_API_BASE}/streams/${id}`,
         url: `https://music.youtube.com/watch?v=${id}`
       };
-    }).filter(Boolean);
+    }).filter(Boolean) as Track[];
   } catch (e) {
+    console.error("Oracle: YouTube Vault silent.", e);
     return [];
   }
 }
@@ -166,9 +147,6 @@ async function fetchGaana(query: string): Promise<Track[]> {
   }
 }
 
-/**
- * Fetch Home Feed Data
- */
 export async function getTrendingAction() {
   try {
     const res = await fetch(`${YT_MUSIC_API_BASE}/api/trending?region=IN`);
@@ -189,9 +167,6 @@ export async function getTrendingAction() {
   }
 }
 
-/**
- * Fetch Related Tracks (Autoplay Sanctuary)
- */
 export async function getRelatedTracksAction(videoId: string) {
   try {
     const res = await fetch(`${YT_MUSIC_API_BASE}/api/next/${videoId}`);
@@ -261,7 +236,6 @@ export async function getLyricsAction(songId: string, songUrl?: string) {
 export async function getDetailAction(type: 'albums' | 'playlists' | 'artists', id: string) {
   try {
     let endpoint = type === 'albums' ? 'album' : type === 'playlists' ? 'playlist' : 'artist';
-    // Check if it's a YouTube Detail first if ID looks like YT
     if (id.length === 11 || id.startsWith('PL') || id.startsWith('RD')) {
        const res = await fetch(`${YT_MUSIC_API_BASE}/api/music/${endpoint}/${id}`);
        if (res.ok) {
