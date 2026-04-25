@@ -32,18 +32,18 @@ export const YouTubePlayer: React.FC = () => {
       audio.addEventListener('playing', () => { 
         setIsBuffering(false); 
         setIsPlaying(true); 
-        console.log(`%cOracle: Bitstream manifestation active via Native Audio.`, "color: #FFD700; font-weight: bold;");
+        console.log(`%cOracle: Bitstream Manifestation Active via Native Audio Sanctuary.`, "color: #FFD700; font-weight: bold;");
       });
 
       audio.addEventListener('error', (e) => {
         const err = audio.error;
-        // Ignore "Empty Src" errors during transitionary states
+        // Ignore Code 4 (Empty Source) during metamorphosis states
         if (err?.code === 4 && !audio.src) return;
 
-        console.error(`%cOracle: Audio engine failure. Code: ${err?.code} | Message: ${err?.message}`, "color: #FF0000; font-weight: bold;");
+        console.error(`%cOracle: Audio engine failure. Code: ${err?.code} | Message: ${err?.message} | URL: ${audio.src}`, "color: #FF0000; font-weight: bold;");
         
         if (currentTrack?.isYouTube) {
-          console.warn("%cOracle: Native bitstream blocked. Metamorphosing to Video Sanctuary Fallback.", "color: #FFD700; font-weight: bold;");
+          console.warn("%cOracle: Native bitstream blocked. Fallback to Video Sanctuary activated.", "color: #FFD700; font-weight: bold;");
           setUseIframeFallback(true);
         }
         setIsBuffering(false);
@@ -65,7 +65,7 @@ export const YouTubePlayer: React.FC = () => {
           audioRef.current.pause(); 
           audioRef.current.src = ""; 
         }
-        console.log(`%cOracle: Initializing Video Sanctuary for ${currentTrack.title}`, "color: #FFD700;");
+        console.log(`%cOracle: Initializing Video Sanctuary for "${currentTrack.title}"`, "color: #FFD700;");
       } else {
         if (ytPlayerRef.current) {
           try { ytPlayerRef.current.stopVideo(); } catch (e) {}
@@ -77,7 +77,7 @@ export const YouTubePlayer: React.FC = () => {
           audioRef.current.src = url;
           if (isPlaying) {
             audioRef.current.play().catch(e => {
-              console.warn("%cOracle: Autoplay sanctuary denied. Waiting for user interaction.", "color: #FFD700;");
+              console.warn("%cOracle: Autoplay sanctuary denied by browser policy. Interaction required.", "color: #FFD700;");
               if (currentTrack.isYouTube) setUseIframeFallback(true);
             });
           }

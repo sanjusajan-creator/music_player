@@ -7,32 +7,33 @@ const SAAVN_API_BASE = 'https://my-jiosaavn-api.onrender.com';
 const GAANA_API_BASE = 'https://my-gaana-api-tau.vercel.app';
 
 /**
- * Robust Fetch Implementation
- * Reads as text then parses to prevent JSON metamorphosis errors.
+ * Sovereign Safe-Fetch Implementation
+ * Reads as raw text first then performs a safe JSON metamorphosis.
  */
 async function safeFetch(url: string) {
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) {
-      console.error(`%cOracle: Vault access denied [${res.status}] at ${url}`, "color: #FF0000; font-weight: bold;");
+      console.error(`%cOracle: Archive Access Denied [${res.status}] at ${url}`, "color: #FF0000; font-weight: bold;");
       return null;
     }
     const text = await res.text();
     try {
       const data = JSON.parse(text);
+      console.log(`%cOracle: Manifestation Received from ${url.substring(0, 40)}...`, "color: #FFD700;");
       return data;
     } catch (parseError) {
-      console.error(`%cOracle: Manifestation corruption at ${url}`, "color: #FF0000; font-weight: bold;", text.substring(0, 100));
+      console.error(`%cOracle: Manifestation Corruption at ${url}`, "color: #FF0000; font-weight: bold;", text.substring(0, 100));
       return null;
     }
   } catch (e) {
-    console.error(`%cOracle: Network sanctuary interrupted at ${url}`, "color: #FF0000; font-weight: bold;");
+    console.error(`%cOracle: Network Sanctuary Interrupted at ${url}`, "color: #FF0000; font-weight: bold;");
     return null;
   }
 }
 
 /**
- * Normalizes manifestations into the Sovereign Schema
+ * Normalizes manifestations into the Sovereign Unified Schema
  */
 function normalizeYTTrack(item: any): Track {
   const id = item?.videoId || item?.id || item?.navigationEndpoint?.watchEndpoint?.videoId;
@@ -52,12 +53,13 @@ function normalizeYTTrack(item: any): Track {
 
 /**
  * Sovereign Unified Search Oracle
+ * Summons archives from YouTube, Saavn, and Gaana in strict hierarchical order.
  */
 export async function searchAllAction(query: string, source: string = 'all') {
   const cleanQuery = query?.toLowerCase().trim();
   if (!cleanQuery) return { success: false, results: [] };
 
-  console.log(`%cOracle: Summoning Archives for "${cleanQuery}" [Source: ${source}]`, "color: #FFD700; font-weight: 900;");
+  console.log(`%cOracle: Summons Initiated for "${cleanQuery}" [Source: ${source}]`, "color: #FFD700; font-weight: 900;");
 
   const results: Track[] = [];
 
@@ -81,7 +83,7 @@ export async function searchAllAction(query: string, source: string = 'all') {
       results: results
     };
   } catch (error) {
-    console.error("Oracle: Search sanctuary collapsed.", error);
+    console.error("Oracle: Unified summons sanctuary collapsed.", error);
     return { success: false, results: [] };
   }
 }
@@ -91,8 +93,9 @@ async function fetchYouTubeMusic(query: string): Promise<Track[]> {
   if (!data) return [];
   
   let raw: any[] = [];
-  if (Array.isArray(data.results)) raw = data.results;
-  else if (data.contents?.tabbedSearchResultsRenderer) {
+  if (Array.isArray(data.results)) {
+    raw = data.results;
+  } else if (data.contents?.tabbedSearchResultsRenderer) {
     const tabs = data.contents.tabbedSearchResultsRenderer.tabs;
     raw = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.flatMap((s: any) => 
       (s.musicShelfRenderer || s.musicCardShelfRenderer)?.contents || []
@@ -168,18 +171,22 @@ export async function getLyricsAction(videoId: string) {
   return data?.lyrics || null;
 }
 
+/**
+ * Sovereign Audio Resolver
+ * Performs a Playability Sanctuary check to determine if a direct bitstream is allowed.
+ */
 export async function resolveTrackAudio(track: Track): Promise<string | null> {
   if (track.source === 'youtube' || track.isYouTube) {
-    // Check for potential player blocks
-    const playerData = await safeFetch(`${YT_MUSIC_API_BASE}/api/player/${track.videoId || track.id}`);
+    const id = track.videoId || track.id;
+    const playerData = await safeFetch(`${YT_MUSIC_API_BASE}/api/player/${id}`);
     const status = playerData?.player_data?.playabilityStatus?.status;
     
-    if (status === "LOGIN_REQUIRED" || status === "UNPLAYABLE") {
-      console.warn(`%cOracle: Bitstream blocked [${status}]. Metamorphosing to Video Sanctuary.`, "color: #FFD700; font-weight: bold;");
-      return null; // Triggers iframe fallback
+    if (status === "LOGIN_REQUIRED" || status === "UNPLAYABLE" || !playerData?.title) {
+      console.warn(`%cOracle: Bitstream manifestation blocked [${status}]. Metamorphosing to Iframe Sanctuary.`, "color: #FFD700; font-weight: bold;");
+      return null; // Signals the frontend to fallback to iframe
     }
 
-    return `${YT_MUSIC_API_BASE}/streams/${track.videoId || track.id}`;
+    return `${YT_MUSIC_API_BASE}/streams/${id}`;
   }
   
   if (track.source === 'jiosaavn') {

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { Suspense, useState, useMemo } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import React, { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSaavnSearch, useTrending, useMusicHome } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
 import { Navbar } from '@/components/layout/Navbar';
@@ -11,8 +11,8 @@ import { YouTubePlayer } from '@/components/player/YouTubePlayer';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
-import { Loader2, LayoutGrid, List, Play, TrendingUp, Sparkles, Music, Heart, FolderOpen } from 'lucide-react';
-import { useUser, useAuth, useFirestore } from '@/firebase';
+import { Loader2, LayoutGrid, List, Home } from 'lucide-react';
+import { useUser, useAuth } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,6 @@ function HomeContent() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { settings, updateSettings } = usePlayerStore();
   
   const [isLogin, setIsLogin] = useState(true);
