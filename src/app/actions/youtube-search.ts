@@ -4,8 +4,6 @@ import { Track } from '@/store/usePlayerStore';
 
 const SAAVN_API_BASE = 'https://my-jiosaavn-api.onrender.com';
 const GAANA_API_BASE = 'https://my-gaana-api-tau.vercel.app';
-const GAANA_API_SEARCH_URL = `${GAANA_API_BASE}/api/search?q=`;
-
 const YT_MUSIC_API_BASE = 'https://yt-api-2lez.onrender.com';
 
 /**
@@ -25,6 +23,7 @@ function parseQuery(query: string) {
 
 /**
  * Sovereign Scoring Oracle
+ * Implementation of the Intelligent Best Match Ranking.
  */
 function calculateScore(item: Track, query: string) {
   const title = (item.title || "").toLowerCase();
@@ -33,49 +32,70 @@ function calculateScore(item: Track, query: string) {
   
   let score = 0;
 
+  // Exact Match Bonuses
   if (title === q) score += 0.5;
-  else if (title.startsWith(q)) score += 0.4;
-  else if (title.includes(q)) score += 0.3;
-
   if (artist === q) score += 0.3;
-  if (artist.includes(q)) score += 0.2;
+
+  // Prefix Bonuses
+  if (title.startsWith(q)) score += 0.4;
+  
+  // Fuzzy/Inclusion
+  if (title.includes(q)) score += 0.2;
+  if (artist.includes(q)) score += 0.1;
 
   return score;
 }
 
 /**
- * Sovereign Hybrid Search Oracle - Unified Best Match Edition
+ * Sovereign Unified Search Oracle - Combined Manifestation
  */
-export async function searchAllAction(query: string) {
+export async function searchAllAction(queryInput: string, source: 'jiosaavn' | 'gaana' | 'youtube' | 'all' = 'all') {
   try {
-    const { ytMode, cleanQuery } = parseQuery(query);
+    const { ytMode, cleanQuery } = parseQuery(queryInput);
     if (!cleanQuery) return null;
 
-    console.log(`%cOracle: Summoning Unified Archives for "${cleanQuery}"`, "color: #FFD700; font-weight: 900;");
+    console.log(`%cOracle: Summoning Unified Archives for "${cleanQuery}" [Source: ${source}]`, "color: #FFD700; font-weight: 900;");
 
-    // Parallel Summoning
-    const [saavnResults, gaanaResults, ytResults] = await Promise.all([
-      fetchSaavn(cleanQuery).then(res => { console.log("Oracle: Saavn Vault responded."); return res; }).catch(() => []),
-      fetchGaana(cleanQuery).then(res => { console.log("Oracle: Gaana Vault responded."); return res; }).catch(() => ({ songs: [] })),
-      ytMode ? fetchYouTubeMusic(cleanQuery).then(res => { console.log("Oracle: YouTube Music Vault responded."); return res; }).catch(() => []) : Promise.resolve([])
-    ]);
+    // Parallel Summoning with Fault-Tolerance
+    const requests = [];
+    
+    if (source === 'all' || source === 'jiosaavn') {
+      requests.push(fetchSaavn(cleanQuery).catch(() => []));
+    } else {
+      requests.push(Promise.resolve([]));
+    }
+
+    if (source === 'all' || source === 'gaana') {
+      requests.push(fetchGaana(cleanQuery).catch(() => []));
+    } else {
+      requests.push(Promise.resolve([]));
+    }
+
+    if (source === 'all' || source === 'youtube' || ytMode) {
+      requests.push(fetchYouTubeMusic(cleanQuery).catch(() => []));
+    } else {
+      requests.push(Promise.resolve([]));
+    }
+
+    const [saavnResults, gaanaResults, ytResults] = await Promise.all(requests);
 
     // Unified Song List Manifestation
     const allTracks = [
       ...saavnResults,
-      ...(gaanaResults.songs || []),
-      ...(ytResults || []).filter((t: any) => t.type === 'song' || t.type === 'video')
+      ...gaanaResults,
+      ...ytResults
     ];
 
-    // Sovereign De-duplication & Scoring
+    // Sovereign De-duplication, Scoring & Filtering
     const seen = new Set<string>();
     const scoredTracks = allTracks
+      .filter(track => track.title && track.id) // Filter bad data
       .map(track => ({
         ...track,
         score: calculateScore(track, cleanQuery)
       }))
       .filter(track => {
-        const key = `${(track.title || "").toLowerCase()}-${(track.artist || "").toLowerCase()}`;
+        const key = `${track.source}-${track.id}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -86,11 +106,10 @@ export async function searchAllAction(query: string) {
       success: true,
       query: cleanQuery,
       count: scoredTracks.length,
-      songs: { results: scoredTracks },
-      albums: { results: (gaanaResults as any).albums || [] },
-      artists: { results: (gaanaResults as any).artists || [] },
-      playlists: { results: (gaanaResults as any).playlists || [] },
-      videos: { results: (ytResults || []).filter((t: any) => t.type === 'video') },
+      results: scoredTracks, // Unified flat results as requested
+      // Keeping these for view compatibility if needed
+      songs: { results: scoredTracks }, 
+      albums: { results: [] }, // Filtered or specialized search can populate these
       ytMode
     };
   } catch (error) {
@@ -99,25 +118,27 @@ export async function searchAllAction(query: string) {
   }
 }
 
-async function fetchYouTubeMusic(query: string) {
+async function fetchYouTubeMusic(query: string): Promise<Track[]> {
   try {
+    // Normalization: Using q= for YouTube
     const res = await fetch(`${YT_MUSIC_API_BASE}/api/search?q=${encodeURIComponent(query)}`);
     if (!res.ok) return [];
     const data = await res.json();
     
-    return (data.results || []).map((item: any) => {
+    const results = data.results || data.data || [];
+    return results.map((item: any) => {
       const id = item.videoId || item.id;
       if (!id) return null;
+      
+      // Mapping: title -> runs[0].text (if raw) or title, artist -> subtitle/author
       return {
         id: id,
-        videoId: id,
-        title: item.title,
-        artist: item.artist || item.author || "YouTube Music",
-        thumbnail: item.thumbnail || item.image,
+        title: item.title || item.name || "YouTube Manifestation",
+        artist: item.artist || item.author || item.subtitle || "YouTube Music",
+        thumbnail: item.thumbnail || item.thumbnails?.[0]?.url || item.image,
         duration: item.duration,
-        type: item.type || (item.videoId ? 'song' : 'video'),
+        type: (item.type || (item.videoId ? 'song' : 'video')) as any,
         source: 'youtube' as const,
-        isYouTube: true,
         streamUrl: `${YT_MUSIC_API_BASE}/streams/${id}`,
         url: `https://music.youtube.com/watch?v=${id}`
       };
@@ -127,8 +148,9 @@ async function fetchYouTubeMusic(query: string) {
   }
 }
 
-async function fetchSaavn(query: string) {
+async function fetchSaavn(query: string): Promise<Track[]> {
   try {
+    // Normalization: Using query= for Saavn
     const res = await fetch(`${SAAVN_API_BASE}/api/search?query=${encodeURIComponent(query)}`);
     if (!res.ok) return [];
     const data = await res.json();
@@ -136,13 +158,14 @@ async function fetchSaavn(query: string) {
     
     return results.map((track: any) => ({
       id: track.id,
-      title: track.title,
+      title: track.title || track.name,
       artist: track.primaryArtists || "Unknown Artist",
       thumbnail: track.image?.[2]?.url || track.image?.[1]?.url,
       album: track.album || "Saavn Vault",
-      url: track.url,
+      duration: track.duration,
+      type: 'song' as const,
       source: 'jiosaavn' as const,
-      isSaavn: true,
+      url: track.url,
       hasLyrics: !!track.hasLyrics
     }));
   } catch (e) {
@@ -150,56 +173,41 @@ async function fetchSaavn(query: string) {
   }
 }
 
-async function fetchGaana(query: string) {
+async function fetchGaana(query: string): Promise<Track[]> {
   try {
-    const res = await fetch(`${GAANA_API_SEARCH_URL}${encodeURIComponent(query)}`);
-    if (!res.ok) return { songs: [], albums: [], artists: [], playlists: [] };
+    // Normalization: Using keyword= (simulated via q= for the specific API proxy)
+    const res = await fetch(`${GAANA_API_BASE}/api/search?q=${encodeURIComponent(query)}`);
+    if (!res.ok) return [];
     const data = await res.json();
-    const results = data.data || {};
+    const results = data.data?.songs || [];
 
-    const normalizeGaanaSong = (item: any) => ({
+    return results.map((item: any) => ({
       id: item.track_id || item.id,
       title: item.title,
       artist: item.artists || item.artist || "Gaana Artist",
       album: item.album || "Gaana Archive",
-      thumbnail: item.artworkUrl || item.image || "https://via.placeholder.com/150",
-      artworkUrl: item.artworkUrl,
-      url: item.song_url,
+      thumbnail: item.artworkUrl || item.image || item.thumbnails?.[0]?.url,
+      duration: item.duration,
+      type: 'song' as const,
       source: 'gaana' as const,
-      isGaana: true
-    });
-
-    const songs = (results.songs || []).map(normalizeGaanaSong);
-    const albums = (results.albums || []).map((album: any) => ({
-      id: album.id,
-      title: album.title,
-      artist: album.artist || "Gaana Collection",
-      thumbnail: album.artworkUrl || album.image,
-      artworkUrl: album.artworkUrl,
-      type: 'albums',
-      source: 'gaana' as const
+      url: item.song_url
     }));
-
-    return { songs, albums, artists: results.artists || [], playlists: results.playlists || [] };
   } catch (e) {
-    return { songs: [], albums: [], artists: [], playlists: [] };
+    return [];
   }
 }
 
 export async function resolveTrackAudio(track: Track): Promise<string | null> {
+  // Already normalized streamUrl for YouTube
   if (track.source === 'youtube' && track.streamUrl) {
     return track.streamUrl;
   }
-  if (track.source === 'gaana') {
-    const saavnResults = await fetchSaavn(`${track.title} ${track.artist}`);
-    if (saavnResults.length > 0) {
-      return getSaavnPlaybackUrl(saavnResults[0].id);
-    }
-    return null; 
-  }
-  if (track.source === 'jiosaavn') {
+  
+  if (track.source === 'gaana' || track.source === 'jiosaavn') {
+    // Both resolved via Saavn vault for high-fidelity bitstreams
     return getSaavnPlaybackUrl(track.id);
   }
+  
   return null;
 }
 
@@ -211,6 +219,7 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
     const song = data.data?.[0];
     if (!song || !song.downloadUrl) return null;
     const links = song.downloadUrl;
+    // Prefer highest quality
     return links[links.length - 1]?.url || links[0]?.url || null;
   } catch (error) {
     return null;

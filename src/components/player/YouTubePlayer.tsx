@@ -93,15 +93,16 @@ export const YouTubePlayer: React.FC = () => {
         if (currentTrack.source === 'local' && currentTrack.localFile) {
           url = URL.createObjectURL(currentTrack.localFile);
           sourceLog = "Local Vault";
-        } else if (currentTrack.source === 'youtube' && currentTrack.streamUrl) {
+        } else if (currentTrack.streamUrl) {
+          // Unified streamUrl priority (YouTube Music, etc.)
           url = currentTrack.streamUrl;
-          sourceLog = "YouTube Music Audio Stream";
+          sourceLog = `${currentTrack.source?.toUpperCase()} Unified Stream`;
         } else {
+          // Fallback resolution for Saavn/Gaana
           const resolvedUrl = await resolveTrackAudio(currentTrack);
           if (resolvedUrl) {
             url = resolvedUrl;
-            sourceLog = currentTrack.source === 'gaana' ? "Gaana Resolved via Saavn Vault" : 
-                        currentTrack.source === 'youtube' ? "YouTube Music Audio Stream" : "JioSaavn Vault";
+            sourceLog = `${currentTrack.source?.toUpperCase()} Resolved Manifestation`;
           }
         }
 
@@ -117,9 +118,7 @@ export const YouTubePlayer: React.FC = () => {
           }
         } else {
           setIsBuffering(false);
-          if (currentTrack.source === 'youtube' && !currentTrack.streamUrl) {
-            toast({ title: "Resolution Failed", description: "YouTube track has no audio stream.", variant: "destructive" });
-          }
+          toast({ title: "Resolution Failed", description: "Audio bitstream could not be manifested.", variant: "destructive" });
         }
       } catch (error) {
         setIsBuffering(false);
