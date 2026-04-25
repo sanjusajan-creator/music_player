@@ -38,16 +38,13 @@ function calculateScore(item: Track, query: string) {
   else if (title.includes(q)) score += 0.3;
 
   if (artist === q) score += 0.3;
-  else if (artist.includes(q)) score += 0.2;
-
-  if (title === q || artist === q) score += 0.1;
-  if (title.startsWith(q)) score += 0.1;
+  if (artist.includes(q)) score += 0.2;
 
   return score;
 }
 
 /**
- * Sovereign Hybrid Search Oracle - YouTube Music Edition
+ * Sovereign Hybrid Search Oracle - Unified Best Match Edition
  */
 export async function searchAllAction(query: string) {
   try {
@@ -58,9 +55,9 @@ export async function searchAllAction(query: string) {
 
     // Parallel Summoning
     const [saavnResults, gaanaResults, ytResults] = await Promise.all([
-      fetchSaavn(cleanQuery).catch(() => []),
-      fetchGaana(cleanQuery).catch(() => ({ songs: [] })),
-      ytMode ? fetchYouTubeMusic(cleanQuery).catch(() => []) : Promise.resolve([])
+      fetchSaavn(cleanQuery).then(res => { console.log("Oracle: Saavn Vault responded."); return res; }).catch(() => []),
+      fetchGaana(cleanQuery).then(res => { console.log("Oracle: Gaana Vault responded."); return res; }).catch(() => ({ songs: [] })),
+      ytMode ? fetchYouTubeMusic(cleanQuery).then(res => { console.log("Oracle: YouTube Music Vault responded."); return res; }).catch(() => []) : Promise.resolve([])
     ]);
 
     // Unified Song List Manifestation
@@ -108,11 +105,9 @@ async function fetchYouTubeMusic(query: string) {
     if (!res.ok) return [];
     const data = await res.json();
     
-    // Parse results based on the requested YouTube Music Backend logic
-    const results = (data.results || []).map((item: any) => {
-      if (!item.videoId && !item.id) return null;
-      
+    return (data.results || []).map((item: any) => {
       const id = item.videoId || item.id;
+      if (!id) return null;
       return {
         id: id,
         videoId: id,
@@ -127,8 +122,6 @@ async function fetchYouTubeMusic(query: string) {
         url: `https://music.youtube.com/watch?v=${id}`
       };
     }).filter(Boolean);
-
-    return results;
   } catch (e) {
     return [];
   }
@@ -226,18 +219,18 @@ export async function getSaavnPlaybackUrl(id: string): Promise<string | null> {
 
 export async function getLyricsAction(songId: string, songUrl?: string) {
   try {
-    let res = await fetch(`${SAAVN_API_BASE}/api/songs/${songId}`);
+    let res = await fetch(`${SAAVN_API_BASE}/api/songs?id=${songId}`);
     if (res.ok) {
       let data = await res.json();
-      let song = data?.data?.[0];
-      if (song?.lyrics) return song.lyrics;
+      let lyrics = data?.data?.[0]?.lyrics;
+      if (lyrics) return lyrics;
     }
     if (songUrl) {
       res = await fetch(`${SAAVN_API_BASE}/api/songs?link=${encodeURIComponent(songUrl)}`);
       if (res.ok) {
         let data = await res.json();
-        let song = data?.data?.[0];
-        if (song?.lyrics) return song.lyrics;
+        let lyrics = data?.data?.[0]?.lyrics;
+        if (lyrics) return lyrics;
       }
     }
     return null;

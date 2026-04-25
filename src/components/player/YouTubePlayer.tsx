@@ -117,7 +117,6 @@ export const YouTubePlayer: React.FC = () => {
           }
         } else {
           setIsBuffering(false);
-          // If it's a legacy YouTube track without streamUrl, we still can't play it in native audio
           if (currentTrack.source === 'youtube' && !currentTrack.streamUrl) {
             toast({ title: "Resolution Failed", description: "YouTube track has no audio stream.", variant: "destructive" });
           }
