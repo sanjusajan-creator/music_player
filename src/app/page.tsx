@@ -40,7 +40,7 @@ const LAYOUT_TOGGLE_TABS = new Set(['home', 'search', 'liked', 'local', 'artist'
 export default function AppWrapper() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Suspense fallback={<div className="h-screen w-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}>
+      <Suspense fallback={<div className="h-[100dvh] w-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}>
         <HomeContent />
       </Suspense>
       <Toaster />
@@ -105,10 +105,10 @@ function HomeContent() {
     updateSettings({ layoutMode: layoutMode === 'grid' ? 'list' : 'grid' });
   };
 
-  if (isUserLoading || !hasHydrated) return <div className="h-screen w-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  if (isUserLoading || !hasHydrated) return <div className="h-[100dvh] w-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
 
   if (!user) return (
-    <main className="min-h-screen w-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+    <main className="min-h-[100dvh] w-screen bg-black flex flex-col items-center justify-center p-6 text-center">
       <div className="w-full max-w-md space-y-12">
         <h1 className="text-6xl font-black text-primary gold-glow tracking-tighter uppercase">VIBECRAFT</h1>
         <form onSubmit={handleAuth} className="bg-white/5 border border-primary/20 p-8 rounded-[2rem] space-y-6">
@@ -126,7 +126,7 @@ function HomeContent() {
   );
 
   return (
-    <div className="flex h-screen w-screen bg-black overflow-hidden relative text-primary">
+    <div className="flex h-[100dvh] w-screen bg-black overflow-hidden relative text-primary">
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 bg-black relative h-full">
         <Navbar />

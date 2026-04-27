@@ -34,10 +34,13 @@
     color: #FFD700 !important; /* Force Gold Text */
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
-    height: 100%;
-    width: 100%;
+    height: 100dvh;
+    width: 100vw;
     margin: 0;
     padding: 0;
+    overflow: hidden; /* Prevent body scroll to stop browser chrome jumping */
+    overscroll-behavior: none;
+    position: fixed; /* Extra reinforcement for some mobile browsers */
   }
   
   /* Hardened Typography: Force 900 Weight for Spotify Luxury Feel */
