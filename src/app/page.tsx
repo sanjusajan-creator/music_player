@@ -65,6 +65,28 @@ function HomeContent() {
   const searchQuery = searchParams.get('q') || '';
   const shouldShowLayoutToggle = LAYOUT_TOGGLE_TABS.has(currentTab);
 
+  // Force Fullscreen on mobile to hide address bar
+  React.useEffect(() => {
+    const handleTouch = () => {
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        const doc = window.document;
+        const docEl = doc.documentElement;
+
+        const requestFullScreen = docEl.requestFullscreen || (docEl as any).mozRequestFullScreen || (docEl as any).webkitRequestFullScreen || (docEl as any).msRequestFullscreen;
+
+        if (!doc.fullscreenElement && requestFullScreen) {
+          requestFullScreen.call(docEl).catch(() => {
+            // Silently fail if blocked by browser
+          });
+        }
+      }
+      window.removeEventListener('touchstart', handleTouch);
+    };
+
+    window.addEventListener('touchstart', handleTouch);
+    return () => window.removeEventListener('touchstart', handleTouch);
+  }, []);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;

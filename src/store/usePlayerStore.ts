@@ -120,7 +120,7 @@ export const usePlayerStore = create<PlayerState>()(
         autoScrollLyrics: true,
         autoplaySimilar: true,
         dataSaver: false,
-        layoutMode: 'list',
+        layoutMode: 'grid',
         isVideoVisible: false,
         useIframeForYouTube: true,
       },

@@ -1,4 +1,4 @@
-# Vibecraft Music Player
+# Vibecraft Music Player (Updated)
 
 A premium, high-fidelity music experience powered by YouTube (unofficial), unofficial api of jiosavn and gaana.
 
