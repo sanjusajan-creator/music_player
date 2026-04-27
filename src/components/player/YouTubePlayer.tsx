@@ -1,26 +1,129 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import YouTube, { YouTubeProps } from 'react-youtube';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { resolveTrackAudio } from '@/app/actions/youtube-search';
-import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useShallow } from 'zustand/react/shallow';
+
+const MOBILE_PLAYER_STATE_KEY = 'musicPlayerState';
+
+const parseSavedState = (value: string | null): { isPlaying?: boolean; progress?: number; currentTrackId?: string } | null => {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const stopPlayback = (audio: HTMLAudioElement | null, ytPlayer: any) => {
+  if (ytPlayer) {
+    try {
+      ytPlayer.stopVideo();
+    } catch {}
+  }
+
+  if (!audio) return;
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.load();
+};
+
+const setAudioSource = async (audio: HTMLAudioElement, src: string, shouldPlay: boolean) => {
+  audio.src = src;
+  audio.load();
+  if (!shouldPlay) return;
+  try {
+    await audio.play();
+  } catch {
+    console.warn('%cOracle: Autoplay denied.', 'color:#FFD700;');
+  }
+};
+
+const resolveAndLoadTrack = async ({
+  track,
+  shouldPlay,
+  audio,
+  setIsBuffering,
+  setIframeVideoId,
+}: {
+  track: any;
+  shouldPlay: boolean;
+  audio: HTMLAudioElement;
+  setIsBuffering: (value: boolean) => void;
+  setIframeVideoId: (value: string | null) => void;
+}) => {
+  if (track.isLocal && track.localFile) {
+    await setAudioSource(audio, URL.createObjectURL(track.localFile), shouldPlay);
+    setIsBuffering(false);
+    return;
+  }
+
+  const url = await resolveTrackAudio(track);
+
+  if (url?.startsWith('yt-fallback:')) {
+    setIframeVideoId(url.replace('yt-fallback:', ''));
+    setIsBuffering(false);
+    return;
+  }
+
+  if (url) {
+    await setAudioSource(audio, url, shouldPlay);
+    setIsBuffering(false);
+    return;
+  }
+
+  setIsBuffering(false);
+  console.warn('Oracle: No audio URL resolved for track', track.title);
+};
 
 export const YouTubePlayer: React.FC = () => {
-  const { 
-    currentTrack, isPlaying, volume, setIsPlaying, setIsBuffering,
-    setProgress, setDuration, nextTrack, tickSleepTimer, settings,
-    seekRequest, progress
-  } = usePlayerStore();
+  const {
+    currentTrack,
+    isPlaying,
+    volume,
+    seekRequest,
+    progress,
+  } = usePlayerStore(
+    useShallow((state) => ({
+      currentTrack: state.currentTrack,
+      isPlaying: state.isPlaying,
+      volume: state.volume,
+      seekRequest: state.seekRequest,
+      progress: state.progress,
+    }))
+  );
+
+  const {
+    setIsPlaying,
+    setIsBuffering,
+    setProgress,
+    setDuration,
+    nextTrack,
+    tickSleepTimer,
+  } = usePlayerStore(
+    useShallow((state) => ({
+      setIsPlaying: state.setIsPlaying,
+      setIsBuffering: state.setIsBuffering,
+      setProgress: state.setProgress,
+      setDuration: state.setDuration,
+      nextTrack: state.nextTrack,
+      tickSleepTimer: state.tickSleepTimer,
+    }))
+  );
+
+  const isMobileDevice = useIsMobile();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytPlayerRef = useRef<any>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSeekRef = useRef<number | null>(null);
-  // Track whether the current track is using iframe vs audio element
-  const usingIframeRef = useRef<boolean>(false);
-  // Stores a YouTube video ID when Saavn/Gaana falls back to YT search
-  const fallbackVideoIdRef = useRef<string | null>(null);
+
+  // ── STATE (triggers re-renders) ──────────────────────────────────
+  // iframeVideoId being non-null means "mount the iframe and play this id"
+  const [iframeVideoId, setIframeVideoId] = useState<string | null>(null);
 
   // Sleep timer tick
   useEffect(() => {
@@ -28,131 +131,85 @@ export const YouTubePlayer: React.FC = () => {
     return () => clearInterval(timer);
   }, [tickSleepTimer]);
 
-  // Initialize audio element ONCE
+  // ── Audio element init (once) ────────────────────────────────────
   useEffect(() => {
-    if (typeof window !== 'undefined' && !audioRef.current) {
-      const audio = new Audio();
-      audio.preload = 'auto';
+    if (typeof window === 'undefined' || audioRef.current) return;
 
-      audio.addEventListener('timeupdate', () => {
-        if (!usingIframeRef.current) setProgress(audio.currentTime);
-      });
-      audio.addEventListener('loadedmetadata', () => {
-        if (!usingIframeRef.current) setDuration(audio.duration);
-      });
-      audio.addEventListener('ended', () => nextTrack());
-      audio.addEventListener('waiting', () => setIsBuffering(true));
-      audio.addEventListener('canplay', () => setIsBuffering(false));
-      audio.addEventListener('playing', () => {
-        setIsBuffering(false);
-        setIsPlaying(true);
-      });
-      audio.addEventListener('error', () => {
-        const err = audio.error;
-        if (err?.code === 4 && !audio.src) return;
-        console.error(`%cOracle: Audio engine failure. Code: ${err?.code}`, "color: #FF0000; font-weight: bold;");
-        setIsBuffering(false);
-      });
+    const audio = new Audio();
+    audio.preload = 'auto';
 
-      audioRef.current = audio;
-    }
+    const handleTimeUpdate = () => setProgress(audio.currentTime);
+    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleEnded = () => nextTrack();
+    const handleWaiting = () => setIsBuffering(true);
+    const handleCanPlay = () => setIsBuffering(false);
+    const handlePlaying = () => { setIsBuffering(false); setIsPlaying(true); };
+    const handleError = () => {
+      const err = audio.error;
+      if (err?.code === 4 && !audio.src) return;
+      console.error(`%cOracle: Audio engine failure. Code: ${err?.code}`, "color:#FF0000;font-weight:bold;");
+      setIsBuffering(false);
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('playing', handlePlaying);
+    audio.addEventListener('error', handleError);
+
+    audioRef.current = audio;
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('playing', handlePlaying);
+      audio.removeEventListener('error', handleError);
+    };
   }, [nextTrack, setDuration, setIsBuffering, setIsPlaying, setProgress]);
 
-  // Poll iframe progress when using YouTube iframe
-  const trackIframeProgress = useCallback(() => {
-    if (ytPlayerRef.current && usingIframeRef.current) {
-      try {
-        const playerState = ytPlayerRef.current.getPlayerState();
-        if (playerState === 1) {
-          const currentTime = ytPlayerRef.current.getCurrentTime();
-          const duration = ytPlayerRef.current.getDuration();
-          if (duration > 0) {
-            setProgress(currentTime);
-            setDuration(duration);
-          }
-        }
-      } catch (e) {}
-    }
-  }, [setProgress, setDuration]);
+  // ── Iframe progress poll ─────────────────────────────────────────
+  const pollIframeProgress = useCallback(() => {
+    if (!ytPlayerRef.current || !iframeVideoId) return;
+    try {
+      const state = ytPlayerRef.current.getPlayerState();
+      if (state === 1) { // playing
+        const t = ytPlayerRef.current.getCurrentTime();
+        const d = ytPlayerRef.current.getDuration();
+        if (d > 0) { setProgress(t); setDuration(d); }
+      }
+    } catch (e) {}
+  }, [iframeVideoId, setProgress, setDuration]);
 
   useEffect(() => {
-    progressIntervalRef.current = setInterval(trackIframeProgress, 500);
-    return () => {
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-    };
-  }, [trackIframeProgress]);
+    progressIntervalRef.current = setInterval(pollIframeProgress, 500);
+    return () => { if (progressIntervalRef.current) clearInterval(progressIntervalRef.current); };
+  }, [pollIframeProgress]);
 
-  // ─── Core Track Resolution ───────────────────────────────────────
+  // ── Core track resolution ────────────────────────────────────────
   useEffect(() => {
+    if (!currentTrack) return;
+
     const init = async () => {
-      if (!currentTrack) return;
-
-      // Reset state
       lastSeekRef.current = null;
       setIsBuffering(true);
 
-      // Stop YouTube iframe if it was playing
-      if (ytPlayerRef.current) {
-        try { ytPlayerRef.current.stopVideo(); } catch (e) {}
-      }
+      stopPlayback(audioRef.current, ytPlayerRef.current);
+      ytPlayerRef.current = null;
+      setIframeVideoId(null);
 
-      // Clear audio element
       if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.removeAttribute('src');
-        audioRef.current.load();
-      }
-
-      // LOCAL files → use ObjectURL directly
-      if (currentTrack.isLocal && currentTrack.localFile) {
-        usingIframeRef.current = false;
-        fallbackVideoIdRef.current = null;
-        const url = URL.createObjectURL(currentTrack.localFile);
-        audioRef.current!.src = url;
-        audioRef.current!.load();
-        if (isPlaying) {
-          audioRef.current!.play().catch(() => {});
-        }
-        setIsBuffering(false);
-        return;
-      }
-
-      // YOUTUBE → use iframe (fastest, no proxy needed)
-      if (currentTrack.isYouTube && settings.useIframeForYouTube) {
-        usingIframeRef.current = true;
-        fallbackVideoIdRef.current = null;
-        // The iframe will autoplay via onReady / cueVideoById
-        setIsBuffering(false);
-        return;
-      }
-
-      // SAAVN / GAANA / YT without iframe → resolve raw stream URL
-      const url = await resolveTrackAudio(currentTrack);
-
-      if (url && url.startsWith('yt-fallback:')) {
-        // Saavn/Gaana couldn't stream — play via YouTube iframe instead
-        const videoId = url.replace('yt-fallback:', '');
-        fallbackVideoIdRef.current = videoId;
-        usingIframeRef.current = true;
-        setIsBuffering(false);
-      } else if (url && audioRef.current) {
-        fallbackVideoIdRef.current = null;
-        usingIframeRef.current = false;
-        audioRef.current.src = url;
-        audioRef.current.load();
-        if (isPlaying) {
-          audioRef.current.play().catch(() => {
-            console.warn("%cOracle: Autoplay denied by browser.", "color: #FFD700;");
-          });
-        }
-      } else if (currentTrack.isYouTube && !url) {
-        // Proxy failed – force iframe as fallback
-        fallbackVideoIdRef.current = null;
-        usingIframeRef.current = true;
-        usePlayerStore.getState().updateSettings({ useIframeForYouTube: true });
-        setIsBuffering(false);
-      } else {
-        setIsBuffering(false);
+        await resolveAndLoadTrack({
+          track: currentTrack,
+          shouldPlay: isPlaying,
+          audio: audioRef.current,
+          setIsBuffering,
+          setIframeVideoId,
+        });
       }
     };
 
@@ -160,104 +217,125 @@ export const YouTubePlayer: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);
 
-  // Volume sync
+  // ── Volume sync ──────────────────────────────────────────────────
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume / 100;
-    if (ytPlayerRef.current) {
-      try { ytPlayerRef.current.setVolume(volume); } catch (e) {}
-    }
+    if (ytPlayerRef.current) { try { ytPlayerRef.current.setVolume(volume); } catch (e) {} }
   }, [volume]);
 
-  // Play / Pause sync
+  // ── Play / Pause sync ────────────────────────────────────────────
   useEffect(() => {
     if (!currentTrack) return;
-
-    if (usingIframeRef.current && ytPlayerRef.current) {
-      if (isPlaying) {
-        try { ytPlayerRef.current.playVideo(); } catch (e) {}
-      } else {
-        try { ytPlayerRef.current.pauseVideo(); } catch (e) {}
-      }
-    } else if (!usingIframeRef.current && audioRef.current?.src) {
-      if (isPlaying) {
-        audioRef.current.play().catch(() => {});
-      } else {
-        audioRef.current.pause();
-      }
+    if (iframeVideoId && ytPlayerRef.current) {
+      try { isPlaying ? ytPlayerRef.current.playVideo() : ytPlayerRef.current.pauseVideo(); } catch (e) {}
+    } else if (!iframeVideoId && audioRef.current?.src) {
+      if (isPlaying) audioRef.current.play().catch(() => {});
+      else audioRef.current.pause();
     }
-  }, [isPlaying, currentTrack?.id]);
+  }, [isPlaying, currentTrack?.id, iframeVideoId]);
 
-  // Seek sync
+  // ── Seek sync ────────────────────────────────────────────────────
   useEffect(() => {
     const seekTime = seekRequest ?? 0;
     if (seekTime === 0 || seekTime === lastSeekRef.current) return;
     lastSeekRef.current = seekTime;
-
-    if (usingIframeRef.current && ytPlayerRef.current) {
+    if (iframeVideoId && ytPlayerRef.current) {
       try { ytPlayerRef.current.seekTo(seekTime, true); } catch (e) {}
     } else if (audioRef.current?.src) {
       try { audioRef.current.currentTime = seekTime; } catch (e) {}
     }
-  }, [seekRequest]);
+  }, [seekRequest, iframeVideoId]);
 
-  // ─── YouTube iframe callbacks ────────────────────────────────────
+  // ── Mobile background playback ───────────────────────────────────
+  useEffect(() => {
+    if (!isMobileDevice || !currentTrack) return;
+    const handlePageHide = () => {
+      if (isPlaying) localStorage.setItem(MOBILE_PLAYER_STATE_KEY, JSON.stringify({ isPlaying, progress, currentTrackId: currentTrack.id }));
+    };
+    const handlePageShow = () => {
+      const state = parseSavedState(localStorage.getItem(MOBILE_PLAYER_STATE_KEY));
+      if (!state) return;
+      if (state.isPlaying) setIsPlaying(true);
+      if (typeof state.progress === 'number' && Number.isFinite(state.progress)) {
+        usePlayerStore.getState().seekTo(state.progress);
+      }
+      localStorage.removeItem(MOBILE_PLAYER_STATE_KEY);
+    };
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('pageshow', handlePageShow);
+    return () => { window.removeEventListener('pagehide', handlePageHide); window.removeEventListener('pageshow', handlePageShow); };
+  }, [isMobileDevice, currentTrack, isPlaying, progress, setIsPlaying]);
+
+  // ── Media Session API (Lock Screen & Background playback) ───────────
+  useEffect(() => {
+    if ('mediaSession' in navigator && currentTrack) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        album: currentTrack.album || 'Vibecraft Archive',
+        artwork: [
+          { src: currentTrack.thumbnail || 'https://picsum.photos/seed/vibecraft/512/512', sizes: '512x512', type: 'image/jpeg' }
+        ]
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+      navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+      navigator.mediaSession.setActionHandler('previoustrack', () => usePlayerStore.getState().previousTrack());
+      navigator.mediaSession.setActionHandler('nexttrack', () => usePlayerStore.getState().nextTrack());
+      
+      // Attempt to support seeking from lockscreen if the device allows it
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined) {
+          usePlayerStore.getState().seekTo(details.seekTime);
+        }
+      });
+    }
+  }, [currentTrack, setIsPlaying]);
+
+  // ── Iframe callbacks ─────────────────────────────────────────────
   const onReady: YouTubeProps['onReady'] = (event) => {
     ytPlayerRef.current = event.target;
     event.target.setVolume(volume);
-
-    if (usingIframeRef.current && isPlaying) {
-      try { event.target.playVideo(); } catch (e) {}
-    }
+    if (isPlaying) { try { event.target.playVideo(); } catch (e) {} }
   };
 
   const onStateChange = (e: { data: number }) => {
-    // -1 = unstarted, 0 = ended, 1 = playing, 2 = paused, 3 = buffering, 5 = cued
     if (e.data === 0) nextTrack();
     if (e.data === 1) { setIsPlaying(true); setIsBuffering(false); }
     if (e.data === 2) setIsPlaying(false);
     if (e.data === 3) setIsBuffering(true);
   };
 
-  // Determine the video ID the iframe should play
-  const effectiveVideoId = fallbackVideoIdRef.current || currentTrack?.videoId || currentTrack?.id || "";
+  // ── Render ───────────────────────────────────────────────────────
+  if (!iframeVideoId) return null;
 
-  const isPlaylist = ['PL', 'VL', 'RD', 'OL'].some(prefix => 
-    effectiveVideoId.startsWith(prefix)
-  );
+  const isPlaylistId = ['PL', 'VL', 'RD', 'OL'].some(p => iframeVideoId.startsWith(p));
 
   const opts: YouTubeProps['opts'] = {
-    height: '100%', width: '100%',
+    height: '1', width: '1',
     playerVars: {
       autoplay: 1,
       controls: 0,
       modestbranding: 1,
       rel: 0,
+      playsinline: 1,
       origin: typeof window !== 'undefined' ? window.location.origin : undefined,
-      ...(isPlaylist ? { listType: 'playlist', list: effectiveVideoId } : {})
+      ...(isPlaylistId ? { listType: 'playlist', list: iframeVideoId } : {})
     },
   };
 
-  const showVideo = currentTrack?.isYouTube && settings.isVideoVisible;
-  // Mount iframe for: YT tracks with iframe enabled, OR any track with a fallback YT video ID
-  const hasFallback = !!fallbackVideoIdRef.current;
-  const mountIframe = (currentTrack?.isYouTube && (settings.isVideoVisible || settings.useIframeForYouTube)) || hasFallback;
-
   return (
-    <div className={cn(
-      "fixed transition-all duration-300 z-[55] bg-black shadow-2xl",
-      showVideo
-        ? "bottom-20 md:bottom-24 left-4 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden border border-primary/30 gold-border-glow"
-        : "opacity-0 pointer-events-none w-1 h-1"
-    )}>
-      {mountIframe && (
-        <YouTube
-          videoId={isPlaylist ? undefined : effectiveVideoId}
-          opts={opts}
-          onReady={onReady}
-          onStateChange={onStateChange}
-          className="w-full h-full"
-        />
-      )}
+    <div
+      aria-hidden="true"
+      style={{ position: 'fixed', bottom: 0, left: 0, width: 1, height: 1, opacity: 0, pointerEvents: 'none', zIndex: -1 }}
+    >
+      <YouTube
+        key={iframeVideoId}
+        videoId={isPlaylistId ? undefined : iframeVideoId}
+        opts={opts}
+        onReady={onReady}
+        onStateChange={onStateChange}
+      />
     </div>
   );
 };

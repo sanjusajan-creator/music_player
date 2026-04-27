@@ -110,7 +110,7 @@ export const SettingsView = () => {
             icon={<Music />} 
             title="Show Lyrics" 
             description="Manifest the Oracle's scroll"
-            disabled={currentTrack && !currentTrack.hasLyrics}
+            disabled={!!(currentTrack && !currentTrack.hasLyrics)}
           >
             <Switch 
               checked={settings.showLyrics} 

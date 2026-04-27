@@ -2,7 +2,7 @@
 
 import React, { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useSaavnSearch, useTrending, useMusicHome } from '@/hooks/useYouTube';
+import { useSaavnSearch, useTrending, useMusicHome, useArtistSearch, useAlbumSearch, usePlaylistSearch } from '@/hooks/useYouTube';
 import { SearchResult } from '@/components/search/SearchResult';
 import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -25,7 +25,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection, useMemoFirebase } from '@/firebase';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: 1,
+    },
+  },
+});
+
+const LAYOUT_TOGGLE_TABS = new Set(['home', 'search', 'liked', 'local', 'artist', 'album', 'playlist']);
 
 export default function AppWrapper() {
   return (
@@ -42,7 +52,9 @@ function HomeContent() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const searchParams = useSearchParams();
-  const { settings, updateSettings } = usePlayerStore();
+  const hasHydrated = usePlayerStore((state) => state.hasHydrated);
+  const layoutMode = usePlayerStore((state) => state.settings.layoutMode);
+  const updateSettings = usePlayerStore((state) => state.updateSettings);
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -51,14 +63,7 @@ function HomeContent() {
   
   const currentTab = searchParams.get('tab') || 'home';
   const searchQuery = searchParams.get('q') || '';
-
-  const { data: trending } = useTrending();
-  const { data: homeData } = useMusicHome();
-  const { data: searchData } = useSaavnSearch(searchQuery);
-
-  const hasContent = currentTab === 'search' 
-    ? (searchData?.results?.length ?? 0) > 0
-    : (trending?.length ?? 0) > 0 || (homeData?.length ?? 0) > 0;
+  const shouldShowLayoutToggle = LAYOUT_TOGGLE_TABS.has(currentTab);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,10 +80,10 @@ function HomeContent() {
   };
 
   const toggleLayout = () => {
-    updateSettings({ layoutMode: settings.layoutMode === 'grid' ? 'list' : 'grid' });
+    updateSettings({ layoutMode: layoutMode === 'grid' ? 'list' : 'grid' });
   };
 
-  if (isUserLoading) return <div className="h-screen w-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  if (isUserLoading || !hasHydrated) return <div className="h-screen w-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
 
   if (!user) return (
     <main className="min-h-screen w-screen bg-black flex flex-col items-center justify-center p-6 text-center">
@@ -108,10 +113,10 @@ function HomeContent() {
         <ScrollArea className="flex-1 h-full w-full">
           <div className="p-4 md:p-8 max-w-7xl mx-auto pb-44 md:pb-32">
             <AnimatePresence mode="wait">
-              {hasContent && (
+              {shouldShowLayoutToggle && (
                 <div className="flex justify-end mb-6 px-2">
                   <Button variant="ghost" size="sm" onClick={toggleLayout} className="bg-primary/5 hover:bg-primary/20 text-primary border border-primary/10 rounded-full gap-2 px-4 h-10">
-                    {settings.layoutMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+                    {layoutMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
                     <span className="text-[10px] font-black uppercase tracking-widest">Switch View</span>
                   </Button>
                 </div>
@@ -124,11 +129,14 @@ function HomeContent() {
                 exit={{ opacity: 0, y: -10 }} 
                 transition={{ duration: 0.2 }}
               >
-                {currentTab === 'home' && <HomeView layoutMode={settings.layoutMode} />}
-                {currentTab === 'search' && <SearchResultsView query={searchQuery} layoutMode={settings.layoutMode} />}
+                {currentTab === 'home' && <HomeView layoutMode={layoutMode} />}
+                {currentTab === 'search' && <SearchResultsView query={searchQuery} layoutMode={layoutMode} />}
                 {currentTab === 'settings' && <SettingsView />}
-                {currentTab === 'liked' && <LikedView layoutMode={settings.layoutMode} />}
-                {currentTab === 'local' && <LocalView layoutMode={settings.layoutMode} />}
+                {currentTab === 'liked' && <LikedView layoutMode={layoutMode} />}
+                {currentTab === 'local' && <LocalView layoutMode={layoutMode} />}
+                {currentTab === 'artist' && <ArtistView layoutMode={layoutMode} />}
+                {currentTab === 'album' && <AlbumView layoutMode={layoutMode} />}
+                {currentTab === 'playlist' && <PlaylistView layoutMode={layoutMode} />}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -229,10 +237,10 @@ function LocalView({ layoutMode }: { layoutMode: LayoutMode }) {
     const files = Array.from(e.target.files);
     
     const newTracks = files.map(file => ({
-      id: URL.createObjectURL(file), // Generate a local URL for the ID
+      id: `${file.name}-${file.size}-${file.lastModified}`,
       title: file.name.replace(/\.[^/.]+$/, ""),
       artist: "Local Device",
-      thumbnail: "/default-art.png", // Or standard fallback
+      thumbnail: "/default-art.png",
       isLocal: true,
       localFile: file,
       source: 'local' as const
@@ -272,3 +280,86 @@ function LocalView({ layoutMode }: { layoutMode: LayoutMode }) {
     </div>
   );
 }
+
+function ArtistView({ layoutMode }: { layoutMode: LayoutMode }) {
+  const searchParams = useSearchParams();
+  const artistId = searchParams.get('id') || '';
+  const { data, isLoading } = useArtistSearch(artistId);
+  
+  if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
+  if (!data) return <div className="text-center py-20 text-primary/40 uppercase font-black text-sm tracking-widest">Artist not found</div>;
+  
+  const tracks = data.tracks || [];
+  
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center gap-6">
+        <img src={data.thumbnail} alt={data.name} className="w-24 h-24 rounded-full object-cover shadow-lg" />
+        <div>
+          <p className="text-xs font-black uppercase text-primary/60 tracking-widest">Artist</p>
+          <h2 className="text-3xl font-black text-primary gold-glow uppercase tracking-tighter">{data.name}</h2>
+          <p className="text-xs font-black text-primary/40 uppercase tracking-widest">{tracks.length} tracks</p>
+        </div>
+      </div>
+      <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
+        {tracks.map((track: any, i: number) => <SearchResult key={track.id} track={track} results={tracks} index={i} />)}
+      </div>
+    </div>
+  );
+}
+
+function AlbumView({ layoutMode }: { layoutMode: LayoutMode }) {
+  const searchParams = useSearchParams();
+  const albumId = searchParams.get('id') || '';
+  const { data, isLoading } = useAlbumSearch(albumId);
+  
+  if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
+  if (!data) return <div className="text-center py-20 text-primary/40 uppercase font-black text-sm tracking-widest">Album not found</div>;
+  
+  const tracks = data.tracks || [];
+  
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center gap-6">
+        <img src={data.thumbnail} alt={data.title} className="w-32 h-32 rounded-lg object-cover shadow-lg" />
+        <div>
+          <p className="text-xs font-black uppercase text-primary/60 tracking-widest">Album</p>
+          <h2 className="text-3xl font-black text-primary gold-glow uppercase tracking-tighter">{data.title}</h2>
+          <p className="text-xs font-black text-primary/40 uppercase tracking-widest">{data.artist}</p>
+        </div>
+      </div>
+      <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
+        {tracks.map((track: any, i: number) => <SearchResult key={track.id} track={track} results={tracks} index={i} />)}
+      </div>
+    </div>
+  );
+}
+
+function PlaylistView({ layoutMode }: { layoutMode: LayoutMode }) {
+  const searchParams = useSearchParams();
+  const playlistId = searchParams.get('id') || '';
+  const { data, isLoading } = usePlaylistSearch(playlistId);
+  
+  if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
+  if (!data) return <div className="text-center py-20 text-primary/40 uppercase font-black text-sm tracking-widest">Playlist not found</div>;
+  
+  const tracks = data.tracks || [];
+  
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center gap-6">
+        <img src={data.thumbnail} alt={data.title} className="w-32 h-32 rounded-lg object-cover shadow-lg" />
+        <div>
+          <p className="text-xs font-black uppercase text-primary/60 tracking-widest">Playlist</p>
+          <h2 className="text-3xl font-black text-primary gold-glow uppercase tracking-tighter">{data.title}</h2>
+          <p className="text-xs font-black text-primary/40 uppercase tracking-widest">{tracks.length} tracks</p>
+        </div>
+      </div>
+      <div className={cn("grid gap-4", layoutMode === 'grid' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1")}>
+        {tracks.map((track: any, i: number) => <SearchResult key={track.id} track={track} results={tracks} index={i} />)}
+      </div>
+    </div>
+  );
+}
+
+

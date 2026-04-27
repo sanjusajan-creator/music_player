@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Home, Search, Heart, Settings } from 'lucide-react';
+import { Home, Search, Heart, FolderOpen } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -20,16 +20,13 @@ export const MobileNav = () => {
     { id: 'home', icon: Home, label: 'Home' },
     { id: 'search', icon: Search, label: 'Search' },
     { id: 'liked', icon: Heart, label: 'Liked' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
+    { id: 'local', icon: FolderOpen, label: 'Local' },
   ];
 
   return (
     <div className="fixed bottom-0 left-0 right-0 h-16 bg-black border-t border-primary/20 z-[70] flex items-center justify-around md:hidden px-4">
       {navItems.map(({ id, icon: Icon, label }) => {
         const isActive = currentTab === id;
-        // For Heart icon we probably only want fill if active
-        // But for Home, Search, Settings they might not support fill cleanly from lucide without explicit props or it might look bad, 
-        // so we just color it.
         return (
           <button
             key={id}

@@ -92,6 +92,6 @@ const NavArrow = ({ icon, onClick }: { icon: React.ReactNode, onClick: () => voi
     onClick={onClick}
     className="h-8 w-8 bg-black rounded-full flex items-center justify-center text-primary/40 hover:text-primary border border-primary/20 transition-all"
   >
-    {React.cloneElement(icon as React.ReactElement, { className: 'w-5 h-5' })}
+    {React.cloneElement(icon as React.ReactElement<{className?: string}>, { className: 'w-5 h-5' })}
   </button>
 );

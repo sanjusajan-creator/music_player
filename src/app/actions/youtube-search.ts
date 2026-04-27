@@ -10,10 +10,10 @@ const GAANA_API_BASE = 'https://my-gaana-api-tau.vercel.app';
  * Sovereign Safe-Fetch Implementation
  * Reads as raw text first then performs a safe JSON metamorphosis.
  */
-async function safeFetch(url: string) {
+async function safeFetch(url: string, timeout = 8000) {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     const res = await fetch(url, {
       next: { revalidate: 3600 },
@@ -47,8 +47,8 @@ function normalizeYTTrack(item: any): Track {
     item.musicTwoRowItemRenderer ||
     item;
 
-  // Tiered VideoId Extraction Sanctuary
-  let videoId = renderer.videoId || renderer.id;
+  // ── VideoId Extraction ────────────────────────────────────────────
+  let videoId: string | undefined = renderer.videoId || renderer.id;
   if (!videoId && renderer.overlay?.musicItemThumbnailOverlayRenderer) {
     videoId = renderer.overlay.musicItemThumbnailOverlayRenderer
       .content?.musicPlayButtonRenderer
@@ -69,7 +69,7 @@ function normalizeYTTrack(item: any): Track {
     videoId = renderer.onTap.watchEndpoint.videoId;
   }
 
-  // Title Extraction Sanctuary
+  // ── Title Extraction ──────────────────────────────────────────────
   let title = "Unknown Title";
   if (renderer.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text) {
     title = renderer.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.runs[0].text;
@@ -81,7 +81,7 @@ function normalizeYTTrack(item: any): Track {
     title = renderer.header.musicCardShelfHeaderRenderer.title.runs[0].text;
   }
 
-  // Artist Extraction Sanctuary
+  // ── Artist/Subtitle Extraction ────────────────────────────────────
   let artist = "Unknown Artist";
   const flexColumn1 = renderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
   if (flexColumn1 && flexColumn1.length > 0) {
@@ -94,25 +94,63 @@ function normalizeYTTrack(item: any): Track {
     artist = renderer.artist;
   }
 
-  const thumbnail = renderer.thumbnail?.thumbnails?.slice(-1)[0]?.url ||
+  // ── Thumbnail Extraction ──────────────────────────────────────────
+  // musicResponsiveListItemRenderer stores thumbnail as thumbnail.musicThumbnailRenderer.thumbnail.thumbnails
+  const thumbnail =
+    renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url ||
+    renderer.thumbnail?.thumbnails?.slice(-1)[0]?.url ||
+    (typeof renderer.thumbnail === 'string' && renderer.thumbnail.startsWith('http') ? renderer.thumbnail : null) ||
     renderer.thumbnails?.[0]?.url ||
     renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url ||
-    `https://picsum.photos/seed/${videoId || 'default'}/400/400`;
+    (videoId && !videoId.startsWith('UC') && !videoId.startsWith('MPR') && !videoId.startsWith('RD') && !videoId.startsWith('PL')
+      ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+      : `https://picsum.photos/seed/${videoId || 'default'}/400/400`);
 
   const duration = renderer.duration?.text || renderer.duration || "0:00";
 
+  // ── Type Detection ────────────────────────────────────────────────
+  // Use only structural signals — NEVER text heuristics on subtitle (subtitle has song names, views, dates etc.)
+  const pageType = renderer.navigationEndpoint?.browseEndpoint
+    ?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType;
+
+  let type = 'song';
+  if (pageType === 'MUSIC_PAGE_TYPE_ARTIST') {
+    type = 'artist';
+  } else if (pageType === 'MUSIC_PAGE_TYPE_ALBUM' || pageType === 'MUSIC_PAGE_TYPE_AUDIOBOOK') {
+    type = 'album';
+  } else if (
+    pageType === 'MUSIC_PAGE_TYPE_PLAYLIST' ||
+    renderer.navigationEndpoint?.watchPlaylistEndpoint ||
+    renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer
+      ?.playNavigationEndpoint?.watchPlaylistEndpoint
+  ) {
+    type = 'playlist';
+  } else if (renderer.type) {
+    type = renderer.type.toLowerCase();
+  }
+  // If we got a browseId that looks like a channel (UCxxx) and type wasn't explicitly set to song, mark as artist
+  if (videoId?.startsWith('UC') && type === 'song') {
+    type = 'artist';
+  }
+
+  // Strip VL prefix from playlist IDs
+  if (type === 'playlist' && videoId?.startsWith('VL')) {
+    videoId = videoId.substring(2);
+  }
+
   return {
     id: videoId || "unknown_id",
-    videoId: videoId,
+    videoId: type === 'song' ? videoId : undefined,
     title: title || "Unknown Title",
     artist: artist || "Unknown Artist",
-    thumbnail: thumbnail,
-    duration: duration,
+    thumbnail,
+    duration,
     source: 'youtube' as const,
     isYouTube: true,
-    type: (renderer.type || 'song') as any
+    type: type as any
   };
 }
+
 
 /**
  * Sovereign Unified Search Oracle
@@ -124,36 +162,53 @@ export async function searchAllAction(query: string, source: string = 'all') {
   console.log(`%cOracle: Unified Summons Initiated for "${cleanQuery}"`, "color: #FFD700; font-weight: 900;");
 
   try {
-    // Fetch all sources in parallel — never gate on each other's results
-    const [ytResults, saavnResults, gaanaResults] = await Promise.allSettled([
+    const [ytResults, saavnSongs, saavnAlbums, saavnPlaylists, gaanaResults] = await Promise.allSettled([
       source === 'all' || source === 'youtube' ? fetchYouTubeMusic(cleanQuery) : Promise.resolve([]),
       source === 'all' || source === 'jiosaavn' ? fetchSaavn(cleanQuery) : Promise.resolve([]),
+      source === 'all' || source === 'jiosaavn' ? fetchSaavnAlbums(cleanQuery) : Promise.resolve([]),
+      source === 'all' || source === 'jiosaavn' ? fetchSaavnPlaylists(cleanQuery) : Promise.resolve([]),
       source === 'all' || source === 'gaana' ? fetchGaana(cleanQuery) : Promise.resolve([]),
     ]);
 
     const yt = ytResults.status === 'fulfilled' ? ytResults.value : [];
-    const saavn = saavnResults.status === 'fulfilled' ? saavnResults.value : [];
+    const sSongs = saavnSongs.status === 'fulfilled' ? saavnSongs.value : [];
+    const sAlbums = saavnAlbums.status === 'fulfilled' ? saavnAlbums.value : [];
+    const sPlaylists = saavnPlaylists.status === 'fulfilled' ? saavnPlaylists.value : [];
     const gaana = gaanaResults.status === 'fulfilled' ? gaanaResults.value : [];
 
-    // Interleave: YT first, then Saavn, then Gaana — so users see variety
+    // Interleave everything
     const allResults: Track[] = [];
-    const maxLen = Math.max(yt.length, saavn.length, gaana.length);
+    const maxLen = Math.max(yt.length, sSongs.length, sAlbums.length, sPlaylists.length, gaana.length);
     for (let i = 0; i < maxLen; i++) {
       if (yt[i]) allResults.push(yt[i]);
-      if (saavn[i]) allResults.push(saavn[i]);
+      if (sSongs[i]) allResults.push(sSongs[i]);
+      if (sPlaylists[i]) allResults.push(sPlaylists[i]);
+      if (sAlbums[i]) allResults.push(sAlbums[i]);
       if (gaana[i]) allResults.push(gaana[i]);
     }
 
-    // Deduplicate by title (keep first occurrence)
-    const seenTitles = new Set<string>();
+    // Deduplicate by title + type
+    const seenKeys = new Set<string>();
     const dedupedResults = allResults.filter(track => {
-      const key = track.title.toLowerCase().trim();
-      if (seenTitles.has(key)) return false;
-      seenTitles.add(key);
+      const key = `${track.title.toLowerCase().trim()}-${track.type || 'song'}`;
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
       return true;
     });
 
-    console.log(`%cOracle: YT=${yt.length} Saavn=${saavn.length} Gaana=${gaana.length} → ${dedupedResults.length} total`, "color: #FFD700;");
+    // Sort: YT songs first → other songs → playlists → albums → artists
+    dedupedResults.sort((a, b) => {
+      const getScore = (t: Track) => {
+        const type = t.type || 'song';
+        const isYT = t.source === 'youtube';
+        if (type === 'song' || type === 'video') return isYT ? 100 : 90;
+        if (type === 'playlist') return 70;
+        if (type === 'album') return 60;
+        if (type === 'artist') return 50;
+        return 0;
+      };
+      return getScore(b) - getScore(a);
+    });
 
     return {
       success: true,
@@ -167,28 +222,57 @@ export async function searchAllAction(query: string, source: string = 'all') {
 }
 
 async function fetchYouTubeMusic(query: string): Promise<Track[]> {
+  try {
+    const musicData = await safeFetch(`${YT_MUSIC_API_BASE}/api/music/search?query=${encodeURIComponent(query)}`);
+    const tracks: Track[] = [];
+    
+    if (musicData?.raw_data?.contents?.tabbedSearchResultsRenderer?.tabs) {
+       const tabs = musicData.raw_data.contents.tabbedSearchResultsRenderer.tabs;
+       const tab = tabs[0];
+       const contents = tab?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+       
+       for (const section of contents) {
+          if (section.musicShelfRenderer?.contents) {
+             for (const item of section.musicShelfRenderer.contents) {
+                const t = normalizeYTTrack(item);
+                if (t.id && t.id !== "unknown_id") tracks.push(t);
+             }
+          }
+          if (section.musicCardShelfRenderer) {
+             const t = normalizeYTTrack(section.musicCardShelfRenderer);
+             if (t.id && t.id !== "unknown_id") tracks.push(t);
+          }
+       }
+    }
+    
+    if (tracks.length > 0) return tracks;
+  } catch (e) {
+    console.error("YT Music search parsing failed", e);
+  }
+
+  // Fallback to legacy endpoint if music search fails or returns nothing
   const data = await safeFetch(`${YT_MUSIC_API_BASE}/api/search?query=${encodeURIComponent(query)}`);
   if (!data?.results) return [];
 
   return data.results.map((item: any) => ({
-    id: item.video_id,
+    id: item.video_id || item.playlist_id || item.browse_id || item.id,
     videoId: item.video_id,
     title: item.title || "Unknown Title",
-    artist: item.channel?.name || "Unknown Artist",
+    artist: item.channel?.name || item.author || "Unknown Artist",
     thumbnail: item.thumbnail,
     duration: item.duration || "0:00",
     source: 'youtube' as const,
     isYouTube: true,
-    type: 'song' as any
+    type: (item.type || 'song').toLowerCase() as any
   }));
 }
 
 async function fetchSaavn(query: string): Promise<Track[]> {
-  const data = await safeFetch(`${SAAVN_API_BASE}/api/search?query=${encodeURIComponent(query)}`);
-  const raw = data?.data?.songs?.results || [];
+  const data = await safeFetch(`${SAAVN_API_BASE}/api/search/songs?query=${encodeURIComponent(query)}`);
+  const raw = data?.data?.results || [];
   return raw.map((t: any) => ({
     id: t.id,
-    title: t.title || t.name,
+    title: t.name || t.title,
     artist: t.primaryArtists || t.artist || "Saavn Artist",
     thumbnail: t.image?.[2]?.url || t.image?.[1]?.url || t.image?.[0]?.url,
     album: t.album?.name || t.album || "Saavn Archive",
@@ -196,6 +280,37 @@ async function fetchSaavn(query: string): Promise<Track[]> {
     source: 'jiosaavn' as const,
     isYouTube: false,
     isSaavn: true,
+    type: 'song' as any
+  }));
+}
+
+async function fetchSaavnAlbums(query: string): Promise<Track[]> {
+  const data = await safeFetch(`${SAAVN_API_BASE}/api/search/albums?query=${encodeURIComponent(query)}`);
+  const raw = data?.data?.results || [];
+  return raw.map((t: any) => ({
+    id: t.id,
+    title: t.name || t.title,
+    artist: t.artist || "Saavn Artist",
+    thumbnail: t.image?.[2]?.url || t.image?.[0]?.url,
+    source: 'jiosaavn' as const,
+    isYouTube: false,
+    isSaavn: true,
+    type: 'album' as any
+  }));
+}
+
+async function fetchSaavnPlaylists(query: string): Promise<Track[]> {
+  const data = await safeFetch(`${SAAVN_API_BASE}/api/search/playlists?query=${encodeURIComponent(query)}`);
+  const raw = data?.data?.results || [];
+  return raw.map((t: any) => ({
+    id: t.id,
+    title: t.name || t.title,
+    artist: t.firstname || "Saavn Curator",
+    thumbnail: t.image?.[2]?.url || t.image?.[0]?.url,
+    source: 'jiosaavn' as const,
+    isYouTube: false,
+    isSaavn: true,
+    type: 'playlist' as any
   }));
 }
 
@@ -211,6 +326,7 @@ async function fetchGaana(query: string): Promise<Track[]> {
     source: 'gaana' as const,
     isYouTube: false,
     isGaana: true,
+    type: 'song' as any
   }));
 }
 
@@ -377,22 +493,457 @@ export async function getRelatedTracksAction(videoId: string) {
   })).filter((t: any) => t.id);
 }
 
-export async function getPlaylistAction(id: string) {
-  const data = await safeFetch(`${YT_MUSIC_API_BASE}/api/playlist?list=${id}`);
-  if (!data) return null;
+const YT_VIDEO_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
+
+function runsToText(runs: any[] | undefined): string {
+  if (!Array.isArray(runs)) return '';
+  return runs.map((run) => (typeof run?.text === 'string' ? run.text : '')).join('').trim();
+}
+
+function readText(value: any): string {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return runsToText(value);
+  if (!value || typeof value !== 'object') return '';
+  if (typeof value.simpleText === 'string') return value.simpleText.trim();
+  if (typeof value.text === 'string') return value.text.trim();
+  if (typeof value.content === 'string') return value.content.trim();
+  if (Array.isArray(value.runs)) return runsToText(value.runs);
+  if (value.text) return readText(value.text);
+  return '';
+}
+
+function pickFirstText(...values: any[]): string | undefined {
+  for (const value of values) {
+    const text = readText(value);
+    if (text) return text;
+  }
+  return undefined;
+}
+
+function normalizeArtistText(value: string | undefined): string {
+  if (!value) return '';
+  const firstSegment = value.replace(/\s*•\s*/g, '|').split('|')[0];
+  return firstSegment.replace(/\s+/g, ' ').trim();
+}
+
+function extractThumbnailUrl(value: any): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'string') return value.startsWith('http') ? value : undefined;
+
+  if (Array.isArray(value)) {
+    for (let i = value.length - 1; i >= 0; i--) {
+      const url = extractThumbnailUrl(value[i]);
+      if (url) return url;
+    }
+    return undefined;
+  }
+
+  if (typeof value !== 'object') return undefined;
+
+  if (typeof value.url === 'string' && value.url.startsWith('http')) {
+    return value.url;
+  }
+
+  const candidates = [
+    value.sources,
+    value.thumbnails,
+    value.thumbnail,
+    value.thumbnail?.thumbnails,
+    value.thumbnail?.sources,
+    value.musicThumbnailRenderer?.thumbnail?.thumbnails,
+    value.croppedSquareThumbnailRenderer?.thumbnail?.thumbnails,
+    value.playlistVideoThumbnailRenderer?.thumbnail?.thumbnails,
+    value.heroImage?.contentPreviewImageViewModel?.image?.sources,
+    value.contentPreviewImageViewModel?.image?.sources,
+  ];
+
+  for (const candidate of candidates) {
+    const url = extractThumbnailUrl(candidate);
+    if (url) return url;
+  }
+
+  return undefined;
+}
+
+function secondsToDuration(value: any): string | undefined {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds) || seconds <= 0) return undefined;
+
+  const total = Math.floor(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+
+function isYouTubeVideoId(value: any): value is string {
+  return typeof value === 'string' && YT_VIDEO_ID_RE.test(value);
+}
+
+function collectNodesByKey(root: any, key: string): any[] {
+  if (!root) return [];
+
+  const found: any[] = [];
+  const stack: any[] = [root];
+  const visited = new WeakSet<object>();
+
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object') continue;
+
+    if (visited.has(node)) continue;
+    visited.add(node);
+
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        if (item && typeof item === 'object') stack.push(item);
+      }
+      continue;
+    }
+
+    const record = node as Record<string, any>;
+    if (Object.prototype.hasOwnProperty.call(record, key)) {
+      const candidate = record[key];
+      if (Array.isArray(candidate)) found.push(...candidate);
+      else found.push(candidate);
+    }
+
+    for (const value of Object.values(record)) {
+      if (value && typeof value === 'object') stack.push(value);
+    }
+  }
+
+  return found;
+}
+
+function mapLegacyTrack(item: any, fallbackArtist = 'Unknown Artist'): Track | null {
+  const videoId = item?.video_id || item?.videoId;
+  if (!isYouTubeVideoId(videoId)) return null;
+
   return {
-    title: data.title || "Playlist",
-    tracks: (data.results || []).map((item: any) => ({
-      id: item.video_id,
-      videoId: item.video_id,
-      title: item.title || "Unknown Title",
-      artist: item.channel?.name || "Unknown Artist",
-      thumbnail: item.thumbnail,
-      duration: item.duration || "0:00",
-      source: 'youtube' as const,
-      isYouTube: true,
-      type: 'song' as any
-    }))
+    id: videoId,
+    videoId,
+    title: pickFirstText(item?.title) || 'Unknown Title',
+    artist: normalizeArtistText(pickFirstText(item?.channel?.name, item?.author, item?.artist)) || fallbackArtist,
+    thumbnail: extractThumbnailUrl(item?.thumbnail) || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    duration: pickFirstText(item?.duration) || '0:00',
+    source: 'youtube' as const,
+    isYouTube: true,
+    type: 'song' as any,
+  };
+}
+
+function mapPlaylistVideoRendererTrack(renderer: any, fallbackArtist = 'Unknown Artist'): Track | null {
+  const videoId = renderer?.videoId || renderer?.navigationEndpoint?.watchEndpoint?.videoId;
+  if (!isYouTubeVideoId(videoId)) return null;
+
+  return {
+    id: videoId,
+    videoId,
+    title: pickFirstText(renderer?.title) || 'Unknown Title',
+    artist: normalizeArtistText(pickFirstText(renderer?.shortBylineText, renderer?.longBylineText, renderer?.ownerText)) || fallbackArtist,
+    thumbnail: extractThumbnailUrl(renderer?.thumbnail) || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    duration: pickFirstText(renderer?.lengthText, secondsToDuration(renderer?.lengthSeconds)) || '0:00',
+    source: 'youtube' as const,
+    isYouTube: true,
+    type: 'song' as any,
+  };
+}
+
+function mapMusicResponsiveRendererTrack(renderer: any, fallbackArtist = 'Unknown Artist'): Track | null {
+  const playEndpoint =
+    renderer?.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint ||
+    renderer?.thumbnailOverlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint ||
+    renderer?.playNavigationEndpoint ||
+    renderer?.navigationEndpoint ||
+    renderer?.onTap;
+
+  const videoId =
+    playEndpoint?.watchEndpoint?.videoId ||
+    renderer?.navigationEndpoint?.watchEndpoint?.videoId ||
+    renderer?.videoId;
+
+  if (!isYouTubeVideoId(videoId)) return null;
+
+  const title =
+    pickFirstText(
+      renderer?.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text,
+      renderer?.title
+    ) || 'Unknown Title';
+
+  const artist =
+    normalizeArtistText(
+      pickFirstText(
+        renderer?.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text,
+        renderer?.subtitle,
+        renderer?.artist
+      )
+    ) || fallbackArtist;
+
+  const duration =
+    pickFirstText(
+      renderer?.fixedColumns?.[0]?.musicResponsiveListItemFixedColumnRenderer?.text,
+      renderer?.durationText,
+      renderer?.duration,
+      secondsToDuration(renderer?.lengthSeconds)
+    ) || '0:00';
+
+  return {
+    id: videoId,
+    videoId,
+    title,
+    artist,
+    thumbnail:
+      extractThumbnailUrl(renderer?.thumbnail) ||
+      extractThumbnailUrl(renderer?.thumbnailRenderer) ||
+      `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    duration,
+    source: 'youtube' as const,
+    isYouTube: true,
+    type: 'song' as any,
+  };
+}
+
+function mapMusicTwoRowRendererTrack(renderer: any, fallbackArtist = 'Unknown Artist'): Track | null {
+  const playEndpoint =
+    renderer?.thumbnailOverlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint ||
+    renderer?.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint ||
+    renderer?.navigationEndpoint ||
+    renderer?.onTap;
+
+  const videoId = playEndpoint?.watchEndpoint?.videoId || renderer?.navigationEndpoint?.watchEndpoint?.videoId;
+  if (!isYouTubeVideoId(videoId)) return null;
+
+  return {
+    id: videoId,
+    videoId,
+    title: pickFirstText(renderer?.title) || 'Unknown Title',
+    artist: normalizeArtistText(pickFirstText(renderer?.subtitle, renderer?.longBylineText)) || fallbackArtist,
+    thumbnail:
+      extractThumbnailUrl(renderer?.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails) ||
+      extractThumbnailUrl(renderer?.thumbnail) ||
+      `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    duration: '0:00',
+    source: 'youtube' as const,
+    isYouTube: true,
+    type: 'song' as any,
+  };
+}
+
+function dedupeTracks(tracks: Track[]): Track[] {
+  const seen = new Set<string>();
+  const deduped: Track[] = [];
+
+  for (const track of tracks) {
+    const key = track.videoId || track.id;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(track);
+  }
+
+  return deduped;
+}
+
+function extractSongTracks(payload: any, fallbackArtist = 'Unknown Artist'): Track[] {
+  const tracks: Track[] = [];
+
+  if (Array.isArray(payload?.results)) {
+    for (const item of payload.results) {
+      const track = mapLegacyTrack(item, fallbackArtist);
+      if (track) tracks.push(track);
+    }
+  }
+
+  for (const renderer of collectNodesByKey(payload, 'playlistVideoRenderer')) {
+    const track = mapPlaylistVideoRendererTrack(renderer, fallbackArtist);
+    if (track) tracks.push(track);
+  }
+
+  for (const renderer of collectNodesByKey(payload, 'musicResponsiveListItemRenderer')) {
+    const track = mapMusicResponsiveRendererTrack(renderer, fallbackArtist);
+    if (track) tracks.push(track);
+  }
+
+  for (const renderer of collectNodesByKey(payload, 'musicTwoRowItemRenderer')) {
+    const track = mapMusicTwoRowRendererTrack(renderer, fallbackArtist);
+    if (track) tracks.push(track);
+  }
+
+  return dedupeTracks(tracks);
+}
+
+function parsePlaylistPayload(payload: any, playlistId: string, fallbackTitle = 'Playlist') {
+  const title =
+    pickFirstText(
+      payload?.title,
+      payload?.data?.title,
+      payload?.data?.metadata?.playlistMetadataRenderer?.title,
+      payload?.data?.microformat?.microformatDataRenderer?.title,
+      payload?.data?.header?.musicResponsiveHeaderRenderer?.title,
+      payload?.data?.header?.musicDetailHeaderRenderer?.title,
+      payload?.data?.header?.musicImmersiveHeaderRenderer?.title,
+      payload?.data?.header?.pageHeaderRenderer?.content?.pageHeaderViewModel?.pageHeaderViewModel?.title?.dynamicTextViewModel?.text?.content
+    ) || fallbackTitle;
+
+  const artist =
+    normalizeArtistText(
+      pickFirstText(
+        payload?.author,
+        payload?.ownerName,
+        payload?.data?.metadata?.playlistMetadataRenderer?.ownerName,
+        payload?.data?.sidebar?.playlistSidebarRenderer?.items?.[1]?.playlistSidebarSecondaryInfoRenderer?.videoOwner?.videoOwnerRenderer?.title,
+        payload?.data?.header?.musicDetailHeaderRenderer?.subtitle,
+        payload?.data?.header?.musicResponsiveHeaderRenderer?.subtitle
+      )
+    ) || 'Unknown Artist';
+
+  const thumbnail =
+    extractThumbnailUrl(payload?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.header?.musicResponsiveHeaderRenderer?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.header?.musicDetailHeaderRenderer?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.header?.musicImmersiveHeaderRenderer?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.sidebar?.playlistSidebarRenderer?.items?.[0]?.playlistSidebarPrimaryInfoRenderer?.thumbnailRenderer) ||
+    `https://picsum.photos/seed/${playlistId}/400/400`;
+
+  const tracks = extractSongTracks(payload, artist);
+
+  return { title, thumbnail, artist, tracks };
+}
+
+function parseAlbumPayload(payload: any, albumId: string) {
+  const title =
+    pickFirstText(
+      payload?.title,
+      payload?.data?.title,
+      payload?.data?.header?.musicResponsiveHeaderRenderer?.title,
+      payload?.data?.header?.musicDetailHeaderRenderer?.title,
+      payload?.data?.header?.musicImmersiveHeaderRenderer?.title,
+      payload?.data?.metadata?.playlistMetadataRenderer?.title,
+      payload?.data?.microformat?.microformatDataRenderer?.title
+    ) || 'Unknown Album';
+
+  const artist =
+    normalizeArtistText(
+      pickFirstText(
+        payload?.artist,
+        payload?.author,
+        payload?.data?.header?.musicResponsiveHeaderRenderer?.subtitle,
+        payload?.data?.header?.musicDetailHeaderRenderer?.subtitle,
+        payload?.data?.header?.musicImmersiveHeaderRenderer?.subtitle,
+        payload?.data?.metadata?.playlistMetadataRenderer?.ownerName,
+        payload?.data?.sidebar?.playlistSidebarRenderer?.items?.[1]?.playlistSidebarSecondaryInfoRenderer?.videoOwner?.videoOwnerRenderer?.title
+      )
+    ) || 'Unknown Artist';
+
+  const thumbnail =
+    extractThumbnailUrl(payload?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.header?.musicResponsiveHeaderRenderer?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.header?.musicDetailHeaderRenderer?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.header?.musicImmersiveHeaderRenderer?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.sidebar?.playlistSidebarRenderer?.items?.[0]?.playlistSidebarPrimaryInfoRenderer?.thumbnailRenderer) ||
+    `https://picsum.photos/seed/${albumId}/400/400`;
+
+  const tracks = extractSongTracks(payload, artist);
+
+  return { title, artist, thumbnail, tracks };
+}
+
+function parseArtistPayload(payload: any, artistId: string) {
+  const name =
+    pickFirstText(
+      payload?.name,
+      payload?.artist,
+      payload?.data?.header?.musicImmersiveHeaderRenderer?.title,
+      payload?.data?.header?.musicVisualHeaderRenderer?.title,
+      payload?.data?.header?.musicDetailHeaderRenderer?.title,
+      payload?.data?.header?.musicResponsiveHeaderRenderer?.title,
+      payload?.data?.metadata?.channelMetadataRenderer?.title,
+      payload?.data?.microformat?.microformatDataRenderer?.title
+    ) || 'Unknown Artist';
+
+  const thumbnail =
+    extractThumbnailUrl(payload?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.header?.musicImmersiveHeaderRenderer?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.header?.musicVisualHeaderRenderer?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.header?.musicDetailHeaderRenderer?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.header?.musicResponsiveHeaderRenderer?.thumbnail) ||
+    extractThumbnailUrl(payload?.data?.metadata?.channelMetadataRenderer?.avatar) ||
+    `https://picsum.photos/seed/${artistId}/400/400`;
+
+  const tracks = extractSongTracks(payload, name);
+
+  return { name, thumbnail, tracks };
+}
+
+function getPlaylistIdCandidates(id: string): string[] {
+  const clean = id?.trim();
+  if (!clean) return [];
+
+  const candidates = new Set<string>([clean]);
+  if (clean.startsWith('VL') && clean.length > 2) {
+    candidates.add(clean.substring(2));
+  } else {
+    candidates.add(`VL${clean}`);
+  }
+
+  return Array.from(candidates);
+}
+
+function getIdCandidates(id: string): string[] {
+  const clean = id?.trim();
+  if (!clean) return [];
+
+  const candidates = new Set<string>([clean]);
+  if (clean.startsWith('VL') && clean.length > 2) {
+    candidates.add(clean.substring(2));
+  }
+
+  return Array.from(candidates);
+}
+
+async function fetchPlaylistDetails(playlistId: string, fallbackTitle = 'Playlist') {
+  let fallback: { title: string; thumbnail: string; artist: string; tracks: Track[] } | null = null;
+
+  for (const candidateId of getPlaylistIdCandidates(playlistId)) {
+    const encodedId = encodeURIComponent(candidateId);
+    const urls = [
+      `${YT_MUSIC_API_BASE}/api/playlist/${encodedId}`,
+      `${YT_MUSIC_API_BASE}/api/music/playlist/${encodedId}`,
+      `${YT_MUSIC_API_BASE}/api/playlist?list=${encodedId}`,
+    ];
+
+    for (const url of urls) {
+      const payload = await safeFetch(url);
+      if (!payload) continue;
+
+      const parsed = parsePlaylistPayload(payload, candidateId, fallbackTitle);
+      if (!fallback) fallback = parsed;
+
+      if (parsed.tracks.length > 0) {
+        return parsed;
+      }
+    }
+  }
+
+  return fallback;
+}
+
+export async function getPlaylistAction(id: string) {
+  const details = await fetchPlaylistDetails(id, 'Playlist');
+  if (!details) return null;
+
+  return {
+    title: details.title,
+    thumbnail: details.thumbnail,
+    tracks: details.tracks,
   };
 }
 
@@ -420,16 +971,30 @@ export async function resolveTrackAudio(track: Track): Promise<string | null> {
 
   if (track.source === 'youtube' || track.isYouTube) {
     const id = track.videoId || track.id;
-    const playerData = await safeFetch(`${YT_MUSIC_API_BASE}/api/video/${id}`);
-    if (playerData?.streaming_data?.adaptiveFormats) {
-      const audioFormats = playerData.streaming_data.adaptiveFormats.filter((f: any) => f.mimeType?.includes('audio'));
-      if (audioFormats.length > 0 && audioFormats[0].url) return audioFormats[0].url;
+    if (!id) return null;
+    
+    const playerData = await safeFetch(`${YT_MUSIC_API_BASE}/api/video/${id}`, 10000);
+    
+    if (playerData?.streaming_data) {
+      const sd = playerData.streaming_data;
+      
+      // Prefer adaptiveFormats audio-only (highest quality first)
+      if (sd.adaptiveFormats?.length) {
+        const audioFormats = sd.adaptiveFormats
+          .filter((f: any) => f.mimeType?.includes('audio') && f.url)
+          .sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0));
+        if (audioFormats.length > 0) return audioFormats[0].url;
+      }
+      
+      // Fallback to combined formats that have a URL
+      if (sd.formats?.length) {
+        const fmt = sd.formats.find((f: any) => f.url);
+        if (fmt?.url) return fmt.url;
+      }
     }
-    if (playerData?.streaming_data?.formats?.length > 0) {
-      const fmt = playerData.streaming_data.formats.find((f: any) => f.url);
-      if (fmt?.url) return fmt.url;
-    }
-    return null;
+    
+    // If API has streaming data but no usable URL, or no data — fall back to iframe
+    return `yt-fallback:${id}`;
   }
 
   if (track.source === 'jiosaavn') {
@@ -528,5 +1093,106 @@ export async function directFindAndPlayAction(songName: string) {
       isYouTube: true,
       type: 'song'
     }
+  };
+}
+
+export async function getArtistAction(artistId: string) {
+  const parsed = await fetchArtistDetails(artistId);
+  if (!parsed) return null;
+  return {
+    name: parsed.name,
+    thumbnail: parsed.thumbnail,
+    tracks: parsed.tracks,
+  };
+}
+
+async function fetchArtistDetails(artistId: string) {
+  let fallback: { name: string; thumbnail: string; tracks: Track[] } | null = null;
+  let lastParsed: { name: string; thumbnail: string; tracks: Track[] } | null = null;
+
+  for (const candidateId of getIdCandidates(artistId)) {
+    const encodedId = encodeURIComponent(candidateId);
+    const urls = [
+      `${YT_MUSIC_API_BASE}/api/music/artist/${encodedId}`,
+      `${YT_MUSIC_API_BASE}/api/channel/${encodedId}`,
+    ];
+
+    for (const url of urls) {
+      const payload = await safeFetch(url);
+      if (!payload) continue;
+
+      const parsed = parseArtistPayload(payload, candidateId);
+      lastParsed = parsed;
+      if (!fallback) fallback = parsed;
+
+      if (parsed.name !== 'Unknown Artist') {
+        return parsed;
+      }
+    }
+
+    const currentParsed = lastParsed || fallback;
+
+    if (candidateId.startsWith('UC') && !candidateId.startsWith('HC') && !candidateId.startsWith('MPRE')) {
+      const uploadsId = candidateId.replace(/^UC/, 'UU');
+      const playlistDetails = await fetchPlaylistDetails(uploadsId, currentParsed?.name || 'Uploads');
+      if (playlistDetails && playlistDetails.tracks.length > 0) {
+        return {
+          name: playlistDetails.artist || currentParsed?.name || 'Unknown Artist',
+          thumbnail: playlistDetails.thumbnail,
+          tracks: playlistDetails.tracks,
+        };
+      }
+    }
+  }
+
+  return fallback;
+}
+
+export async function getAlbumAction(albumId: string) {
+  const parsed = await fetchAlbumDetails(albumId);
+  if (!parsed) return null;
+  return {
+    title: parsed.title,
+    artist: parsed.artist,
+    thumbnail: parsed.thumbnail,
+    tracks: parsed.tracks,
+  };
+}
+
+async function fetchAlbumDetails(albumId: string) {
+  let fallback: { title: string; artist: string; thumbnail: string; tracks: Track[] } | null = null;
+
+  for (const candidateId of getIdCandidates(albumId)) {
+    const encodedId = encodeURIComponent(candidateId);
+    const urls = [
+      `${YT_MUSIC_API_BASE}/api/music/album/${encodedId}`,
+      `${YT_MUSIC_API_BASE}/api/playlist/${encodedId}`,
+      `${YT_MUSIC_API_BASE}/api/music/playlist/${encodedId}`,
+      `${YT_MUSIC_API_BASE}/api/playlist?list=${encodedId}`,
+    ];
+
+    for (const url of urls) {
+      const payload = await safeFetch(url);
+      if (!payload) continue;
+
+      const parsed = parseAlbumPayload(payload, candidateId);
+      if (!fallback) fallback = parsed;
+
+      if (parsed.tracks.length > 0) {
+        return parsed;
+      }
+    }
+  }
+
+  return fallback;
+}
+
+export async function getPlaylistSearchAction(playlistId: string) {
+  const details = await fetchPlaylistDetails(playlistId, 'Playlist');
+  if (!details) return null;
+  return {
+    title: details.title,
+    thumbnail: details.thumbnail,
+    tracks: details.tracks,
   };
 }

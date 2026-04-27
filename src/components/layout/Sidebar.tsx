@@ -131,7 +131,7 @@ const SidebarItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, 
       active ? "text-primary bg-primary/10 gold-glow" : "text-primary/40 hover:text-primary hover:bg-white/5"
     )}
   >
-    {React.cloneElement(icon as React.ReactElement, { className: cn('w-6 h-6', active ? 'text-primary' : 'text-primary/40') })}
+    {React.cloneElement(icon as React.ReactElement<{className?: string}>, { className: cn('w-6 h-6', active ? 'text-primary' : 'text-primary/40') })}
     <span className="truncate">{label}</span>
   </div>
 );

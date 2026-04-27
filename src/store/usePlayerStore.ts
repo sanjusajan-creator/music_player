@@ -27,6 +27,13 @@ export type StreamingMode = 'stream' | 'download' | 'offline';
 export type RepeatMode = 'none' | 'one' | 'all';
 export type LayoutMode = 'grid' | 'list';
 
+const PROGRESS_STEP_SECONDS = 0.25;
+const DURATION_STEP_SECONDS = 0.5;
+
+const toFinite = (value: number, fallback = 0) => (Number.isFinite(value) ? value : fallback);
+const roundToStep = (value: number, step: number) => Math.round(value / step) * step;
+const normalizeVolume = (value: number) => Math.max(0, Math.min(100, Math.round(toFinite(value, 80))));
+
 interface SettingsState {
   audioQuality: AudioQuality;
   streamingMode: StreamingMode;
@@ -56,7 +63,8 @@ interface PlayerState {
   isShuffle: boolean;
   hasHydrated: boolean;
   settings: SettingsState;
-  sleepTimer: number | null; 
+  sleepTimer: number | null;
+  forcePlayerView: boolean; 
   
   setHasHydrated: (state: boolean) => void;
   setCurrentTrack: (track: Track | null) => void;
@@ -82,6 +90,7 @@ interface PlayerState {
   toggleVideo: () => void;
   setSleepTimer: (minutes: number | null) => void;
   tickSleepTimer: () => void;
+  setForcePlayerView: (value: boolean) => void;
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -103,6 +112,7 @@ export const usePlayerStore = create<PlayerState>()(
       isShuffle: false,
       hasHydrated: false,
       sleepTimer: null,
+      forcePlayerView: false,
       settings: {
         audioQuality: 'auto',
         streamingMode: 'stream',
@@ -129,8 +139,8 @@ export const usePlayerStore = create<PlayerState>()(
       playNextFromQueue: (track) => set((state) => ({ queue: [track, ...state.queue] })),
 
       addToQueue: (track) => set((state) => ({ 
-        queue: [...state.queue, track],
-        originalQueue: [...state.originalQueue, track]
+        queue: [track, ...state.queue],
+        originalQueue: [track, ...state.originalQueue]
       })),
 
       setQueue: (tracks, startIndex = 0) => {
@@ -170,12 +180,35 @@ export const usePlayerStore = create<PlayerState>()(
         return { likedTrackIds: next };
       }),
 
-      setIsPlaying: (isPlaying) => set({ isPlaying }),
-      setIsBuffering: (isBuffering) => set({ isBuffering }),
-      setVolume: (volume) => set({ volume }),
-      setProgress: (progress) => set({ progress }),
-      setDuration: (duration) => set({ duration }),
-      seekTo: (time) => set({ seekRequest: time, progress: time }),
+      setIsPlaying: (isPlaying) => {
+        if (get().isPlaying === isPlaying) return;
+        set({ isPlaying });
+      },
+      setIsBuffering: (isBuffering) => {
+        if (get().isBuffering === isBuffering) return;
+        set({ isBuffering });
+      },
+      setVolume: (volume) => {
+        const nextVolume = normalizeVolume(volume);
+        if (get().volume === nextVolume) return;
+        set({ volume: nextVolume });
+      },
+      setProgress: (progress) => {
+        const nextProgress = roundToStep(Math.max(0, toFinite(progress, 0)), PROGRESS_STEP_SECONDS);
+        if (Math.abs(get().progress - nextProgress) < PROGRESS_STEP_SECONDS / 2) return;
+        set({ progress: nextProgress });
+      },
+      setDuration: (duration) => {
+        const nextDuration = roundToStep(Math.max(0, toFinite(duration, 0)), DURATION_STEP_SECONDS);
+        if (Math.abs(get().duration - nextDuration) < DURATION_STEP_SECONDS / 2) return;
+        set({ duration: nextDuration });
+      },
+      seekTo: (time) => {
+        const nextSeekTime = roundToStep(Math.max(0, toFinite(time, 0)), PROGRESS_STEP_SECONDS);
+        const { seekRequest, progress } = get();
+        if (seekRequest === nextSeekTime && Math.abs(progress - nextSeekTime) < PROGRESS_STEP_SECONDS / 2) return;
+        set({ seekRequest: nextSeekTime, progress: nextSeekTime });
+      },
 
       toggleShuffle: () => set((state) => {
         const isShuffle = !state.isShuffle;
@@ -260,7 +293,11 @@ export const usePlayerStore = create<PlayerState>()(
         settings: { ...state.settings, isVideoVisible: !state.settings.isVideoVisible }
       })),
 
-      setSleepTimer: (minutes) => set({ sleepTimer: minutes ? minutes * 60 : null }),
+      setSleepTimer: (minutes) => {
+        const nextSleepTimer = minutes ? minutes * 60 : null;
+        if (get().sleepTimer === nextSleepTimer) return;
+        set({ sleepTimer: nextSleepTimer });
+      },
       tickSleepTimer: () => {
         const { sleepTimer } = get();
         if (sleepTimer === null) return;
@@ -269,7 +306,11 @@ export const usePlayerStore = create<PlayerState>()(
           return;
         }
         set({ sleepTimer: sleepTimer - 1 });
-      }
+      },
+      setForcePlayerView: (value) => {
+        if (get().forcePlayerView === value) return;
+        set({ forcePlayerView: value });
+      },
     }),
     {
       name: 'vibecraft-sovereign-v10',
@@ -281,7 +322,8 @@ export const usePlayerStore = create<PlayerState>()(
         repeatMode: state.repeatMode,
         isShuffle: state.isShuffle,
         queue: state.queue,
-        settings: state.settings
+        settings: state.settings,
+        forcePlayerView: state.forcePlayerView
       }),
       onRehydrateStorage: () => (rehydratedState) => {
         if (rehydratedState) {

@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { cn, getImage } from '@/lib/utils';
 import { useUser, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 interface SearchResultProps {
   track: Track;
@@ -23,13 +24,35 @@ export const SearchResult = memo(({ track, results = [], index = 0 }: SearchResu
   
   const { user } = useUser();
   const db = useFirestore();
+  const router = useRouter();
   
   const isLiked = Array.isArray(likedTrackIds) ? likedTrackIds.includes(track.id) : false;
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (track.type === 'playlist') {
+      router.push(`/?tab=playlist&id=${track.id}`);
+      return;
+    }
+    if (track.type === 'album') {
+      router.push(`/?tab=album&id=${track.id}`);
+      return;
+    }
+    if (track.type === 'artist') {
+      router.push(`/?tab=artist&id=${track.id}`);
+      return;
+    }
+
     if (results.length > 0) {
-      setQueue(results, index);
+      // Filter out non-song types from queue
+      const playableResults = results.filter(r => !['playlist', 'album', 'artist'].includes(r.type || 'song'));
+      // Find the index of the clicked track in the playable results
+      const playableIndex = playableResults.findIndex(r => r.id === track.id);
+      if (playableIndex !== -1) {
+        setQueue(playableResults, playableIndex);
+      } else {
+        setQueue([track], 0);
+      }
     } else {
       setQueue([track], 0);
     }
@@ -73,6 +96,11 @@ export const SearchResult = memo(({ track, results = [], index = 0 }: SearchResu
     return <Headphones className="w-3 h-3" />;
   };
 
+  const getTypeLabel = () => {
+    const type = track.type || 'song';
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
   if (layoutMode === 'grid') {
     return (
       <motion.div 
@@ -83,25 +111,38 @@ export const SearchResult = memo(({ track, results = [], index = 0 }: SearchResu
       >
         <div className="relative aspect-square mb-3 shadow-2xl rounded-lg overflow-hidden shrink-0">
           <img src={getImage(track)} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={track.title} loading="lazy" />
-          <div className="absolute top-1.5 left-1.5 z-10">
-            <div className="bg-black/80 px-2 py-0.5 rounded-full border border-primary/20 flex items-center gap-1">
+          <div className="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1">
+            <div className="bg-black/80 px-2 py-0.5 rounded-full border border-primary/20 flex items-center gap-1 w-fit">
               {getSourceIcon()}
               <span className="text-[7px] font-black text-primary uppercase tracking-widest">{getSourceLabel()}</span>
             </div>
+            <div className="bg-primary/90 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+              <span className="text-[7px] font-black text-black uppercase tracking-widest">{getTypeLabel()}</span>
+            </div>
           </div>
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <button className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-all">
-              <Play className="fill-black text-black w-6 h-6 ml-1" />
-            </button>
+            <button className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-all"><Play className="fill-black text-black w-6 h-6 ml-1" /></button>
           </div>
         </div>
-        <div className="space-y-1 min-w-0">
-          <h4 className="font-black text-xs md:text-sm text-primary uppercase tracking-tighter leading-tight gold-glow line-clamp-2 break-words" title={track.title}>
-            {track.title}
-          </h4>
-          <p className="text-[9px] md:text-[10px] text-primary/40 uppercase tracking-widest truncate font-black">
-            {track.artist}
-          </p>
+        
+        <div className="flex items-start justify-between gap-2 mt-1">
+          <div className="space-y-1 min-w-0 flex-1">
+            <h4 className="font-black text-xs md:text-sm text-primary uppercase tracking-tighter leading-tight gold-glow line-clamp-2 break-words" title={track.title}>
+              {track.title}
+            </h4>
+            <p className="text-[9px] md:text-[10px] text-primary/40 uppercase tracking-widest truncate font-black">
+              {track.artist}
+            </p>
+          </div>
+          
+          <div className="flex flex-col items-center gap-2 shrink-0 pt-1">
+            <button onClick={handleLike} className="transition-all active:scale-125">
+              <Heart className={cn("w-4 h-4 md:w-5 md:h-5 transition-all", isLiked ? "fill-primary text-primary" : "text-primary/40 hover:text-primary")} />
+            </button>
+            <button onClick={handleAddToQueue} className="transition-all text-primary/40 hover:text-primary active:scale-110">
+              <ListMusic className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+          </div>
         </div>
       </motion.div>
     );
@@ -125,22 +166,25 @@ export const SearchResult = memo(({ track, results = [], index = 0 }: SearchResu
         <h4 className="font-black text-sm md:text-base text-primary uppercase tracking-tighter leading-snug gold-glow line-clamp-2 md:line-clamp-3 break-words pr-4" title={track.title}>
           {track.title}
         </h4>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="bg-primary/10 px-1.5 py-0.5 rounded border border-primary/10 flex items-center gap-1">
             {getSourceIcon()}
             <span className="text-[7px] font-black text-primary uppercase">{getSourceLabel()}</span>
           </div>
-          <p className="text-[10px] md:text-xs text-primary/40 uppercase tracking-widest truncate font-black">
+          <div className="bg-primary px-1.5 py-0.5 rounded flex items-center gap-1">
+            <span className="text-[7px] font-black text-black uppercase">{getTypeLabel()}</span>
+          </div>
+          <p className="text-[10px] md:text-xs text-primary/40 uppercase tracking-widest truncate font-black ml-1">
             {track.artist}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 pr-2">
         <button onClick={handleLike} className="p-2 transition-all active:scale-125">
-          <Heart className={cn("w-5 h-5 transition-all", isLiked ? "fill-primary text-primary" : "text-primary/20 opacity-0 group-hover:opacity-100")} />
+          <Heart className={cn("w-5 h-5 transition-all", isLiked ? "fill-primary text-primary" : "text-primary/40 hover:text-primary md:opacity-0 md:group-hover:opacity-100")} />
         </button>
-        <button onClick={handleAddToQueue} className="p-2 opacity-0 group-hover:opacity-100 text-primary/40 hover:text-primary transition-all">
+        <button onClick={handleAddToQueue} className="p-2 text-primary/40 hover:text-primary transition-all md:opacity-0 md:group-hover:opacity-100 active:scale-110">
           <ListMusic className="w-5 h-5" />
         </button>
       </div>
