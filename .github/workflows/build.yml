@@ -38,9 +38,11 @@ jobs:
           mkdir -p .next
           echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=https://music-player-wheat-gamma.vercel.app/"></head><body></body></html>' > .next/index.html
 
+      - name: Remove old android folder if exists
+        run: rm -rf android
+
       - name: Add Android platform
         run: npx cap add android
-        continue-on-error: true
 
       - name: Create static web folder
         run: |
