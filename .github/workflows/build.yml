@@ -33,12 +33,14 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
+      - name: Create .next folder for Capacitor
+        run: |
+          mkdir -p .next
+          echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=https://music-player-wheat-gamma.vercel.app/"></head><body></body></html>' > .next/index.html
+
       - name: Add Android platform
         run: npx cap add android
         continue-on-error: true
-
-      - name: Sync Android
-        run: npx cap sync android
 
       - name: Create static web folder
         run: |
