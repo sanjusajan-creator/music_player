@@ -47,13 +47,12 @@ jobs:
           <html>
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <meta http-equiv="refresh" content="0;url=https://your-app.vercel.app">
+            <meta http-equiv="refresh" content="0;url=https://music-player-wheat-gamma.vercel.app/">
           </head>
           <body>
             <p>Loading Music Player...</p>
           </body>
           </html>' > android/app/src/main/assets/public/index.html
-          echo "Update the URL above to your deployed app URL"
 
       - name: Build APK with Gradle
         working-directory: android
